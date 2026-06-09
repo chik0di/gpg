@@ -16,6 +16,20 @@ export default function ForgotPasswordPage() {
     setError(null)
 
     const supabase = createClient()
+
+    // Check if email exists in the system
+    const { data: userData, error: userError } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('email', email.toLowerCase())
+      .single()
+
+    if (userError || !userData) {
+      setError('No account found with this email address. Please check your email or create a new account.')
+      setLoading(false)
+      return
+    }
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/api/auth/callback?next=/dashboard/settings`,
     })

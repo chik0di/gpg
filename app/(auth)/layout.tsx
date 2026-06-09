@@ -6,6 +6,17 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       className="min-h-screen flex flex-col items-center justify-center px-4 py-12"
       style={{ background: '#F5F0E8' }}
     >
+      {/* Back to home link */}
+      <Link
+        href="/"
+        className="absolute top-6 left-6 flex items-center gap-2 text-sm font-semibold text-[#6B7280] hover:text-[#1B2E4B] transition-colors group"
+      >
+        <svg className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Back to home
+      </Link>
+
       {/* Logo link */}
       <Link href="/" className="flex items-center gap-2 mb-8">
         <span

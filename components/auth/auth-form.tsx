@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { getPasswordStrength, isPasswordValid } from '@/lib/utils/password'
 
 type Mode = 'signin' | 'signup'
 
@@ -38,6 +39,8 @@ export default function AuthForm({ next, initialMode }: Props) {
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
 
   const router = useRouter()
   const supabase = createClient()
@@ -71,12 +74,24 @@ export default function AuthForm({ next, initialMode }: Props) {
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error, data } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
       setError('Incorrect email or password. Please try again.')
       setLoading(false)
       return
+    }
+
+    // If "Remember Me" is unchecked, set session to expire when browser closes
+    if (!rememberMe && data.session) {
+      // Store in sessionStorage instead of localStorage for non-persistent session
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL!.split('//')[1].split('.')[0] + '-auth-token')
+        sessionStorage.setItem(
+          'sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL!.split('//')[1].split('.')[0] + '-auth-token',
+          JSON.stringify(data.session)
+        )
+      }
     }
 
     router.push(next)
@@ -88,6 +103,13 @@ export default function AuthForm({ next, initialMode }: Props) {
     e.preventDefault()
     setLoading(true)
     setError(null)
+
+    // Validate password requirements
+    if (!isPasswordValid(password)) {
+      setError('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.')
+      setLoading(false)
+      return
+    }
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -236,15 +258,46 @@ export default function AuthForm({ next, initialMode }: Props) {
                 Forgot password?
               </Link>
             </div>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className={inputClass}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors"
+              >
+                {showPassword ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center">
             <input
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className={inputClass}
+              id="remember-me"
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="w-4 h-4 rounded border-[#E8E2D9] text-[#1B2E4B] focus:ring-2 focus:ring-[#E8A020]/40 focus:ring-offset-0 cursor-pointer"
             />
+            <label htmlFor="remember-me" className="ml-2 text-sm text-[#6B7280] cursor-pointer select-none">
+              Remember me
+            </label>
           </div>
 
           <button
@@ -316,16 +369,51 @@ export default function AuthForm({ next, initialMode }: Props) {
             <label className="block text-sm font-semibold text-[#1B2E4B] mb-1.5">
               Password
             </label>
-            <input
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 8 characters"
-              className={inputClass}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                required
+                minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="At least 8 characters"
+                className={inputClass}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors"
+              >
+                {showPassword ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            {password && (() => {
+              const strength = getPasswordStrength(password)
+              return strength ? (
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs font-medium text-[#6B7280]">Password strength:</span>
+                  <span
+                    className="text-xs font-bold px-2 py-0.5 rounded"
+                    style={{ color: strength.color, background: strength.bgColor }}
+                  >
+                    {strength.label}
+                  </span>
+                </div>
+              ) : null
+            })()}
+            <p className="text-xs text-[#9CA3AF] mt-2">
+              Must contain uppercase, lowercase, number, and special character
+            </p>
           </div>
 
           <button
