@@ -127,11 +127,13 @@ function StripeForm({ grandTotalGBP }: { grandTotalGBP: number }) {
         )}
       </button>
 
+      <p className="text-center text-xs text-[#9CA3AF] mt-2">Charged in GBP</p>
+
       <div className="flex items-center justify-center gap-2 text-xs text-[#9CA3AF]">
         <svg className="w-3.5 h-3.5 text-[#9CA3AF]" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
         </svg>
-        Secure payment processed by Stripe · Charged in GBP
+        Secure payment processed by Stripe
       </div>
     </form>
   )
@@ -214,14 +216,28 @@ function OrderSummary({ data }: { data: OrderFormState }) {
       )}
 
       {/* Grand total */}
-      <div className="border-t border-[#E8E2D9] px-5 py-4 flex items-center justify-between">
-        <div>
-          <p className="text-sm font-bold text-[#1B2E4B]">Total</p>
-          {selectedCurrency !== 'GBP' && (
-            <p className="text-[0.65rem] text-[#9CA3AF] mt-0.5">Approx. {selectedCurrency} equivalent</p>
-          )}
+      <div className="border-t border-[#E8E2D9] px-5 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-bold text-[#1B2E4B]">Total</p>
+            {selectedCurrency !== 'GBP' && (
+              <p className="text-[0.65rem] text-[#9CA3AF] mt-0.5">Approx. {selectedCurrency} equivalent</p>
+            )}
+          </div>
+          <p className="text-xl font-extrabold text-[#1B2E4B]">{fmt(total)}</p>
         </div>
-        <p className="text-xl font-extrabold text-[#1B2E4B]">{fmt(total)}</p>
+
+        {/* GBP charge amount for non-GBP currencies */}
+        {selectedCurrency !== 'GBP' && (
+          <div className="mt-3 pt-3 border-t border-[#F5F0E8]">
+            <p className="text-xs font-semibold text-[#1B2E4B]">
+              You will be charged {fmtGBP(total)} GBP
+            </p>
+            <p className="text-[0.65rem] text-[#9CA3AF] mt-0.5">
+              This is the amount that will appear on your bank statement
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Order meta */}

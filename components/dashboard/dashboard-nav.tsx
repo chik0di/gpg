@@ -6,8 +6,8 @@ import type { User } from '@supabase/supabase-js'
 
 const LINKS = [
   { href: '/dashboard', label: 'Overview' },
-  { href: '/dashboard/orders', label: 'My Orders' },
   { href: '/dashboard/settings', label: 'Settings' },
+  { href: '/dashboard/orders', label: 'My Orders' },
 ]
 
 interface Props {
