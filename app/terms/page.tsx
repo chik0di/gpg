@@ -83,12 +83,19 @@ export default function TermsPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-base font-bold text-[#1B2E4B] mb-3">3. Payment</h3>
-                  <p>
+                  <h3 className="text-base font-bold text-[#1B2E4B] mb-3">3. Payment &amp; first order discount</h3>
+                  <p className="mb-3">
                     Payment is required in full before work is commenced. All transactions are processed
                     securely by Stripe. Prices are quoted and charged in British Pounds (GBP). Approximate
                     local-currency equivalents shown during the order process are for guidance only and do not
                     represent the amount charged.
+                  </p>
+                  <p>
+                    A one-time welcome discount of 10% is applied automatically to your first order. The
+                    discount applies to the base order total before urgency and academic level adjustments.
+                    It is non-transferable, has no cash value, and expires 30 days after account creation
+                    if unused. The discount is verified server-side and only applies to users who have never
+                    placed a completed or paid order.
                   </p>
                 </div>
 

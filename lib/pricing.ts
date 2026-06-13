@@ -148,15 +148,34 @@ export function calcOrderTotal({
   academicLevel,
   deadline,
   includeOriginalityReport,
+  applyFirstOrderDiscount = false,
 }: {
   deliverableSubtotal: number
   academicLevel: string
   deadline: string
   includeOriginalityReport: boolean
-}): { adjusted: number; total: number; levelMult: number; deadlineMult: number } {
+  applyFirstOrderDiscount?: boolean
+}): {
+  adjusted: number
+  total: number
+  levelMult: number
+  deadlineMult: number
+  discountAmount?: number
+} {
   const levelMult = getAcademicMultiplier(academicLevel)
   const deadlineMult = getDeadlineMultiplier(deadline)
-  const adjusted = deliverableSubtotal * levelMult * deadlineMult
+
+  // Apply first order discount to base subtotal BEFORE multipliers
+  let baseSubtotal = deliverableSubtotal
+  let discountAmount = 0
+
+  if (applyFirstOrderDiscount) {
+    discountAmount = deliverableSubtotal * 0.1 // 10% discount
+    baseSubtotal = deliverableSubtotal - discountAmount
+  }
+
+  const adjusted = baseSubtotal * levelMult * deadlineMult
   const total = adjusted + (includeOriginalityReport ? ORIGINALITY_REPORT_PRICE : 0)
-  return { adjusted, total, levelMult, deadlineMult }
+
+  return { adjusted, total, levelMult, deadlineMult, discountAmount }
 }

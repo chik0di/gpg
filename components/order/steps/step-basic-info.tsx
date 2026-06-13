@@ -207,6 +207,18 @@ export default function StepBasicInfo({ data, errors, onChange, onCurrencyChange
           className={selectClass}
           style={{ borderColor: errors.deadline ? '#EF4444' : '#E8E2D9' }}
         />
+        <p className="mt-1.5 text-xs text-[#9CA3AF]">
+          We require a minimum of 2 days to ensure quality work. Need it sooner?{' '}
+          <a
+            href="https://wa.me/447880213838"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-[#6B7280] hover:text-[#1B2E4B] underline underline-offset-2 transition-colors"
+          >
+            Chat with us on WhatsApp
+          </a>
+          .
+        </p>
         {errors.deadline && (
           <p className="mt-1.5 text-xs text-red-500">{errors.deadline}</p>
         )}

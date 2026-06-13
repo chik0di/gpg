@@ -1,5 +1,7 @@
 'use client'
 
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import {
   calcWrittenPrice,
   getSlideBandPrice,
@@ -52,6 +54,35 @@ function deliverableBasePrice(d: Deliverable): number {
 export default function StepSummary({ data, file, proceeding = false, onToggleReport, onBack, onProceed }: Props) {
   const { selectedCurrency, exchangeRate } = data
   const fmt = (gbpAmt: number) => fmtInCurrency(gbpAmt, exchangeRate, selectedCurrency)
+
+  const [isFirstTimer, setIsFirstTimer] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  useEffect(() => {
+    async function checkFirstTimer() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (!user) {
+        setIsLoggedIn(false)
+        return
+      }
+
+      setIsLoggedIn(true)
+
+      // Check if user has any previous orders
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('user_id', user.id)
+        .in('status', ['completed', 'paid', 'pending'])
+        .limit(1)
+
+      setIsFirstTimer(!orders || orders.length === 0)
+    }
+
+    checkFirstTimer()
+  }, [])
 
   const levelMult    = getAcademicMultiplier(data.academicLevel)
   const deadlineMult = getDeadlineMultiplier(data.deadline)
@@ -204,6 +235,21 @@ export default function StepSummary({ data, file, proceeding = false, onToggleRe
           +{fmt(ORIGINALITY_REPORT_PRICE)}
         </span>
       </button>
+
+      {/* First-time discount notice */}
+      {isLoggedIn && isFirstTimer && (
+        <div className="flex items-start gap-3 bg-[#D1FAE5] border border-[#86EFAC] rounded-xl px-4 py-3">
+          <svg className="w-5 h-5 text-[#16A34A] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+          </svg>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-[#16A34A]">First order? You get 10% off!</p>
+            <p className="text-xs text-[#16A34A]/80 mt-0.5">
+              Your welcome discount will be applied automatically at checkout.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Grand total */}
       <div

@@ -11,6 +11,7 @@ import {
   PRACTICAL_ITEMS,
   SLIDE_BANDS,
 } from '@/lib/pricing'
+import { isEligibleForFirstOrderDiscount, isWithinDiscountWindow, applyFirstOrderDiscount } from '@/lib/discount'
 import { sendOrderConfirmation, sendAdminNewOrderAlert } from '@/lib/resend'
 import type { Deliverable } from '@/types/order-form'
 
@@ -83,12 +84,29 @@ export async function POST(request: Request) {
       (sum, d) => sum + deliverableBasePrice(d),
       0
     )
+
+    // Verify first-order discount eligibility server-side
+    const isEligible = await isEligibleForFirstOrderDiscount(supabase, user.id)
+    const isInWindow = await isWithinDiscountWindow(supabase, user.id)
+    const shouldApplyDiscount = isEligible && isInWindow
+
     const { total } = calcOrderTotal({
       deliverableSubtotal: subtotal,
       academicLevel: orderData.academicLevel,
       deadline: orderData.deadline,
       includeOriginalityReport: orderData.includeOriginalityReport,
+      applyFirstOrderDiscount: shouldApplyDiscount,
     })
+
+    // Verify the payment intent amount matches our server-side calculation
+    const expectedAmount = Math.round(total * 100)
+    if (pi.amount !== expectedAmount) {
+      console.error(`[orders/create] amount mismatch: PI=${pi.amount}, expected=${expectedAmount}`)
+      // Allow a 1 pence tolerance for rounding differences
+      if (Math.abs(pi.amount - expectedAmount) > 1) {
+        return NextResponse.json({ error: 'Payment amount mismatch' }, { status: 400 })
+      }
+    }
 
     // 4. Create order row
     const { data: order, error: orderErr } = await supabase

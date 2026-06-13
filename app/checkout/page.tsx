@@ -141,7 +141,11 @@ function StripeForm({ grandTotalGBP }: { grandTotalGBP: number }) {
 
 // ── Order summary sidebar ──────────────────────────────────────────────────
 
-function OrderSummary({ data }: { data: OrderFormState }) {
+function OrderSummary({ data, hasDiscount, discountGBP }: {
+  data: OrderFormState
+  hasDiscount: boolean
+  discountGBP: number
+}) {
   const selectedCurrency = data.selectedCurrency ?? 'GBP'
   const exchangeRate     = data.exchangeRate ?? 1
   const fmt = (gbpAmt: number) => fmtInCurrency(gbpAmt, exchangeRate, selectedCurrency)
@@ -215,6 +219,19 @@ function OrderSummary({ data }: { data: OrderFormState }) {
         </div>
       )}
 
+      {/* First order discount */}
+      {hasDiscount && discountGBP > 0 && (
+        <div className="border-t border-[#E8E2D9] px-5 py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-[#16A34A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <p className="text-sm font-semibold text-[#16A34A]">First order discount −10%</p>
+          </div>
+          <p className="text-sm font-bold text-[#16A34A] ml-3 shrink-0">−{fmt(discountGBP)}</p>
+        </div>
+      )}
+
       {/* Grand total */}
       <div className="border-t border-[#E8E2D9] px-5 py-4">
         <div className="flex items-center justify-between">
@@ -269,6 +286,8 @@ export default function CheckoutPage() {
   const [orderData, setOrderData]         = useState<OrderFormState | null>(null)
   const [clientSecret, setClientSecret]   = useState<string | null>(null)
   const [initError, setInitError]         = useState<string | null>(null)
+  const [hasFirstOrderDiscount, setHasFirstOrderDiscount] = useState(false)
+  const [discountAmountGBP, setDiscountAmountGBP] = useState(0)
   // Decoded File held in memory — the actual upload happens after payment succeeds
   const [pendingFile, setPendingFile]     = useState<File | null>(null)
 
@@ -307,23 +326,34 @@ export default function CheckoutPage() {
       }
     }
 
-    // Compute total in GBP and request a payment intent (always GBP)
-    const subtotal = data.deliverables.reduce((s, d) => s + deliverableBasePrice(d), 0)
-    const { total } = calcOrderTotal({
-      deliverableSubtotal:      subtotal,
-      academicLevel:            data.academicLevel,
-      deadline:                 data.deadline,
-      includeOriginalityReport: data.includeOriginalityReport,
-    })
-    const amountPence = Math.round(total * 100)
-
-    fetch('/api/stripe/create-payment-intent', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ amountPence }),
-    })
+    // Check discount eligibility first, then compute total and create payment intent
+    fetch('/api/discount/check-eligibility')
       .then((r) => r.json())
-      .then(({ clientSecret, error }) => {
+      .then(({ eligible }) => {
+        const subtotal = data.deliverables.reduce((s, d) => s + deliverableBasePrice(d), 0)
+        const { total, discountAmount } = calcOrderTotal({
+          deliverableSubtotal:      subtotal,
+          academicLevel:            data.academicLevel,
+          deadline:                 data.deadline,
+          includeOriginalityReport: data.includeOriginalityReport,
+          applyFirstOrderDiscount:  eligible,
+        })
+
+        setHasFirstOrderDiscount(eligible)
+        setDiscountAmountGBP(discountAmount ?? 0)
+
+        const amountPence = Math.round(total * 100)
+
+        return fetch('/api/stripe/create-payment-intent', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ amountPence }),
+        })
+      })
+      .then((r) => r?.json())
+      .then((json) => {
+        if (!json) return
+        const { clientSecret, error } = json
         if (error || !clientSecret) {
           setInitError('Could not initialise payment. Please try again.')
           return
@@ -399,7 +429,11 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Order summary — shown first on mobile, second on desktop */}
           <div className="order-first lg:order-last lg:col-span-2">
-            <OrderSummary data={orderData} />
+            <OrderSummary
+              data={orderData}
+              hasDiscount={hasFirstOrderDiscount}
+              discountGBP={discountAmountGBP}
+            />
           </div>
 
           {/* Payment form */}
