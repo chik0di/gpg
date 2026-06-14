@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/types/order'
 import StatusUpdater from '@/components/admin/status-updater'
 import FileUploader from '@/components/admin/file-uploader'
+import DeleteCompletedButton from '@/components/admin/delete-completed-button'
 
 export const metadata: Metadata = { title: 'Admin — Order Detail' }
 
@@ -182,17 +183,20 @@ export default async function AdminOrderDetailPage({ params }: Props) {
         <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide mb-3">Completed Work</p>
         {completedUrl ? (
           <div className="space-y-3">
-            <a
-              href={completedUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#F0FDF4] border border-[#86EFAC] text-[#16A34A] font-bold text-sm rounded-xl hover:bg-[#DCFCE7] transition-all"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              View uploaded work
-            </a>
+            <div className="flex items-center gap-3">
+              <a
+                href={completedUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#F0FDF4] border border-[#86EFAC] text-[#16A34A] font-bold text-sm rounded-xl hover:bg-[#DCFCE7] transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                View uploaded work
+              </a>
+              <DeleteCompletedButton orderId={order.id} />
+            </div>
             <p className="text-xs text-[#9CA3AF]">Replace by uploading a new file below.</p>
             <FileUploader orderId={order.id} />
           </div>
