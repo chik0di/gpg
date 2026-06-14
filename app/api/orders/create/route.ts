@@ -226,12 +226,17 @@ export async function POST(request: Request) {
         // Get meaningful name parts with fallbacks
         const [firstName, lastName] = await getUserNameForFilename(user.id, user.email ?? '')
 
-        const filename = [
+        // Build filename parts, excluding empty lastName
+        const nameParts = [
           seg(orderData.subjectField),
           seg(firstName),
-          seg(lastName),
-          order.id,
-        ].join('_') + ext
+        ]
+        if (lastName) {
+          nameParts.push(seg(lastName))
+        }
+        nameParts.push(order.id)
+
+        const filename = nameParts.join('_') + ext
 
         const path  = `assignments/${filename}`
         const bytes = await uploadedFile.arrayBuffer()

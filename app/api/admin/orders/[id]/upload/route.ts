@@ -2,6 +2,61 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
+/**
+ * Get meaningful name parts from user profile, auth metadata, or email
+ * Returns [firstName, lastName] with fallbacks to ensure no 'Unknown' in filenames
+ */
+async function getUserNameForFilename(userId: string): Promise<[string, string]> {
+  // Try to get from profile first
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('first_name, last_name, email')
+    .eq('id', userId)
+    .single()
+
+  let firstName = profile?.first_name?.trim() || ''
+  let lastName = profile?.last_name?.trim() || ''
+  const email = profile?.email || ''
+
+  // If profile is empty, try auth metadata
+  if (!firstName && !lastName) {
+    const { data: { user: authUser } } = await supabaseAdmin.auth.admin.getUserById(userId)
+    if (authUser?.user_metadata) {
+      const meta = authUser.user_metadata
+      firstName = meta.given_name || meta.first_name || ''
+      lastName = meta.family_name || meta.last_name || ''
+
+      // Try splitting full_name if available
+      if (!firstName && !lastName && typeof meta.full_name === 'string') {
+        const parts = meta.full_name.trim().split(' ')
+        firstName = parts[0] || ''
+        lastName = parts.slice(1).join(' ') || ''
+      }
+    }
+  }
+
+  // Final fallback: use email prefix
+  if (!firstName && !lastName && email) {
+    const emailPrefix = email.split('@')[0]
+    // Split on common delimiters
+    const parts = emailPrefix.split(/[._-]/).filter(Boolean)
+    if (parts.length >= 2) {
+      firstName = parts[0]
+      lastName = parts.slice(1).join('_')
+    } else {
+      firstName = parts[0] || 'Client'
+      lastName = ''
+    }
+  }
+
+  // Ensure at least one part is not empty
+  if (!firstName && !lastName) {
+    firstName = 'Client'
+  }
+
+  return [firstName, lastName]
+}
+
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
@@ -29,21 +84,23 @@ export async function POST(
       .eq('id', orderId)
       .single()
 
-    const { data: profile } = order
-      ? await supabaseAdmin
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('id', order.user_id)
-          .single()
-      : { data: null }
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+
+    // Get meaningful name parts with fallbacks
+    const [firstName, lastName] = await getUserNameForFilename(order.user_id)
 
     // Build renamed filename: SubjectField_FirstName_LastName_ShortOrderId.ext
     const ext        = file.name.split('.').pop() ?? 'pdf'
-    const subject    = (order?.subject_field ?? 'File').replace(/[^a-zA-Z0-9]/g, '')
-    const firstName  = (profile?.first_name ?? 'Unknown').replace(/[^a-zA-Z0-9]/g, '')
-    const lastName   = (profile?.last_name  ?? 'Client').replace(/[^a-zA-Z0-9]/g, '')
+    const subject    = (order.subject_field ?? 'File').replace(/[^a-zA-Z0-9]/g, '')
+    const firstClean = firstName.replace(/[^a-zA-Z0-9]/g, '') || 'Client'
+    const lastClean  = lastName.replace(/[^a-zA-Z0-9]/g, '')
     const shortId    = orderId.slice(0, 8).toUpperCase()
-    const fileName   = `${subject}_${firstName}_${lastName}_${shortId}.${ext}`
+
+    // Build filename with or without last name
+    const namePart = lastClean ? `${firstClean}_${lastClean}` : firstClean
+    const fileName   = `${subject}_${namePart}_${shortId}.${ext}`
     const storagePath = `completed/${orderId}/${fileName}`
 
     // Upload to Supabase Storage
