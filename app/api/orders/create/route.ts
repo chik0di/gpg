@@ -41,6 +41,60 @@ function seg(s: string | null | undefined): string {
   return (s ?? 'Unknown').trim().replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '')
 }
 
+/**
+ * Get meaningful name parts from user profile, auth metadata, or email
+ * Returns [firstName, lastName] with fallbacks to ensure no 'Unknown' in filenames
+ */
+async function getUserNameForFilename(userId: string, userEmail: string): Promise<[string, string]> {
+  // Try to get from profile first
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('first_name, last_name')
+    .eq('id', userId)
+    .single()
+
+  let firstName = profile?.first_name?.trim() || ''
+  let lastName = profile?.last_name?.trim() || ''
+
+  // If profile is empty, try auth metadata
+  if (!firstName && !lastName) {
+    const { data: { user: authUser } } = await supabaseAdmin.auth.admin.getUserById(userId)
+    if (authUser?.user_metadata) {
+      const meta = authUser.user_metadata
+      firstName = meta.given_name || meta.first_name || ''
+      lastName = meta.family_name || meta.last_name || ''
+
+      // Try splitting full_name if available
+      if (!firstName && !lastName && typeof meta.full_name === 'string') {
+        const parts = meta.full_name.trim().split(' ')
+        firstName = parts[0] || ''
+        lastName = parts.slice(1).join(' ') || ''
+      }
+    }
+  }
+
+  // Final fallback: use email prefix
+  if (!firstName && !lastName) {
+    const emailPrefix = userEmail.split('@')[0]
+    // Split on common delimiters and capitalize
+    const parts = emailPrefix.split(/[._-]/).filter(Boolean)
+    if (parts.length >= 2) {
+      firstName = parts[0]
+      lastName = parts.slice(1).join('_')
+    } else {
+      firstName = parts[0] || 'User'
+      lastName = ''
+    }
+  }
+
+  // Ensure at least one part is not empty
+  if (!firstName && !lastName) {
+    firstName = 'User'
+  }
+
+  return [firstName, lastName]
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = createServerClient()
@@ -154,7 +208,7 @@ export async function POST(request: Request) {
       console.error('Deliverables insert failed:', delivErr)
     }
 
-    // 6. Fetch profile — needed for the filename and for notification emails
+    // 6. Fetch profile — needed for notification emails
     const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('first_name, last_name, email')
@@ -169,10 +223,13 @@ export async function POST(request: Request) {
         const dotIndex = rawName.lastIndexOf('.')
         const ext      = dotIndex !== -1 ? rawName.slice(dotIndex).toLowerCase() : ''
 
+        // Get meaningful name parts with fallbacks
+        const [firstName, lastName] = await getUserNameForFilename(user.id, user.email ?? '')
+
         const filename = [
           seg(orderData.subjectField),
-          seg(profile?.first_name),
-          seg(profile?.last_name),
+          seg(firstName),
+          seg(lastName),
           order.id,
         ].join('_') + ext
 
