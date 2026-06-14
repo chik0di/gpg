@@ -11,7 +11,8 @@ import {
   PRACTICAL_ITEMS,
   SLIDE_BANDS,
 } from '@/lib/pricing'
-import { isEligibleForFirstOrderDiscount, isWithinDiscountWindow, applyFirstOrderDiscount } from '@/lib/discount'
+import { getBestDiscount } from '@/lib/discount'
+import { completeReferral, markCreditAsUsed } from '@/lib/referral'
 import { sendOrderConfirmation, sendAdminNewOrderAlert } from '@/lib/resend'
 import type { Deliverable } from '@/types/order-form'
 
@@ -85,17 +86,17 @@ export async function POST(request: Request) {
       0
     )
 
-    // Verify first-order discount eligibility server-side
-    const isEligible = await isEligibleForFirstOrderDiscount(supabase, user.id)
-    const isInWindow = await isWithinDiscountWindow(supabase, user.id)
-    const shouldApplyDiscount = isEligible && isInWindow
+    // Determine best discount to apply
+    const discount = await getBestDiscount(supabase, user.id)
+    const discountPercent = discount.percent
 
     const { total } = calcOrderTotal({
       deliverableSubtotal: subtotal,
       academicLevel: orderData.academicLevel,
       deadline: orderData.deadline,
       includeOriginalityReport: orderData.includeOriginalityReport,
-      applyFirstOrderDiscount: shouldApplyDiscount,
+      applyFirstOrderDiscount: discountPercent > 0,
+      discountPercent,
     })
 
     // Verify the payment intent amount matches our server-side calculation
@@ -245,6 +246,19 @@ export async function POST(request: Request) {
       deliverableSummary,
       instructions:       orderData.instructions || null,
     }).catch((e) => console.error('[email] admin alert failed:', e))
+
+    // 9. Handle referral logic (fire-and-forget)
+    if (discount.type === 'referred-friend') {
+      // Complete referral and issue credit to referrer
+      completeReferral(supabaseAdmin, user.id).catch((err) => {
+        console.error('[orders/create] referral completion failed:', err)
+      })
+    } else if (discount.type === 'referral-credit' && discount.creditId) {
+      // Mark referral credit as used
+      markCreditAsUsed(supabaseAdmin, discount.creditId).catch((err) => {
+        console.error('[orders/create] credit marking failed:', err)
+      })
+    }
 
     return NextResponse.json({ orderId: order.id }, { status: 201 })
   } catch (err) {

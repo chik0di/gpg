@@ -1,7 +1,26 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import {
+  wasUserReferred,
+  getAvailableReferralCredit,
+  REFERRAL_DISCOUNT_PERCENT,
+  REFERRED_FRIEND_DISCOUNT_PERCENT,
+} from './referral'
 
 export const FIRST_ORDER_DISCOUNT_PERCENT = 10
 export const FIRST_ORDER_DISCOUNT_DAYS = 30
+
+export type DiscountType =
+  | 'none'
+  | 'first-order'
+  | 'referral-credit'
+  | 'referred-friend'
+
+export interface DiscountInfo {
+  type: DiscountType
+  percent: number
+  label: string
+  creditId?: string // For referral credits
+}
 
 /**
  * Check if a user is eligible for the first-time order discount.
@@ -66,4 +85,54 @@ export async function isWithinDiscountWindow(
   const daysOld = accountAge / (1000 * 60 * 60 * 24)
 
   return daysOld <= FIRST_ORDER_DISCOUNT_DAYS
+}
+
+/**
+ * Determine the best discount to apply for a user
+ * Priority: Referred friend (15%) > Referral credit (10%) > First order (10%)
+ * Only one discount can be applied per order
+ */
+export async function getBestDiscount(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<DiscountInfo> {
+  const isFirstOrder = await isEligibleForFirstOrderDiscount(supabase, userId)
+
+  if (!isFirstOrder) {
+    // Not first order - check for referral credit
+    const credit = await getAvailableReferralCredit(supabase, userId)
+    if (credit) {
+      return {
+        type: 'referral-credit',
+        percent: REFERRAL_DISCOUNT_PERCENT,
+        label: 'Referral credit',
+        creditId: credit.id,
+      }
+    }
+    return { type: 'none', percent: 0, label: '' }
+  }
+
+  // First order - check if user was referred
+  const isReferred = await wasUserReferred(supabase, userId)
+
+  if (isReferred) {
+    // Referred friend gets 15% (better than standard 10%)
+    return {
+      type: 'referred-friend',
+      percent: REFERRED_FRIEND_DISCOUNT_PERCENT,
+      label: 'Referred friend discount',
+    }
+  }
+
+  // Standard first order discount (10%)
+  const isInWindow = await isWithinDiscountWindow(supabase, userId)
+  if (isInWindow) {
+    return {
+      type: 'first-order',
+      percent: FIRST_ORDER_DISCOUNT_PERCENT,
+      label: 'First order discount',
+    }
+  }
+
+  return { type: 'none', percent: 0, label: '' }
 }

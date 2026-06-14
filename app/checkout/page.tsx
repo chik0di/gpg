@@ -141,14 +141,17 @@ function StripeForm({ grandTotalGBP }: { grandTotalGBP: number }) {
 
 // ── Order summary sidebar ──────────────────────────────────────────────────
 
-function OrderSummary({ data, hasDiscount, discountGBP }: {
+function OrderSummary({ data, discountType, discountLabel, discountPercent, discountGBP }: {
   data: OrderFormState
-  hasDiscount: boolean
+  discountType: string
+  discountLabel: string
+  discountPercent: number
   discountGBP: number
 }) {
   const selectedCurrency = data.selectedCurrency ?? 'GBP'
   const exchangeRate     = data.exchangeRate ?? 1
   const fmt = (gbpAmt: number) => fmtInCurrency(gbpAmt, exchangeRate, selectedCurrency)
+  const hasDiscount = discountType !== 'none' && discountGBP > 0
 
   const subtotal     = data.deliverables.reduce((s, d) => s + deliverableBasePrice(d), 0)
   const levelMult    = getAcademicMultiplier(data.academicLevel)
@@ -219,14 +222,16 @@ function OrderSummary({ data, hasDiscount, discountGBP }: {
         </div>
       )}
 
-      {/* First order discount */}
+      {/* Discount */}
       {hasDiscount && discountGBP > 0 && (
         <div className="border-t border-[#E8E2D9] px-5 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <svg className="w-4 h-4 text-[#16A34A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            <p className="text-sm font-semibold text-[#16A34A]">First order discount −10%</p>
+            <p className="text-sm font-semibold text-[#16A34A]">
+              {discountLabel} −{discountPercent}%
+            </p>
           </div>
           <p className="text-sm font-bold text-[#16A34A] ml-3 shrink-0">−{fmt(discountGBP)}</p>
         </div>
@@ -286,7 +291,9 @@ export default function CheckoutPage() {
   const [orderData, setOrderData]         = useState<OrderFormState | null>(null)
   const [clientSecret, setClientSecret]   = useState<string | null>(null)
   const [initError, setInitError]         = useState<string | null>(null)
-  const [hasFirstOrderDiscount, setHasFirstOrderDiscount] = useState(false)
+  const [discountType, setDiscountType]   = useState<string>('none')
+  const [discountPercent, setDiscountPercent] = useState(0)
+  const [discountLabel, setDiscountLabel] = useState('')
   const [discountAmountGBP, setDiscountAmountGBP] = useState(0)
   // Decoded File held in memory — the actual upload happens after payment succeeds
   const [pendingFile, setPendingFile]     = useState<File | null>(null)
@@ -329,17 +336,21 @@ export default function CheckoutPage() {
     // Check discount eligibility first, then compute total and create payment intent
     fetch('/api/discount/check-eligibility')
       .then((r) => r.json())
-      .then(({ eligible }) => {
+      .then((discount) => {
+        const { type, percent, label } = discount
         const subtotal = data.deliverables.reduce((s, d) => s + deliverableBasePrice(d), 0)
         const { total, discountAmount } = calcOrderTotal({
           deliverableSubtotal:      subtotal,
           academicLevel:            data.academicLevel,
           deadline:                 data.deadline,
           includeOriginalityReport: data.includeOriginalityReport,
-          applyFirstOrderDiscount:  eligible,
+          applyFirstOrderDiscount:  percent > 0,
+          discountPercent:          percent,
         })
 
-        setHasFirstOrderDiscount(eligible)
+        setDiscountType(type)
+        setDiscountPercent(percent)
+        setDiscountLabel(label)
         setDiscountAmountGBP(discountAmount ?? 0)
 
         const amountPence = Math.round(total * 100)
@@ -431,7 +442,9 @@ export default function CheckoutPage() {
           <div className="order-first lg:order-last lg:col-span-2">
             <OrderSummary
               data={orderData}
-              hasDiscount={hasFirstOrderDiscount}
+              discountType={discountType}
+              discountLabel={discountLabel}
+              discountPercent={discountPercent}
               discountGBP={discountAmountGBP}
             />
           </div>

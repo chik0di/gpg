@@ -121,7 +121,24 @@ export default function TermsPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-base font-bold text-[#1B2E4B] mb-3">6. Limitation of liability</h3>
+                  <h3 className="text-base font-bold text-[#1B2E4B] mb-3">6. Referral program</h3>
+                  <p className="mb-3">
+                    Referral credits of 10% are issued to referrers when a referred friend completes their first
+                    paid order. Credits expire 90 days after issue, are non-transferable, have no cash value,
+                    and cannot be combined with other discounts. Only one referral credit can be applied per order.
+                  </p>
+                  <p className="mb-3">
+                    Referred friends receive a 15% first-order discount, which supersedes the standard 10% welcome
+                    discount. If a user qualifies for both discounts, only the higher 15% referral discount applies.
+                  </p>
+                  <p>
+                    Self-referrals are not permitted. GetPrimeGrade reserves the right to cancel credits and
+                    suspend accounts if fraudulent activity or abuse is detected.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-base font-bold text-[#1B2E4B] mb-3">7. Limitation of liability</h3>
                   <p>
                     GetPrimeGrade&apos;s total liability in connection with any order is limited to the amount
                     paid for that order. We are not liable for indirect, consequential, or incidental losses

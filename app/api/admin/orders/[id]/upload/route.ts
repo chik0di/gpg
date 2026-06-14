@@ -62,13 +62,21 @@ export async function POST(
       return NextResponse.json({ error: 'File upload failed' }, { status: 500 })
     }
 
+    // Delete any existing completed file record first (to allow re-upload)
+    await supabaseAdmin
+      .from('order_files')
+      .delete()
+      .eq('order_id', orderId)
+      .eq('file_type', 'completed')
+
     // Store the file path in order_files table
     const { error: dbErr } = await supabaseAdmin
       .from('order_files')
-      .upsert(
-        { order_id: orderId, file_url: storagePath, file_type: 'completed' },
-        { onConflict: 'order_id,file_type' }
-      )
+      .insert({
+        order_id: orderId,
+        file_url: storagePath,
+        file_type: 'completed',
+      })
 
     if (dbErr) {
       console.error('[upload] db error:', dbErr)
