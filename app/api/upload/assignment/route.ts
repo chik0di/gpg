@@ -4,6 +4,17 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 
 const MAX_BYTES = 50 * 1024 * 1024 // 50 MB
 
+// Allow common document formats for assignment briefs
+const ALLOWED_MIME_TYPES = [
+  'application/pdf',
+  'application/msword', // .doc
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'text/plain',
+]
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData()
@@ -15,6 +26,14 @@ export async function POST(request: Request) {
 
     if (file.size > MAX_BYTES) {
       return NextResponse.json({ error: 'File exceeds 50 MB limit' }, { status: 413 })
+    }
+
+    // Validate file type
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      return NextResponse.json(
+        { error: 'Invalid file type. Allowed: PDF, Word, images, text files.' },
+        { status: 400 }
+      )
     }
 
     // Use a UUID so the path is unguessable even in a public-ish bucket.

@@ -1,22 +1,35 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { rateLimit, getClientIp, RateLimitPresets } from '@/lib/rate-limit'
+
+const MAX_BYTES = 100 * 1024 * 1024 // 100 MB for completed work
+
+// Allow common document formats for completed work
+const ALLOWED_MIME_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/zip',
+  'application/x-zip-compressed',
+]
 
 /**
  * Get meaningful name parts from user profile, auth metadata, or email
  * Returns [firstName, lastName] with fallbacks to ensure no 'Unknown' in filenames
  */
-async function getUserNameForFilename(userId: string): Promise<[string, string]> {
+async function getUserNameForFilename(userId: string, userEmail: string): Promise<[string, string]> {
   // Try to get from profile first
   const { data: profile } = await supabaseAdmin
     .from('profiles')
-    .select('first_name, last_name, email')
+    .select('first_name, last_name')
     .eq('id', userId)
     .single()
 
   let firstName = profile?.first_name?.trim() || ''
   let lastName = profile?.last_name?.trim() || ''
-  const email = profile?.email || ''
 
   // If profile is empty, try auth metadata
   if (!firstName && !lastName) {
@@ -36,8 +49,8 @@ async function getUserNameForFilename(userId: string): Promise<[string, string]>
   }
 
   // Final fallback: use email prefix
-  if (!firstName && !lastName && email) {
-    const emailPrefix = email.split('@')[0]
+  if (!firstName && !lastName) {
+    const emailPrefix = userEmail.split('@')[0]
     // Split on common delimiters
     const parts = emailPrefix.split(/[._-]/).filter(Boolean)
     if (parts.length >= 2) {
@@ -62,6 +75,17 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Rate limiting - 30 uploads per minute for admin
+    const clientIp = getClientIp(request)
+    const rateLimitResult = rateLimit(clientIp, RateLimitPresets.relaxed)
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many uploads. Please slow down.' },
+        { status: 429 }
+      )
+    }
+
     // Verify admin
     const supabase = createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -77,10 +101,30 @@ export async function POST(
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    // Fetch order to build the filename
+    // Validate file size
+    if (file.size > MAX_BYTES) {
+      return NextResponse.json(
+        { error: 'File exceeds 100 MB limit' },
+        { status: 413 }
+      )
+    }
+
+    // Validate file type
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      return NextResponse.json(
+        { error: 'Invalid file type. Allowed: PDF, Word, PowerPoint, ZIP files.' },
+        { status: 400 }
+      )
+    }
+
+    // Fetch order and user email to build the filename
     const { data: order } = await supabaseAdmin
       .from('orders')
-      .select('subject_field, user_id')
+      .select(`
+        subject_field,
+        user_id,
+        profiles!inner(email)
+      `)
       .eq('id', orderId)
       .single()
 
@@ -88,20 +132,22 @@ export async function POST(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
     }
 
-    // Get meaningful name parts with fallbacks
-    const [firstName, lastName] = await getUserNameForFilename(order.user_id)
+    // Get user email from joined profile
+    const userEmail = (order.profiles as any)?.email || ''
 
-    // Build renamed filename: SubjectField_FirstName_LastName_ShortOrderId.ext
+    // Get meaningful name parts with fallbacks
+    const [firstName, lastName] = await getUserNameForFilename(order.user_id, userEmail)
+
+    // Build renamed filename: SubjectField_FirstName_LastName_OrderID.ext
     const ext        = file.name.split('.').pop() ?? 'pdf'
     const subject    = (order.subject_field ?? 'File').replace(/[^a-zA-Z0-9]/g, '')
     const firstClean = firstName.replace(/[^a-zA-Z0-9]/g, '') || 'Client'
     const lastClean  = lastName.replace(/[^a-zA-Z0-9]/g, '')
-    const shortId    = orderId.slice(0, 8).toUpperCase()
 
     // Build filename with or without last name
     const namePart = lastClean ? `${firstClean}_${lastClean}` : firstClean
-    const fileName   = `${subject}_${namePart}_${shortId}.${ext}`
-    const storagePath = `completed/${orderId}/${fileName}`
+    const fileName   = `${subject}_${namePart}_${orderId}.${ext}`
+    const storagePath = `completed/${fileName}`
 
     // Upload to Supabase Storage
     const bytes  = await file.arrayBuffer()

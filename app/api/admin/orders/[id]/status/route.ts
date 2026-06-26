@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendOrderCompletedEmail } from '@/lib/resend'
+import { rateLimit, getClientIp, RateLimitPresets } from '@/lib/rate-limit'
 
 const VALID_STATUSES = ['pending', 'in_progress', 'completed']
 
@@ -10,6 +11,17 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Rate limiting - 30 requests per minute for admin operations
+    const clientIp = getClientIp(request)
+    const rateLimitResult = rateLimit(clientIp, RateLimitPresets.relaxed)
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please slow down.' },
+        { status: 429 }
+      )
+    }
+
     // Verify admin
     const supabase = createServerClient()
     const { data: { user } } = await supabase.auth.getUser()

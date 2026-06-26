@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe/server'
+import { rateLimit, getClientIp, RateLimitPresets } from '@/lib/rate-limit'
 import {
   calcOrderTotal,
   calcWrittenPrice,
@@ -97,6 +98,24 @@ async function getUserNameForFilename(userId: string, userEmail: string): Promis
 
 export async function POST(request: Request) {
   try {
+    // Rate limiting - 5 orders per minute per IP
+    const clientIp = getClientIp(request)
+    const rateLimitResult = rateLimit(clientIp, RateLimitPresets.strict)
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        {
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': String(rateLimitResult.limit),
+            'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+            'X-RateLimit-Reset': String(rateLimitResult.resetAt),
+          }
+        }
+      )
+    }
+
     const supabase = createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
 
