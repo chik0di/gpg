@@ -22,7 +22,10 @@ interface Props {
   onStatusChange: (orderId: string, newStatus: string) => void
 }
 
-function getUrgencyLevel(deadline: string): 'overdue' | 'urgent' | 'comfortable' {
+function getUrgencyLevel(deadline: string, status: string): 'overdue' | 'urgent' | 'comfortable' | 'completed' {
+  // Completed orders always show as completed, regardless of deadline
+  if (status === 'completed') return 'completed'
+
   const now = new Date()
   const deadlineDate = new Date(deadline)
   const hoursRemaining = (deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60)
@@ -53,13 +56,14 @@ function getCountdown(deadline: string): string {
 
 export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
   const [updating, setUpdating] = useState(false)
-  const urgency = getUrgencyLevel(order.deadline)
+  const urgency = getUrgencyLevel(order.deadline, order.status)
   const countdown = getCountdown(order.deadline)
 
   const urgencyConfig = {
     overdue: { color: '#EF4444', bg: '#FEE2E2', label: 'Overdue' },
     urgent: { color: '#F59E0B', bg: '#FEF3C7', label: 'Urgent' },
     comfortable: { color: '#10B981', bg: '#D1FAE5', label: 'On Track' },
+    completed: { color: '#10B981', bg: '#D1FAE5', label: 'Delivered' },
   }
 
   const statusConfig = {
@@ -88,13 +92,35 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <p className="text-sm font-mono font-bold text-[#6B7280]">#{order.id.slice(0, 8).toUpperCase()}</p>
-              {urgency !== 'comfortable' && (
+              {urgency === 'overdue' && (
                 <span
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
                   style={{ background: config.bg, color: config.color }}
                 >
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {config.label}
+                </span>
+              )}
+              {urgency === 'urgent' && (
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
+                  style={{ background: config.bg, color: config.color }}
+                >
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {config.label}
+                </span>
+              )}
+              {urgency === 'completed' && (
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold"
+                  style={{ background: config.bg, color: config.color }}
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                   </svg>
                   {config.label}
                 </span>
