@@ -6,6 +6,7 @@ import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/types/order'
 import StatusUpdater from '@/components/admin/status-updater'
 import FileUploader from '@/components/admin/file-uploader'
 import DeleteCompletedButton from '@/components/admin/delete-completed-button'
+import { getClientDisplayName, getClientInitial } from '@/lib/utils/client-name'
 
 export const metadata: Metadata = { title: 'Admin — Order Detail' }
 
@@ -32,7 +33,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
     .eq('id', params.id)
     .single() as {
       data: {
-        id: string; status: string; total_amount: number; academic_level: string
+        id: string; status: string; total_amount: number; academic_level: string; user_id: string
         subject_field: string; deadline: string; additional_instructions: string | null
         originality_report: boolean; stripe_payment_intent_id: string | null; created_at: string
         profiles: { first_name: string | null; last_name: string | null; email: string } | null
@@ -46,7 +47,8 @@ export default async function AdminOrderDetailPage({ params }: Props) {
   const statusLabel   = ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS] ?? order.status
   const statusColor   = ORDER_STATUS_COLORS[order.status as keyof typeof ORDER_STATUS_COLORS] ?? 'bg-gray-100 text-gray-600'
   const client        = order.profiles
-  const clientName    = [client?.first_name, client?.last_name].filter(Boolean).join(' ') || '—'
+  const clientName    = await getClientDisplayName(order.user_id, client)
+  const clientInitial = await getClientInitial(order.user_id, client)
   const total         = `£${order.total_amount % 1 === 0 ? order.total_amount : order.total_amount.toFixed(2)}`
   const deadline      = new Date(order.deadline).toLocaleDateString('en-GB', { dateStyle: 'long' })
   const placed        = new Date(order.created_at).toLocaleDateString('en-GB', { dateStyle: 'long' })
@@ -92,7 +94,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
             className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
             style={{ background: '#1B2E4B' }}
           >
-            {(client?.first_name?.[0] ?? '?').toUpperCase()}
+            {clientInitial}
           </div>
           <div>
             <p className="text-sm font-bold text-[#1B2E4B]">{clientName}</p>

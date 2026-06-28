@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import AdminDashboard from '@/components/admin/admin-dashboard'
+import { getClientDisplayName } from '@/lib/utils/client-name'
 
 export const metadata: Metadata = { title: 'Admin — Orders Dashboard' }
 
@@ -28,9 +29,9 @@ export default async function AdminPage() {
     .order('created_at', { ascending: false }) as { data: AdminOrder[] | null }
 
   // Transform to simplified format for client component
-  const transformedOrders = (orders ?? []).map(order => {
+  const transformedOrders = await Promise.all((orders ?? []).map(async order => {
     const client = order.profiles
-    const clientName = [client?.first_name, client?.last_name].filter(Boolean).join(' ') || 'Unknown Client'
+    const clientName = await getClientDisplayName(order.user_id, client)
 
     return {
       id: order.id,
@@ -45,7 +46,7 @@ export default async function AdminPage() {
       client_email: client?.email || '',
       deliverables_count: order.deliverables?.length || 0,
     }
-  })
+  }))
 
   return (
     <div className="space-y-6">
