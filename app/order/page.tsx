@@ -2,7 +2,27 @@ import type { Metadata } from 'next'
 import Navbar from '@/components/shared/navbar'
 import OrderForm from '@/components/order/order-form'
 
-export const metadata: Metadata = { title: 'Place an Order' }
+export const metadata: Metadata = {
+  title: 'Order Custom Model Answers & Study Materials',
+  description:
+    'Order custom model answers and study materials crafted to your exact brief. Choose your subject, academic level, and deadline. Delivered before your deadline with free revisions.',
+  keywords: [
+    'order model answers',
+    'buy assignment help',
+    'custom study materials',
+    'academic writing order',
+    'assignment help UK',
+  ],
+  alternates: {
+    canonical: 'https://getprimegrade.com/order',
+  },
+  openGraph: {
+    title: 'Order Custom Model Answers & Study Materials — GetPrimeGrade',
+    description:
+      'Order custom model answers and study materials crafted to your exact brief. Delivered before your deadline with free revisions.',
+    url: 'https://getprimegrade.com/order',
+  },
+}
 
 export default function OrderPage() {
   return (

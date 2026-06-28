@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Navbar from '@/components/shared/navbar'
 import Footer from '@/components/shared/footer'
+import { FAQStructuredData } from '@/components/seo/faq-structured-data'
 
 const FAQS = [
   {
@@ -81,6 +82,7 @@ function AccordionItem({ q, a, index }: { q: string; a: string; index: number })
 export default function FAQPage() {
   return (
     <>
+      <FAQStructuredData faqs={FAQS} />
       <Navbar />
       <main className="min-h-screen" style={{ background: '#F5F0E8' }}>
         {/* Header */}
