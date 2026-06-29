@@ -1,17 +1,24 @@
 import { NextResponse } from 'next/server'
 import { sendContactEnquiry } from '@/lib/resend'
-import { rateLimit, getClientIp, RateLimitPresets } from '@/lib/rate-limit'
+import { rateLimit, getClientIp, RateLimitPresets, getRateLimitErrorMessage } from '@/lib/rate-limit'
 
 export async function POST(request: Request) {
   try {
-    // Rate limiting - 10 contact forms per minute per IP
+    // Rate limiting - 3 contact forms per 10 minutes per IP
     const clientIp = getClientIp(request)
-    const rateLimitResult = rateLimit(clientIp, RateLimitPresets.moderate)
+    const rateLimitResult = rateLimit(clientIp, RateLimitPresets.contactForm)
 
     if (!rateLimitResult.success) {
       return NextResponse.json(
-        { error: 'Too many requests. Please try again later.' },
-        { status: 429 }
+        { error: getRateLimitErrorMessage(rateLimitResult.resetAt) },
+        {
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': String(rateLimitResult.limit),
+            'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+            'X-RateLimit-Reset': String(rateLimitResult.resetAt),
+          }
+        }
       )
     }
 

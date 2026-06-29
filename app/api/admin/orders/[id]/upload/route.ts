@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { rateLimit, getClientIp, RateLimitPresets } from '@/lib/rate-limit'
+import { rateLimit, getClientIp, RateLimitPresets, getRateLimitErrorMessage } from '@/lib/rate-limit'
 
 const MAX_BYTES = 100 * 1024 * 1024 // 100 MB for completed work
 
@@ -77,12 +77,19 @@ export async function POST(
   try {
     // Rate limiting - 30 uploads per minute for admin
     const clientIp = getClientIp(request)
-    const rateLimitResult = rateLimit(clientIp, RateLimitPresets.relaxed)
+    const rateLimitResult = rateLimit(clientIp, RateLimitPresets.admin)
 
     if (!rateLimitResult.success) {
       return NextResponse.json(
-        { error: 'Too many uploads. Please slow down.' },
-        { status: 429 }
+        { error: getRateLimitErrorMessage(rateLimitResult.resetAt) },
+        {
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': String(rateLimitResult.limit),
+            'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+            'X-RateLimit-Reset': String(rateLimitResult.resetAt),
+          }
+        }
       )
     }
 

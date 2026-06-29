@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendOrderCompletedEmail } from '@/lib/resend'
-import { rateLimit, getClientIp, RateLimitPresets } from '@/lib/rate-limit'
+import { rateLimit, getClientIp, RateLimitPresets, getRateLimitErrorMessage } from '@/lib/rate-limit'
 
 const VALID_STATUSES = ['pending', 'in_progress', 'completed']
 
@@ -13,12 +13,19 @@ export async function PATCH(
   try {
     // Rate limiting - 30 requests per minute for admin operations
     const clientIp = getClientIp(request)
-    const rateLimitResult = rateLimit(clientIp, RateLimitPresets.relaxed)
+    const rateLimitResult = rateLimit(clientIp, RateLimitPresets.admin)
 
     if (!rateLimitResult.success) {
       return NextResponse.json(
-        { error: 'Too many requests. Please slow down.' },
-        { status: 429 }
+        { error: getRateLimitErrorMessage(rateLimitResult.resetAt) },
+        {
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': String(rateLimitResult.limit),
+            'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+            'X-RateLimit-Reset': String(rateLimitResult.resetAt),
+          }
+        }
       )
     }
 

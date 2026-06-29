@@ -51,6 +51,52 @@ export default function AuthForm({ next, initialMode }: Props) {
     setSuccess(null)
   }
 
+  // ── Save pending order to database ─────────────────────────────────────
+  async function savePendingOrderIfNeeded(userEmail: string): Promise<string | null> {
+    // Check if we have order data in sessionStorage that needs to be persisted
+    const orderDataRaw = sessionStorage.getItem('gpg_pending_order')
+    const fileDataRaw = sessionStorage.getItem('gpg_pending_file')
+
+    if (!orderDataRaw) {
+      // No pending order to save
+      return null
+    }
+
+    try {
+      const orderData = JSON.parse(orderDataRaw)
+      let fileData: string | null = null
+
+      if (fileDataRaw) {
+        const fileParsed = JSON.parse(fileDataRaw)
+        fileData = fileParsed.data // Base64 string
+      }
+
+      console.log('[auth-form] Saving pending order to database for:', userEmail)
+
+      const res = await fetch('/api/pending-orders/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: userEmail,
+          orderData,
+          fileData,
+        }),
+      })
+
+      if (!res.ok) {
+        console.error('[auth-form] Failed to save pending order:', await res.text())
+        return null
+      }
+
+      const { pendingOrderId } = await res.json()
+      console.log('[auth-form] Saved pending order:', pendingOrderId)
+      return pendingOrderId
+    } catch (err) {
+      console.error('[auth-form] Error saving pending order:', err)
+      return null
+    }
+  }
+
   // ── Google OAuth ────────────────────────────────────────────────────────
   async function handleGoogle() {
     setGoogleLoading(true)
@@ -58,7 +104,10 @@ export default function AuthForm({ next, initialMode }: Props) {
 
     console.log('[auth-form] Google OAuth - next parameter:', next)
 
-    // Build the full callback URL with the next parameter
+    // For Google OAuth, we don't have the user's email yet
+    // So we'll handle pending order save after authentication in the callback
+    // Just pass the next parameter through
+
     const callbackUrl = new URL('/api/auth/callback', window.location.origin)
     callbackUrl.searchParams.set('next', next)
 
@@ -83,6 +132,9 @@ export default function AuthForm({ next, initialMode }: Props) {
     setLoading(true)
     setError(null)
 
+    // Save pending order BEFORE authentication (so we have email but before redirect)
+    const pendingOrderId = await savePendingOrderIfNeeded(email)
+
     const { error, data } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
@@ -105,7 +157,14 @@ export default function AuthForm({ next, initialMode }: Props) {
 
     // Check if there's a stored next parameter from email confirmation flow
     const storedNext = sessionStorage.getItem('gpg_auth_next')
-    const redirectTo = storedNext || next
+    let redirectTo = storedNext || next
+
+    // If we saved a pending order, add it to the redirect URL
+    if (pendingOrderId && redirectTo.includes('/checkout')) {
+      const url = new URL(redirectTo, window.location.origin)
+      url.searchParams.set('pending', pendingOrderId)
+      redirectTo = url.pathname + url.search
+    }
 
     // Clear stored next parameter after reading it
     if (storedNext) {
@@ -132,6 +191,9 @@ export default function AuthForm({ next, initialMode }: Props) {
       return
     }
 
+    // Save pending order BEFORE sign-up (so we have email but before any redirects)
+    const pendingOrderId = await savePendingOrderIfNeeded(email)
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -155,14 +217,28 @@ export default function AuthForm({ next, initialMode }: Props) {
           { onConflict: 'id', ignoreDuplicates: true }
         )
 
-        console.log('[auth-form] Email signup with session - redirecting to:', next)
-        router.push(next)
+        // If we saved a pending order, add it to the redirect URL
+        let redirectTo = next
+        if (pendingOrderId && redirectTo.includes('/checkout')) {
+          const url = new URL(redirectTo, window.location.origin)
+          url.searchParams.set('pending', pendingOrderId)
+          redirectTo = url.pathname + url.search
+        }
+
+        console.log('[auth-form] Email signup with session - redirecting to:', redirectTo)
+        router.push(redirectTo)
         router.refresh()
       } else {
         // Email confirmation is enabled — no session yet.
-        // Store the next parameter so it survives the email confirmation flow
+        // Store the next parameter AND pending order ID so they survive email confirmation
         console.log('[auth-form] Email confirmation required - storing next parameter:', next)
-        sessionStorage.setItem('gpg_auth_next', next)
+        let redirectUrl = next
+        if (pendingOrderId && redirectUrl.includes('/checkout')) {
+          const url = new URL(redirectUrl, window.location.origin)
+          url.searchParams.set('pending', pendingOrderId)
+          redirectUrl = url.pathname + url.search
+        }
+        sessionStorage.setItem('gpg_auth_next', redirectUrl)
 
         // The DB trigger (handle_new_user) has already created the profile row.
         setSuccess(

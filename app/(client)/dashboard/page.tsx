@@ -4,6 +4,8 @@ import { createServerClient } from '@/lib/supabase/server'
 import OrderCard from '@/components/dashboard/order-card'
 import StatsCards from '@/components/dashboard/stats-cards'
 import ReferralSection from '@/components/dashboard/referral-section'
+import PendingOrderBanner from '@/components/dashboard/pending-order-banner'
+import PendingOrderSaver from '@/components/auth/pending-order-saver'
 
 export const metadata: Metadata = { title: 'Dashboard' }
 
@@ -24,6 +26,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {/* Handle pending orders after OAuth redirects */}
+      <PendingOrderSaver />
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -44,6 +49,9 @@ export default async function DashboardPage() {
           New order
         </Link>
       </div>
+
+      {/* Pending Order Banner */}
+      <PendingOrderBanner />
 
       {/* Stats */}
       <StatsCards orders={orders ?? []} />

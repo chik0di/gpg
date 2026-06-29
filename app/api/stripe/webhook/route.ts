@@ -225,7 +225,7 @@ export async function POST(request: Request) {
       const pi = event.data.object as Stripe.PaymentIntent
       const { orderId } = pi.metadata
 
-      await supabase
+      await supabaseAdmin
         .from('orders')
         .update({ status: 'payment_failed' })
         .eq('id', orderId)

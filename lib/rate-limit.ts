@@ -107,13 +107,30 @@ export function getClientIp(request: Request): string {
 }
 
 /**
- * Preset rate limit configurations
+ * Generate a user-friendly rate limit error message
+ */
+export function getRateLimitErrorMessage(resetAt: number): string {
+  const now = Date.now()
+  const secondsRemaining = Math.ceil((resetAt - now) / 1000)
+
+  if (secondsRemaining <= 60) {
+    return `Too many requests. Please try again in ${secondsRemaining} second${secondsRemaining !== 1 ? 's' : ''}.`
+  }
+
+  const minutesRemaining = Math.ceil(secondsRemaining / 60)
+  return `Too many requests. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`
+}
+
+/**
+ * Preset rate limit configurations - calibrated for realistic human usage
  */
 export const RateLimitPresets = {
-  /** Strict - 5 requests per minute (for sensitive operations like order creation) */
-  strict: { limit: 5, windowSeconds: 60 },
-  /** Moderate - 10 requests per minute (for contact forms, auth) */
-  moderate: { limit: 10, windowSeconds: 60 },
-  /** Relaxed - 30 requests per minute (for admin operations) */
-  relaxed: { limit: 30, windowSeconds: 60 },
+  /** Contact form - 3 requests per 10 minutes (genuine users rarely retry more than 1-2 times) */
+  contactForm: { limit: 3, windowSeconds: 600 },
+  /** Order creation - 5 requests per 15 minutes (paying customers rarely retry rapidly) */
+  orderCreation: { limit: 5, windowSeconds: 900 },
+  /** Auth attempts - 5 requests per 10 minutes (prevents brute force, allows typos/retries) */
+  auth: { limit: 5, windowSeconds: 600 },
+  /** Admin operations - 30 requests per minute (prevents runaway scripts while allowing admin work) */
+  admin: { limit: 30, windowSeconds: 60 },
 } as const

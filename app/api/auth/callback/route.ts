@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createMiddlewareClient } from '@/lib/supabase/middleware'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { createReferralCodeForUser, createReferral, REFERRAL_COOKIE_NAME } from '@/lib/referral'
+import { rateLimit, getClientIp, RateLimitPresets } from '@/lib/rate-limit'
 
 function safeNext(raw: string | null): string {
   if (!raw) return '/dashboard'
@@ -11,6 +12,15 @@ function safeNext(raw: string | null): string {
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
+
+  // Rate limiting - prevent callback abuse (same limits as auth attempts)
+  const clientIp = getClientIp(request)
+  const rateLimitResult = rateLimit(clientIp, RateLimitPresets.auth)
+
+  if (!rateLimitResult.success) {
+    return NextResponse.redirect(`${origin}/login?error=rate_limit`)
+  }
+
   const code = searchParams.get('code')
   const rawNext = searchParams.get('next')
   let next = safeNext(rawNext)
@@ -86,6 +96,11 @@ export async function GET(request: NextRequest) {
       console.error('[auth/callback] referral creation failed:', err)
     })
   }
+
+  // Check if there's pending order data in the original request that needs to be saved
+  // (This handles Google OAuth where we don't have email until after authentication)
+  // Note: This won't work perfectly because we can't access sessionStorage server-side
+  // The client-side will need to handle this on landing
 
   console.log('[auth/callback] Redirecting to:', next)
   return response

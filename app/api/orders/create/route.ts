@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe/server'
-import { rateLimit, getClientIp, RateLimitPresets } from '@/lib/rate-limit'
+import { rateLimit, getClientIp, RateLimitPresets, getRateLimitErrorMessage } from '@/lib/rate-limit'
 import {
   calcOrderTotal,
   calcWrittenPrice,
@@ -98,13 +98,13 @@ async function getUserNameForFilename(userId: string, userEmail: string): Promis
 
 export async function POST(request: Request) {
   try {
-    // Rate limiting - 5 orders per minute per IP
+    // Rate limiting - 5 orders per 15 minutes per IP
     const clientIp = getClientIp(request)
-    const rateLimitResult = rateLimit(clientIp, RateLimitPresets.strict)
+    const rateLimitResult = rateLimit(clientIp, RateLimitPresets.orderCreation)
 
     if (!rateLimitResult.success) {
       return NextResponse.json(
-        { error: 'Too many requests. Please try again later.' },
+        { error: getRateLimitErrorMessage(rateLimitResult.resetAt) },
         {
           status: 429,
           headers: {
@@ -340,6 +340,19 @@ export async function POST(request: Request) {
         console.error('[orders/create] credit marking failed:', err)
       })
     }
+
+    // 10. Clean up pending orders for this user (fire-and-forget)
+    supabaseAdmin
+      .from('pending_orders')
+      .delete()
+      .or(`user_id.eq.${user.id},user_email.eq.${user.email}`)
+      .then(({ error: delError }) => {
+        if (delError) {
+          console.error('[orders/create] pending orders cleanup failed:', delError)
+        } else {
+          console.log('[orders/create] cleaned up pending orders for user:', user.id)
+        }
+      })
 
     return NextResponse.json({ orderId: order.id }, { status: 201 })
   } catch (err) {

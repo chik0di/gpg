@@ -288,6 +288,9 @@ function OrderSummary({ data, discountType, discountLabel, discountPercent, disc
 
 export default function CheckoutPage() {
   const router = useRouter()
+  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+  const pendingOrderId = searchParams.get('pending')
+
   const [orderData, setOrderData]         = useState<OrderFormState | null>(null)
   const [clientSecret, setClientSecret]   = useState<string | null>(null)
   const [initError, setInitError]         = useState<string | null>(null)
@@ -299,55 +302,98 @@ export default function CheckoutPage() {
   const [pendingFile, setPendingFile]     = useState<File | null>(null)
 
   useEffect(() => {
-    console.log('[checkout] Page loaded - checking sessionStorage for order data')
+    console.log('[checkout] Page loaded - checking for order data')
+    console.log('[checkout] Pending order ID from URL:', pendingOrderId)
 
-    const raw = sessionStorage.getItem('gpg_pending_order')
-    if (!raw) {
-      console.error('[checkout] No gpg_pending_order found in sessionStorage - redirecting to /order')
-      router.replace('/order')
-      return
-    }
+    async function loadOrderData() {
+      let data: OrderFormState | null = null
+      let fileData: string | null = null
 
-    console.log('[checkout] Found gpg_pending_order in sessionStorage')
+      // PRIORITY 1: Fetch from database if pending order ID is provided
+      if (pendingOrderId) {
+        console.log('[checkout] Fetching pending order from database:', pendingOrderId)
+        try {
+          const res = await fetch(`/api/pending-orders/${pendingOrderId}`)
+          if (res.ok) {
+            const { orderData: dbOrderData, fileData: dbFileData } = await res.json()
+            data = dbOrderData
+            fileData = dbFileData
+            console.log('[checkout] Successfully loaded order from database')
 
-    let data: OrderFormState
-    try {
-      data = JSON.parse(raw)
-      console.log('[checkout] Successfully parsed order data:', Object.keys(data))
-    } catch {
-      console.error('[checkout] Failed to parse gpg_pending_order - redirecting to /order')
-      router.replace('/order')
-      return
-    }
-
-    setOrderData(data)
-
-    // Decode the file that was base64-encoded into gpg_pending_file on the order form.
-    // Holding it in React state lets us validate it before the client pays.
-    const rawFile = sessionStorage.getItem('gpg_pending_file')
-    if (rawFile) {
-      try {
-        const { data: b64, name, type } = JSON.parse(rawFile) as {
-          data: string; name: string; type: string
+            // Save to sessionStorage as backup
+            sessionStorage.setItem('gpg_pending_order', JSON.stringify(data))
+            if (fileData) {
+              // fileData is already the full object with {data, name, type, size}
+              sessionStorage.setItem('gpg_pending_file', fileData)
+            }
+          } else {
+            console.warn('[checkout] Failed to fetch pending order from database:', await res.text())
+          }
+        } catch (err) {
+          console.error('[checkout] Error fetching pending order:', err)
         }
-        const binary = atob(b64)
-        const bytes  = new Uint8Array(binary.length)
-        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-        const blob = new Blob([bytes], { type: type || 'application/octet-stream' })
-        setPendingFile(new File([blob], name, { type }))
-        console.log('[checkout] Successfully restored file from sessionStorage:', name)
-      } catch (err) {
-        // Non-fatal — file will be absent from the order if this fails
-        console.error('[checkout] Failed to restore file from sessionStorage:', err)
       }
-    } else {
-      console.log('[checkout] No gpg_pending_file found in sessionStorage')
-    }
 
-    // Check discount eligibility first, then compute total and create payment intent
-    fetch('/api/discount/check-eligibility')
-      .then((r) => r.json())
-      .then((discount) => {
+      // FALLBACK: Try sessionStorage if database fetch failed
+      if (!data) {
+        console.log('[checkout] Falling back to sessionStorage')
+        const raw = sessionStorage.getItem('gpg_pending_order')
+        if (!raw) {
+          console.error('[checkout] No order data found in database or sessionStorage - redirecting to /order')
+          router.replace('/order')
+          return
+        }
+
+        try {
+          data = JSON.parse(raw)
+          console.log('[checkout] Successfully parsed order data from sessionStorage:', data ? Object.keys(data) : 'null')
+        } catch {
+          console.error('[checkout] Failed to parse gpg_pending_order - redirecting to /order')
+          router.replace('/order')
+          return
+        }
+      }
+
+      if (!data) {
+        console.error('[checkout] Order data is null - redirecting to /order')
+        router.replace('/order')
+        return
+      }
+
+      setOrderData(data)
+
+      // Decode the file from database or sessionStorage
+      // Priority: use fileData from database if available, otherwise fall back to sessionStorage
+      let fileSource = fileData
+      if (!fileSource) {
+        const rawFile = sessionStorage.getItem('gpg_pending_file')
+        if (rawFile) {
+          fileSource = rawFile
+        }
+      }
+
+      if (fileSource) {
+        try {
+          const { data: b64, name, type } = JSON.parse(fileSource) as {
+            data: string; name: string; type: string
+          }
+          const binary = atob(b64)
+          const bytes  = new Uint8Array(binary.length)
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+          const blob = new Blob([bytes], { type: type || 'application/octet-stream' })
+          setPendingFile(new File([blob], name, { type }))
+          console.log('[checkout] Successfully restored file:', name)
+        } catch (err) {
+          console.error('[checkout] Failed to restore file:', err)
+        }
+      } else {
+        console.log('[checkout] No file data found')
+      }
+
+      // Check discount eligibility first, then compute total and create payment intent
+      fetch('/api/discount/check-eligibility')
+        .then((r) => r.json())
+        .then((discount) => {
         const { type, percent, label } = discount
         const subtotal = data.deliverables.reduce((s, d) => s + deliverableBasePrice(d), 0)
         const { total, discountAmount } = calcOrderTotal({
@@ -379,7 +425,7 @@ export default function CheckoutPage() {
               deliverables: data.deliverables,
               instructions: data.instructions || '',
               includeOriginalityReport: data.includeOriginalityReport,
-              fileName: data.fileName || null,
+              fileName: null, // File name not needed for webhook safety net
             },
           }),
         })
@@ -394,8 +440,11 @@ export default function CheckoutPage() {
         }
         setClientSecret(clientSecret)
       })
-      .catch(() => setInitError('Could not connect. Check your connection and try again.'))
-  }, [router])
+        .catch(() => setInitError('Could not connect. Check your connection and try again.'))
+    }
+
+    loadOrderData()
+  }, [router, pendingOrderId])
 
   // Loading skeleton
   if (!orderData || !clientSecret) {

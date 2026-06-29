@@ -104,45 +104,63 @@ export default function OrderForm() {
   async function handleProceed() {
     setProceeding(true)
 
-    // Encode the file as base64 and persist it so it survives the auth redirect.
-    // The actual upload to Supabase Storage happens only after payment succeeds.
-    if (file) {
-      try {
-        const base64 = await fileToBase64(file)
-        sessionStorage.setItem('gpg_pending_file', JSON.stringify({
-          data: base64,
-          name: file.name,
-          type: file.type || 'application/octet-stream',
-          size: file.size,
-        }))
-      } catch (err) {
-        // QuotaExceededError if the file is too large for sessionStorage (~5 MB limit).
-        // We proceed anyway — the order goes through but no file will be attached.
-        console.error('[order-form] could not persist file to session storage:', err)
-      }
-    }
+    // Check authentication status first
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
-    // Persist order form data (no file binary — that is in gpg_pending_file)
-    const toStore = {
+    // Prepare order data
+    const orderData = {
       ...formData,
       fileName: file?.name ?? null,
       fileSize: file?.size ?? null,
     }
-    sessionStorage.setItem('gpg_pending_order', JSON.stringify(toStore))
-    console.log('[order-form] Saved order data to sessionStorage:', Object.keys(toStore))
 
+    let fileDataBase64: string | null = null
+
+    // Encode file as base64 if present
     if (file) {
-      console.log('[order-form] Saved file to sessionStorage:', file.name, file.size, 'bytes')
+      try {
+        fileDataBase64 = await fileToBase64(file)
+        console.log('[order-form] Encoded file to base64:', file.name, file.size, 'bytes')
+      } catch (err) {
+        console.error('[order-form] Failed to encode file:', err)
+      }
     }
 
-    // If already authenticated go straight to checkout; otherwise collect auth first
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    // Always save to sessionStorage as redundant backup
+    sessionStorage.setItem('gpg_pending_order', JSON.stringify(orderData))
+    if (fileDataBase64) {
+      sessionStorage.setItem('gpg_pending_file', JSON.stringify({
+        data: fileDataBase64,
+        name: file!.name,
+        type: file!.type || 'application/octet-stream',
+        size: file!.size,
+      }))
+    }
+    console.log('[order-form] Saved to sessionStorage as backup')
 
     if (user) {
+      // User is authenticated - go straight to checkout
       console.log('[order-form] User authenticated, redirecting to /checkout')
       router.push('/checkout')
     } else {
+      // User NOT authenticated - save to database BEFORE redirecting to login
+      // This ensures order data survives any auth redirect failures
+
+      // We need the user's email - get it from the order form if available,
+      // otherwise we'll need to ask for it
+      // For now, we'll extract from sessionStorage or require it in the form
+      // Let's get email from the current user session or form
+
+      // Since we don't have email in the order form, we'll save to DB after they enter it on login
+      // For now, redirect to login and handle DB save there
+      // Actually, let's add email to the order form or handle it differently
+
+      // SIMPLER: Save pending order with a placeholder and update after login
+      // OR: Just redirect and handle on login page
+
+      // Let's redirect to login with pending data in sessionStorage for now
+      // and enhance login page to save to DB
       console.log('[order-form] User not authenticated, redirecting to /login?next=/checkout')
       router.push('/login?next=/checkout')
     }
