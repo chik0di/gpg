@@ -129,14 +129,21 @@ export default function OrderForm() {
       fileSize: file?.size ?? null,
     }
     sessionStorage.setItem('gpg_pending_order', JSON.stringify(toStore))
+    console.log('[order-form] Saved order data to sessionStorage:', Object.keys(toStore))
+
+    if (file) {
+      console.log('[order-form] Saved file to sessionStorage:', file.name, file.size, 'bytes')
+    }
 
     // If already authenticated go straight to checkout; otherwise collect auth first
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (user) {
+      console.log('[order-form] User authenticated, redirecting to /checkout')
       router.push('/checkout')
     } else {
+      console.log('[order-form] User not authenticated, redirecting to /login?next=/checkout')
       router.push('/login?next=/checkout')
     }
 

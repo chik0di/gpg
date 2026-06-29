@@ -55,6 +55,9 @@ export default function AuthForm({ next, initialMode }: Props) {
   async function handleGoogle() {
     setGoogleLoading(true)
     setError(null)
+
+    console.log('[auth-form] Google OAuth - next parameter:', next)
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -94,7 +97,19 @@ export default function AuthForm({ next, initialMode }: Props) {
       }
     }
 
-    router.push(next)
+    // Check if there's a stored next parameter from email confirmation flow
+    const storedNext = sessionStorage.getItem('gpg_auth_next')
+    const redirectTo = storedNext || next
+
+    // Clear stored next parameter after reading it
+    if (storedNext) {
+      sessionStorage.removeItem('gpg_auth_next')
+      console.log('[auth-form] Email sign-in - using stored next from email confirmation:', redirectTo)
+    } else {
+      console.log('[auth-form] Email sign-in - redirecting to:', redirectTo)
+    }
+
+    router.push(redirectTo)
     router.refresh()
   }
 
@@ -134,10 +149,15 @@ export default function AuthForm({ next, initialMode }: Props) {
           { onConflict: 'id', ignoreDuplicates: true }
         )
 
+        console.log('[auth-form] Email signup with session - redirecting to:', next)
         router.push(next)
         router.refresh()
       } else {
         // Email confirmation is enabled — no session yet.
+        // Store the next parameter so it survives the email confirmation flow
+        console.log('[auth-form] Email confirmation required - storing next parameter:', next)
+        sessionStorage.setItem('gpg_auth_next', next)
+
         // The DB trigger (handle_new_user) has already created the profile row.
         setSuccess(
           "We've sent a confirmation email. Click the link in it, then sign in here."

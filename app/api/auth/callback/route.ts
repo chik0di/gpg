@@ -12,16 +12,24 @@ function safeNext(raw: string | null): string {
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = safeNext(searchParams.get('next'))
+  let next = safeNext(searchParams.get('next'))
+
+  console.log('[auth/callback] Received next parameter from URL:', searchParams.get('next'))
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing_code`)
   }
 
+  // For email confirmation flow, the next parameter might not be in the URL
+  // Check if we have a stored next parameter in the redirect chain
+  // We'll handle this after session is established
+
   // Exchange the OAuth code for a session and set the auth cookies on the response
   const response = NextResponse.redirect(`${origin}${next}`)
   const supabase = createMiddlewareClient(request, response)
   const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+
+  console.log('[auth/callback] Session exchange result:', error ? 'error' : 'success')
 
   if (error || !data.user) {
     return NextResponse.redirect(`${origin}/login?error=auth_failed`)
@@ -75,5 +83,6 @@ export async function GET(request: NextRequest) {
     })
   }
 
+  console.log('[auth/callback] Redirecting to:', next)
   return response
 }

@@ -299,16 +299,23 @@ export default function CheckoutPage() {
   const [pendingFile, setPendingFile]     = useState<File | null>(null)
 
   useEffect(() => {
+    console.log('[checkout] Page loaded - checking sessionStorage for order data')
+
     const raw = sessionStorage.getItem('gpg_pending_order')
     if (!raw) {
+      console.error('[checkout] No gpg_pending_order found in sessionStorage - redirecting to /order')
       router.replace('/order')
       return
     }
 
+    console.log('[checkout] Found gpg_pending_order in sessionStorage')
+
     let data: OrderFormState
     try {
       data = JSON.parse(raw)
+      console.log('[checkout] Successfully parsed order data:', Object.keys(data))
     } catch {
+      console.error('[checkout] Failed to parse gpg_pending_order - redirecting to /order')
       router.replace('/order')
       return
     }
@@ -328,9 +335,13 @@ export default function CheckoutPage() {
         for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
         const blob = new Blob([bytes], { type: type || 'application/octet-stream' })
         setPendingFile(new File([blob], name, { type }))
-      } catch {
+        console.log('[checkout] Successfully restored file from sessionStorage:', name)
+      } catch (err) {
         // Non-fatal — file will be absent from the order if this fails
+        console.error('[checkout] Failed to restore file from sessionStorage:', err)
       }
+    } else {
+      console.log('[checkout] No gpg_pending_file found in sessionStorage')
     }
 
     // Check discount eligibility first, then compute total and create payment intent
