@@ -12,9 +12,13 @@ function safeNext(raw: string | null): string {
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  let next = safeNext(searchParams.get('next'))
+  const rawNext = searchParams.get('next')
+  let next = safeNext(rawNext)
 
-  console.log('[auth/callback] Received next parameter from URL:', searchParams.get('next'))
+  console.log('[auth/callback] Full callback URL:', request.url)
+  console.log('[auth/callback] All query parameters:', Object.fromEntries(searchParams.entries()))
+  console.log('[auth/callback] Received next parameter from URL:', rawNext)
+  console.log('[auth/callback] Sanitized next parameter:', next)
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing_code`)

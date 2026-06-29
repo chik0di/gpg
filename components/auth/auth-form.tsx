@@ -58,10 +58,16 @@ export default function AuthForm({ next, initialMode }: Props) {
 
     console.log('[auth-form] Google OAuth - next parameter:', next)
 
+    // Build the full callback URL with the next parameter
+    const callbackUrl = new URL('/api/auth/callback', window.location.origin)
+    callbackUrl.searchParams.set('next', next)
+
+    console.log('[auth-form] Full OAuth callback URL:', callbackUrl.toString())
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(next)}`,
+        redirectTo: callbackUrl.toString(),
       },
     })
     if (error) {

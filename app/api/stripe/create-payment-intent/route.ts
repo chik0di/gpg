@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe/server'
-import { isEligibleForFirstOrderDiscount, isWithinDiscountWindow } from '@/lib/discount'
+import { getBestDiscount } from '@/lib/discount'
 
 export async function POST(request: Request) {
   try {
@@ -12,32 +12,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
     }
 
-    const { amountPence } = await request.json()
+    const { amountPence, orderData } = await request.json()
 
     if (typeof amountPence !== 'number' || amountPence < 100) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
     }
 
-    // Check if user is eligible for first-time order discount
-    const isEligible = await isEligibleForFirstOrderDiscount(supabase, user.id)
-    const isInWindow = await isWithinDiscountWindow(supabase, user.id)
-    const shouldApplyDiscount = isEligible && isInWindow
+    // Get best discount for webhook safety net
+    const discount = await getBestDiscount(supabase, user.id)
 
-    // The amountPence already has the discount applied if eligible
-    // (calculated on client with applyFirstOrderDiscount flag in calcOrderTotal)
+    // Stripe metadata has a 500-character limit per value, so we stringify orderData
+    // and truncate if needed. The webhook will use this as a safety net.
+    const orderDataStr = JSON.stringify(orderData || {})
+    const truncatedOrderData = orderDataStr.length > 4500
+      ? orderDataStr.slice(0, 4500) + '...'  // Leave room for other metadata
+      : orderDataStr
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountPence,
       currency: 'gbp',
       metadata: {
         userId: user.id,
-        firstOrderDiscount: shouldApplyDiscount ? 'true' : 'false',
+        orderData: truncatedOrderData,
+        discountType: discount.type,
+        discountPercent: String(discount.percent),
+        creditId: discount.creditId || '',
       },
       payment_method_types: ['card'],
     })
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
-      firstOrderDiscount: shouldApplyDiscount,
+      firstOrderDiscount: discount.percent > 0,
     })
   } catch (err) {
     console.error('create-payment-intent:', err)

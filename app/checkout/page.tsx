@@ -366,10 +366,22 @@ export default function CheckoutPage() {
 
         const amountPence = Math.round(total * 100)
 
+        // Pass orderData to payment intent metadata as safety net for webhook
         return fetch('/api/stripe/create-payment-intent', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ amountPence }),
+          body:    JSON.stringify({
+            amountPence,
+            orderData: {
+              subjectField: data.subjectField,
+              academicLevel: data.academicLevel,
+              deadline: data.deadline,
+              deliverables: data.deliverables,
+              instructions: data.instructions || '',
+              includeOriginalityReport: data.includeOriginalityReport,
+              fileName: data.fileName || null,
+            },
+          }),
         })
       })
       .then((r) => r?.json())
