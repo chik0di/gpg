@@ -83,7 +83,7 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
 
   return (
     <div
-      className="bg-white rounded-xl border border-[#E8E2D9] overflow-hidden hover:shadow-md transition-shadow"
+      className="bg-white rounded-xl border border-[#E8E2D9] overflow-hidden hover:shadow-md transition-shadow max-w-3xl"
       style={{ borderLeftWidth: '4px', borderLeftColor: config.color }}
     >
       <div className="p-3">

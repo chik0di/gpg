@@ -6,8 +6,6 @@ interface Stats {
   inProgress: number
   completed: number
   urgent: number
-  todayRevenue: number
-  totalRevenue: number
 }
 
 interface Props {
@@ -74,78 +72,36 @@ export default function StatsStrip({ stats, activeFilter, onFilterClick }: Props
     },
   ]
 
-  const revenueCards = [
-    {
-      label: "Today's Revenue",
-      value: `£${stats.todayRevenue.toFixed(2)}`,
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Total Revenue',
-      value: `£${stats.totalRevenue.toFixed(2)}`,
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-        </svg>
-      ),
-    },
-  ]
-
   return (
-    <div className="space-y-3">
-      {/* Order stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {statCards.map((card) => {
-          const isActive = activeFilter === card.filter
-          return (
-            <button
-              key={card.label}
-              onClick={() => onFilterClick(card.filter)}
-              className="bg-white rounded-xl border-2 p-4 text-left transition-all hover:shadow-md"
-              style={{
-                borderColor: isActive ? '#E8A020' : '#E8E2D9',
-                background: isActive ? '#FDF3DC' : '#fff',
-              }}
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{
-                    background: card.color ? `${card.color}20` : '#F5F0E8',
-                    color: card.color || '#1B2E4B',
-                  }}
-                >
-                  {card.icon}
-                </div>
-              </div>
-              <p className="text-2xl font-extrabold text-[#1B2E4B] mb-1">{card.value}</p>
-              <p className="text-xs font-semibold text-[#6B7280]">{card.label}</p>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Revenue stats */}
-      <div className="grid grid-cols-2 gap-3">
-        {revenueCards.map((card) => (
-          <div
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      {statCards.map((card) => {
+        const isActive = activeFilter === card.filter
+        return (
+          <button
             key={card.label}
-            className="bg-[#1B2E4B] rounded-xl p-4"
+            onClick={() => onFilterClick(card.filter)}
+            className="bg-white rounded-xl border-2 p-4 text-left transition-all hover:shadow-md"
+            style={{
+              borderColor: isActive ? '#E8A020' : '#E8E2D9',
+              background: isActive ? '#FDF3DC' : '#fff',
+            }}
           >
             <div className="flex items-start justify-between mb-2">
-              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{
+                  background: card.color ? `${card.color}20` : '#F5F0E8',
+                  color: card.color || '#1B2E4B',
+                }}
+              >
                 {card.icon}
               </div>
             </div>
-            <p className="text-2xl font-extrabold text-white mb-1">{card.value}</p>
-            <p className="text-xs font-semibold text-white/60">{card.label}</p>
-          </div>
-        ))}
-      </div>
+            <p className="text-2xl font-extrabold text-[#1B2E4B] mb-1">{card.value}</p>
+            <p className="text-xs font-semibold text-[#6B7280]">{card.label}</p>
+          </button>
+        )
+      })}
     </div>
   )
 }

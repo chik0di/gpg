@@ -77,14 +77,7 @@ export default function AdminDashboard({ initialOrders }: Props) {
     const completed = orders.filter(o => o.status === 'completed').length
     const urgent = orders.filter(o => isUrgent(o.deadline) && o.status !== 'completed').length
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const todayRevenue = orders
-      .filter(o => new Date(o.created_at) >= today)
-      .reduce((sum, o) => sum + o.total_amount, 0)
-    const totalRevenue = orders.reduce((sum, o) => sum + o.total_amount, 0)
-
-    return { totalOrders, pending, inProgress, completed, urgent, todayRevenue, totalRevenue }
+    return { totalOrders, pending, inProgress, completed, urgent }
   }, [orders])
 
   // Filter orders
@@ -161,9 +154,19 @@ export default function AdminDashboard({ initialOrders }: Props) {
       .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
   }, [orders])
 
+  // Get set of urgent panel order IDs for filtering
+  const urgentPanelOrderIds = useMemo(() => {
+    return new Set(urgentPanelOrders.map(o => o.id))
+  }, [urgentPanelOrders])
+
+  // Filter out urgent panel orders from main list to avoid duplication
+  const mainListOrders = useMemo(() => {
+    return filteredOrders.filter(o => !urgentPanelOrderIds.has(o.id))
+  }, [filteredOrders, urgentPanelOrderIds])
+
   // Pagination
-  const totalPages = Math.ceil(filteredOrders.length / ORDERS_PER_PAGE)
-  const paginatedOrders = filteredOrders.slice(
+  const totalPages = Math.ceil(mainListOrders.length / ORDERS_PER_PAGE)
+  const paginatedOrders = mainListOrders.slice(
     (currentPage - 1) * ORDERS_PER_PAGE,
     currentPage * ORDERS_PER_PAGE
   )
