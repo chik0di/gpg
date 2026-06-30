@@ -97,10 +97,29 @@ export async function GET(request: NextRequest) {
     })
   }
 
-  // Check if there's pending order data in the original request that needs to be saved
-  // (This handles Google OAuth where we don't have email until after authentication)
-  // Note: This won't work perfectly because we can't access sessionStorage server-side
-  // The client-side will need to handle this on landing
+  // Update any pending orders that match this user's email to set their user_id
+  // This is crucial for RLS to work - pending orders created before auth have user_id=null
+  // We compare emails case-insensitively to avoid mismatches
+  if (user.email) {
+    const userEmailLower = user.email.toLowerCase()
+    console.log('[auth/callback] Checking for pending orders to link to user:', user.id, 'email:', userEmailLower)
+
+    const { data: updatedOrders, error: pendingOrderError } = await supabaseAdmin
+      .from('pending_orders')
+      .update({ user_id: user.id })
+      .eq('user_email', userEmailLower)
+      .is('user_id', null)
+      .select('id')
+
+    if (pendingOrderError) {
+      console.error('[auth/callback] Failed to update pending orders:', pendingOrderError.message)
+    } else if (updatedOrders && updatedOrders.length > 0) {
+      console.log('[auth/callback] Linked', updatedOrders.length, 'pending order(s) to user:', user.id)
+      console.log('[auth/callback] Updated pending order IDs:', updatedOrders.map(o => o.id))
+    } else {
+      console.log('[auth/callback] No pending orders found to link (this is normal if user had no pending orders)')
+    }
+  }
 
   console.log('[auth/callback] Redirecting to:', next)
   return response

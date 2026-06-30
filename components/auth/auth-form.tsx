@@ -97,6 +97,32 @@ export default function AuthForm({ next, initialMode }: Props) {
     }
   }
 
+  // ── Link pending orders to authenticated user ──────────────────────────
+  async function linkPendingOrdersToUser(userEmail: string): Promise<void> {
+    // After authentication, link any pending orders with matching email to this user
+    // This is crucial for RLS - pending orders created before auth have user_id=null
+    try {
+      console.log('[auth-form] Linking pending orders for:', userEmail)
+
+      const res = await fetch('/api/pending-orders/link-to-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: userEmail }),
+      })
+
+      if (res.ok) {
+        const { linkedCount } = await res.json()
+        if (linkedCount > 0) {
+          console.log('[auth-form] Linked', linkedCount, 'pending order(s) to user')
+        }
+      } else {
+        console.error('[auth-form] Failed to link pending orders:', await res.text())
+      }
+    } catch (err) {
+      console.error('[auth-form] Error linking pending orders:', err)
+    }
+  }
+
   // ── Google OAuth ────────────────────────────────────────────────────────
   async function handleGoogle() {
     setGoogleLoading(true)
@@ -142,6 +168,9 @@ export default function AuthForm({ next, initialMode }: Props) {
       setLoading(false)
       return
     }
+
+    // Link any pending orders to this user after successful authentication
+    await linkPendingOrdersToUser(email)
 
     // If "Remember Me" is unchecked, set session to expire when browser closes
     if (!rememberMe && data.session) {
@@ -216,6 +245,9 @@ export default function AuthForm({ next, initialMode }: Props) {
           { id: data.user.id, email, first_name: firstName, last_name: lastName },
           { onConflict: 'id', ignoreDuplicates: true }
         )
+
+        // Link any pending orders to this user after successful signup
+        await linkPendingOrdersToUser(email)
 
         // If we saved a pending order, add it to the redirect URL
         let redirectTo = next

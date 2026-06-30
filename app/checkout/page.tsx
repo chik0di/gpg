@@ -312,13 +312,19 @@ export default function CheckoutPage() {
       // PRIORITY 1: Fetch from database if pending order ID is provided
       if (pendingOrderId) {
         console.log('[checkout] Fetching pending order from database:', pendingOrderId)
+        console.log('[checkout] API URL:', `/api/pending-orders/${pendingOrderId}`)
         try {
           const res = await fetch(`/api/pending-orders/${pendingOrderId}`)
+          console.log('[checkout] API response status:', res.status, res.statusText)
+
           if (res.ok) {
-            const { orderData: dbOrderData, fileData: dbFileData } = await res.json()
-            data = dbOrderData
-            fileData = dbFileData
+            const responseData = await res.json()
+            console.log('[checkout] API response data:', responseData)
+            data = responseData.orderData
+            fileData = responseData.fileData
             console.log('[checkout] Successfully loaded order from database')
+            console.log('[checkout] Order data keys:', data ? Object.keys(data) : 'null')
+            console.log('[checkout] File data present:', !!fileData)
 
             // Save to sessionStorage as backup
             sessionStorage.setItem('gpg_pending_order', JSON.stringify(data))
@@ -327,38 +333,64 @@ export default function CheckoutPage() {
               sessionStorage.setItem('gpg_pending_file', fileData)
             }
           } else {
-            console.warn('[checkout] Failed to fetch pending order from database:', await res.text())
+            const errorText = await res.text()
+            console.error('[checkout] Failed to fetch pending order from database')
+            console.error('[checkout] Status:', res.status)
+            console.error('[checkout] Error:', errorText)
+            console.error('[checkout] This will cause fallback to sessionStorage, then redirect to /order if that fails too')
           }
         } catch (err) {
-          console.error('[checkout] Error fetching pending order:', err)
+          console.error('[checkout] Exception while fetching pending order:', err)
         }
+      } else {
+        console.log('[checkout] No pending order ID in URL - skipping database fetch')
       }
 
       // FALLBACK: Try sessionStorage if database fetch failed
       if (!data) {
-        console.log('[checkout] Falling back to sessionStorage')
+        console.log('[checkout] No data from database - falling back to sessionStorage')
         const raw = sessionStorage.getItem('gpg_pending_order')
+        console.log('[checkout] sessionStorage check:', raw ? 'found' : 'not found')
+
         if (!raw) {
-          console.error('[checkout] No order data found in database or sessionStorage - redirecting to /order')
-          router.replace('/order')
+          console.error('[checkout] ❌ No order data found in database or sessionStorage')
+          console.error('[checkout] Pending order ID was:', pendingOrderId)
+          console.error('[checkout] Database fetch probably failed or returned empty')
+
+          // Instead of silently redirecting, show a clear error message
+          if (pendingOrderId) {
+            setInitError(
+              'We couldn\'t find your order details. Your order may have expired or there was an issue loading it. Please contact support or start a new order.'
+            )
+          } else {
+            setInitError(
+              'No order data found. Please start a new order.'
+            )
+          }
           return
         }
 
         try {
           data = JSON.parse(raw)
           console.log('[checkout] Successfully parsed order data from sessionStorage:', data ? Object.keys(data) : 'null')
-        } catch {
-          console.error('[checkout] Failed to parse gpg_pending_order - redirecting to /order')
-          router.replace('/order')
+        } catch (err) {
+          console.error('[checkout] Failed to parse gpg_pending_order:', err)
+          setInitError(
+            'Your order data appears to be corrupted. Please start a new order or contact support.'
+          )
           return
         }
       }
 
       if (!data) {
-        console.error('[checkout] Order data is null - redirecting to /order')
-        router.replace('/order')
+        console.error('[checkout] Order data is still null after all attempts')
+        setInitError(
+          'We couldn\'t load your order details. Please try again or contact support.'
+        )
         return
       }
+
+      console.log('[checkout] ✅ Order data loaded successfully - proceeding with checkout')
 
       setOrderData(data)
 
@@ -453,10 +485,30 @@ export default function CheckoutPage() {
         <div className="max-w-4xl mx-auto">
           {initError ? (
             <div className="text-center py-20">
-              <p className="text-sm text-red-600 mb-4">{initError}</p>
-              <Link href="/order" className="text-sm font-semibold text-[#E8A020]">
-                ← Back to order form
-              </Link>
+              <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-6">
+                <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-[#1B2E4B] mb-2">Order Not Found</h2>
+              <p className="text-sm text-[#6B7280] mb-6 max-w-md mx-auto">{initError}</p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Link
+                  href="/order"
+                  className="inline-flex items-center gap-2 bg-[#E8A020] hover:bg-[#C4861A] text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                  </svg>
+                  Start New Order
+                </Link>
+                <a
+                  href="mailto:admin@getprimegrade.com"
+                  className="text-sm font-semibold text-[#6B7280] hover:text-[#1B2E4B] transition-colors"
+                >
+                  Contact Support
+                </a>
+              </div>
             </div>
           ) : (
             <div className="flex items-center justify-center py-32">

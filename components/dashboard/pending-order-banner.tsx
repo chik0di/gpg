@@ -9,11 +9,20 @@ export default function PendingOrderBanner() {
 
   useEffect(() => {
     // Check if user has any pending orders
+    console.log('[pending-order-banner] Fetching pending orders...')
     fetch('/api/pending-orders/check')
-      .then(res => res.json())
+      .then(res => {
+        console.log('[pending-order-banner] API response status:', res.status)
+        return res.json()
+      })
       .then(data => {
+        console.log('[pending-order-banner] API response data:', data)
         if (data.hasPendingOrder) {
+          console.log('[pending-order-banner] Setting pending order ID:', data.pendingOrderId)
           setPendingOrderId(data.pendingOrderId)
+          console.log('[pending-order-banner] Link will be: /checkout?pending=' + data.pendingOrderId)
+        } else {
+          console.log('[pending-order-banner] No pending order found')
         }
       })
       .catch(err => {

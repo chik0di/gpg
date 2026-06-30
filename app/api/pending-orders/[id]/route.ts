@@ -6,29 +6,45 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log('[pending-orders/get] GET request for ID:', params.id)
     const supabase = createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
 
+    console.log('[pending-orders/get] User:', user ? user.id : 'null', 'Email:', user?.email)
+
     if (!user) {
+      console.error('[pending-orders/get] No authenticated user - returning 401')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { id } = params
 
+    console.log('[pending-orders/get] Fetching pending order:', id)
+    console.log('[pending-orders/get] User email for RLS check:', user.email)
+
     // Fetch pending order (RLS ensures user can only see their own)
     const { data, error } = await supabase
       .from('pending_orders')
-      .select('id, order_data, file_data, created_at, expires_at')
+      .select('id, order_data, file_data, created_at, expires_at, user_email, user_id')
       .eq('id', id)
       .single()
 
     if (error) {
       console.error('[pending-orders/get] Fetch failed:', error)
+      console.error('[pending-orders/get] Error code:', error.code)
+      console.error('[pending-orders/get] Error message:', error.message)
+      console.error('[pending-orders/get] This could be due to RLS blocking access')
       return NextResponse.json(
         { error: 'Pending order not found' },
         { status: 404 }
       )
     }
+
+    console.log('[pending-orders/get] Found order:', data.id)
+    console.log('[pending-orders/get] Order user_email:', data.user_email)
+    console.log('[pending-orders/get] Order user_id:', data.user_id)
+    console.log('[pending-orders/get] Current user email:', user.email)
+    console.log('[pending-orders/get] Email match:', data.user_email === user.email)
 
     // Check if expired
     const now = new Date()
