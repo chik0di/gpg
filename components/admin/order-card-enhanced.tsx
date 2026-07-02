@@ -54,10 +54,24 @@ function getCountdown(deadline: string): string {
   return `${hours}h remaining`
 }
 
+function getBorderColor(status: string, urgency: 'overdue' | 'urgent' | 'comfortable' | 'completed'): string {
+  // Completed orders always get green
+  if (status === 'completed') return '#10B981'
+
+  // For non-completed orders, prioritize urgency/overdue status
+  if (urgency === 'overdue') return '#EF4444' // Red for overdue
+  if (urgency === 'urgent') return '#F59E0B'  // Amber for urgent
+
+  // For comfortable/on-track orders, use status-based colors
+  if (status === 'in_progress') return '#3B82F6' // Blue for in progress
+  return '#9CA3AF' // Grey for pending
+}
+
 export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
   const [updating, setUpdating] = useState(false)
   const urgency = getUrgencyLevel(order.deadline, order.status)
   const countdown = getCountdown(order.deadline)
+  const borderColor = getBorderColor(order.status, urgency)
 
   const urgencyConfig = {
     overdue: { color: '#EF4444', bg: '#FEE2E2', label: 'Overdue' },
@@ -86,7 +100,7 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
       className="bg-white rounded-xl border border-[#E8E2D9] overflow-hidden hover:shadow-md transition-shadow max-w-3xl"
       style={{
         borderLeftWidth: '4px',
-        borderLeftColor: order.status === 'completed' ? '#10B981' : config.color
+        borderLeftColor: borderColor
       }}
     >
       <div className="p-3">
