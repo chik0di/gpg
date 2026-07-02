@@ -179,6 +179,36 @@ export async function sendContactEnquiry(params: {
   })
 }
 
+// ── Email: client order in progress ───────────────────────────────────────────
+
+export async function sendOrderInProgressEmail(params: {
+  to: string
+  firstName: string
+  orderId: string
+  subjectField: string
+  deadline: string
+}) {
+  const { to, firstName, orderId, subjectField, deadline } = params
+  const shortId = orderId.slice(0, 8).toUpperCase()
+  const deadlineFormatted = new Date(deadline).toLocaleDateString('en-GB', { dateStyle: 'long' })
+
+  const html = base(`
+    ${h1(`We've started working on your order, ${firstName || 'there'}!`)}
+    ${p(`Your order <strong>#${shortId}</strong> (${subjectField}) is now in progress. Our team is working on it and we'll deliver before your deadline on <strong>${deadlineFormatted}</strong>.`)}
+    ${divider()}
+    ${btn('View order status', `${APP_URL}/dashboard/orders/${orderId}`)}
+    ${divider()}
+    ${p('<span style="font-size:13px;color:#9CA3AF;">You\'ll receive an email as soon as your work is ready for download. If you have any questions in the meantime, just reply to this email.</span>')}
+  `)
+
+  return resend.emails.send({
+    from: FROM,
+    to,
+    subject: `We've started on your order — #${shortId}`,
+    html,
+  })
+}
+
 // ── Email: client work completed ──────────────────────────────────────────────
 
 export async function sendOrderCompletedEmail(params: {

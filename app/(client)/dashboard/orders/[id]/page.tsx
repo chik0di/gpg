@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/types/order'
 import type { Deliverable, OrderFile } from '@/types/order'
 
@@ -34,7 +35,12 @@ export default async function OrderDetailPage({ params }: Props) {
   const total  = `£${order.total_amount % 1 === 0 ? order.total_amount : order.total_amount.toFixed(2)}`
   const deliverables: Deliverable[] = order.deliverables ?? []
   const files: OrderFile[]          = order.order_files ?? []
+  const assignFile                   = files.find((f) => f.file_type === 'assignment')
   const completedFile                = files.find((f) => f.file_type === 'completed')
+
+  // Generate signed URLs server-side for secure file access
+  const assignUrl    = assignFile    ? await getSignedUrl(assignFile.file_url)    : null
+  const completedUrl = completedFile ? await getSignedUrl(completedFile.file_url) : null
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -63,11 +69,10 @@ export default async function OrderDetailPage({ params }: Props) {
       </div>
 
       {/* Download completed work */}
-      {order.status === 'completed' && completedFile && (
+      {order.status === 'completed' && completedUrl && (
         <a
-          href={completedFile.file_url}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={completedUrl}
+          download
           className="flex items-center gap-3 bg-[#F0FDF4] border border-[#86EFAC] rounded-2xl px-5 py-4 hover:bg-[#DCFCE7] transition-colors"
         >
           <svg className="w-5 h-5 text-[#16A34A] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,6 +81,23 @@ export default async function OrderDetailPage({ params }: Props) {
           <div>
             <p className="text-sm font-bold text-[#16A34A]">Download your completed work</p>
             <p className="text-xs text-[#4ADE80] mt-0.5">Your model answer is ready</p>
+          </div>
+        </a>
+      )}
+
+      {/* Download assignment brief */}
+      {assignUrl && (
+        <a
+          href={assignUrl}
+          download
+          className="flex items-center gap-3 bg-[#F0F9FF] border border-[#93C5FD] rounded-2xl px-5 py-4 hover:bg-[#E0F2FE] transition-colors"
+        >
+          <svg className="w-5 h-5 text-[#3B82F6] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <div>
+            <p className="text-sm font-bold text-[#3B82F6]">Download your assignment brief</p>
+            <p className="text-xs text-[#60A5FA] mt-0.5">View the file you uploaded</p>
           </div>
         </a>
       )}
@@ -130,4 +152,11 @@ export default async function OrderDetailPage({ params }: Props) {
       )}
     </div>
   )
+}
+
+async function getSignedUrl(path: string): Promise<string | null> {
+  const { data } = await supabaseAdmin.storage
+    .from('order-files')
+    .createSignedUrl(path, 3600)
+  return data?.signedUrl ?? null
 }

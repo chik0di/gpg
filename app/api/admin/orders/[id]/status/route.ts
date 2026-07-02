@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { sendOrderCompletedEmail } from '@/lib/resend'
+import { sendOrderCompletedEmail, sendOrderInProgressEmail } from '@/lib/resend'
 import { rateLimit, getClientIp, RateLimitPresets, getRateLimitErrorMessage } from '@/lib/rate-limit'
 
 const VALID_STATUSES = ['pending', 'in_progress', 'completed']
@@ -53,11 +53,11 @@ export async function PATCH(
       return NextResponse.json({ error: updateErr.message }, { status: 500 })
     }
 
-    // If marking completed, send the client a notification email
-    if (status === 'completed') {
+    // Send notification emails based on status change
+    if (status === 'in_progress' || status === 'completed') {
       const { data: order } = await supabaseAdmin
         .from('orders')
-        .select('subject_field, user_id')
+        .select('subject_field, user_id, deadline')
         .eq('id', orderId)
         .single()
 
@@ -69,14 +69,27 @@ export async function PATCH(
           .single()
 
         if (profile?.email) {
-          const { error: emailErr } = await sendOrderCompletedEmail({
-            to:           profile.email,
-            firstName:    profile.first_name ?? '',
-            orderId,
-            subjectField: order.subject_field,
-          })
-          if (emailErr) {
-            console.error('[status] completion email failed:', emailErr)
+          if (status === 'in_progress') {
+            const { error: emailErr } = await sendOrderInProgressEmail({
+              to:           profile.email,
+              firstName:    profile.first_name ?? '',
+              orderId,
+              subjectField: order.subject_field,
+              deadline:     order.deadline,
+            })
+            if (emailErr) {
+              console.error('[status] in-progress email failed:', emailErr)
+            }
+          } else if (status === 'completed') {
+            const { error: emailErr } = await sendOrderCompletedEmail({
+              to:           profile.email,
+              firstName:    profile.first_name ?? '',
+              orderId,
+              subjectField: order.subject_field,
+            })
+            if (emailErr) {
+              console.error('[status] completion email failed:', emailErr)
+            }
           }
         }
       }

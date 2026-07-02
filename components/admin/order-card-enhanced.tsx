@@ -84,13 +84,17 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
   return (
     <div
       className="bg-white rounded-xl border border-[#E8E2D9] overflow-hidden hover:shadow-md transition-shadow max-w-3xl"
-      style={{ borderLeftWidth: '4px', borderLeftColor: config.color }}
+      style={{
+        borderLeftWidth: '4px',
+        borderLeftColor: order.status === 'completed' ? '#10B981' : config.color
+      }}
     >
       <div className="p-3">
         {/* Compact header: ID + Urgency Badge */}
         <div className="flex items-center gap-2 mb-2">
           <p className="text-xs font-mono font-bold text-[#6B7280]">#{order.id.slice(0, 8).toUpperCase()}</p>
-          {urgency === 'overdue' && (
+          {/* Only show urgency badges for non-completed orders */}
+          {order.status !== 'completed' && urgency === 'overdue' && (
             <span
               className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
               style={{ background: config.bg, color: config.color }}
@@ -101,7 +105,7 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
               {config.label}
             </span>
           )}
-          {urgency === 'urgent' && (
+          {order.status !== 'completed' && urgency === 'urgent' && (
             <span
               className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
               style={{ background: config.bg, color: config.color }}
@@ -112,7 +116,7 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
               {config.label}
             </span>
           )}
-          {urgency === 'completed' && (
+          {order.status === 'completed' && (
             <span
               className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
               style={{ background: config.bg, color: config.color }}

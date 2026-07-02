@@ -61,7 +61,7 @@ export default function AdminDashboard({ initialOrders }: Props) {
   const [currentPage, setCurrentPage] = useState(1)
   const [filters, setFilters] = useState<Filters>({
     timeRange: 'all',
-    status: 'all',
+    status: 'active', // Default to showing only pending and in_progress orders
     urgency: 'all',
     academicLevel: 'all',
     subject: 'all',
@@ -91,7 +91,9 @@ export default function AdminDashboard({ initialOrders }: Props) {
     }
 
     // Status
-    if (filters.status !== 'all') {
+    if (filters.status === 'active') {
+      filtered = filtered.filter(o => o.status === 'pending' || o.status === 'in_progress')
+    } else if (filters.status !== 'all') {
       filtered = filtered.filter(o => o.status === filters.status)
     }
 
@@ -180,7 +182,7 @@ export default function AdminDashboard({ initialOrders }: Props) {
   const handleClearFilters = () => {
     setFilters({
       timeRange: 'all',
-      status: 'all',
+      status: 'active',
       urgency: 'all',
       academicLevel: 'all',
       subject: 'all',
