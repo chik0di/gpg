@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import './globals.css'
 import WhatsAppButton from '@/components/shared/whatsapp-button'
 import ReferralTracker from '@/components/referral/referral-tracker'
+import { Analytics } from '@vercel/analytics/next'
 
 const siteUrl = 'https://getprimegrade.com'
 
@@ -98,6 +99,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Suspense>
         {children}
         <WhatsAppButton />
+        <Analytics />
       </body>
     </html>
   )
