@@ -1,16 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getPasswordStrength, isPasswordValid } from '@/lib/utils/password'
+import { signOut } from '@/lib/auth/signout'
 
-type EmailStep = 'idle' | 'verify-current' | 'enter-new'
+type EmailStep = 'idle' | 'enter-new'
 
 export default function SettingsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [currentEmail, setCurrentEmail] = useState('')
+  const [showEmailUpdatedBanner, setShowEmailUpdatedBanner] = useState(false)
 
   // Password change state
   const [pwLoading, setPwLoading] = useState(false)
@@ -19,12 +21,13 @@ export default function SettingsPage() {
   const [newPw, setNewPw] = useState('')
   const [showCurrentPw, setShowCurrentPw] = useState(false)
   const [showNewPw, setShowNewPw] = useState(false)
+  const [resetPwLoading, setResetPwLoading] = useState(false)
+  const [resetPwMsg, setResetPwMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
   // Email change state
   const [emailStep, setEmailStep] = useState<EmailStep>('idle')
   const [emailLoading, setEmailLoading] = useState(false)
   const [emailMsg, setEmailMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
-  const [verificationCode, setVerificationCode] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [confirmNewEmail, setConfirmNewEmail] = useState('')
 
@@ -37,7 +40,16 @@ export default function SettingsPage() {
       }
     }
     loadUser()
-  }, [])
+
+    // Check for email_updated query parameter
+    if (searchParams.get('email_updated') === 'true') {
+      setShowEmailUpdatedBanner(true)
+      // Clear the query parameter from URL without reloading
+      const url = new URL(window.location.href)
+      url.searchParams.delete('email_updated')
+      window.history.replaceState({}, '', url.toString())
+    }
+  }, [searchParams])
 
   async function handlePasswordUpdate(e: React.FormEvent) {
     e.preventDefault()
@@ -80,50 +92,26 @@ export default function SettingsPage() {
     setPwLoading(false)
   }
 
-  async function handleStartEmailChange() {
-    setEmailLoading(true)
-    setEmailMsg(null)
+  async function handleResetPassword() {
+    setResetPwLoading(true)
+    setResetPwMsg(null)
 
     const supabase = createClient()
-    // Send OTP to current email
-    const { error } = await supabase.auth.signInWithOtp({
-      email: currentEmail,
-      options: {
-        shouldCreateUser: false,
-      }
+    const { error } = await supabase.auth.resetPasswordForEmail(currentEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
     })
 
     if (error) {
-      setEmailMsg({ type: 'err', text: error.message })
-      setEmailLoading(false)
+      setResetPwMsg({ type: 'err', text: error.message })
     } else {
-      setEmailStep('verify-current')
-      setEmailMsg({ type: 'ok', text: `Verification code sent to ${currentEmail}` })
-      setEmailLoading(false)
+      setResetPwMsg({ type: 'ok', text: `Password reset link sent to ${currentEmail}` })
     }
+    setResetPwLoading(false)
   }
 
-  async function handleVerifyCode(e: React.FormEvent) {
-    e.preventDefault()
-    setEmailLoading(true)
+  function handleStartEmailChange() {
+    setEmailStep('enter-new')
     setEmailMsg(null)
-
-    const supabase = createClient()
-    const { error } = await supabase.auth.verifyOtp({
-      email: currentEmail,
-      token: verificationCode,
-      type: 'email',
-    })
-
-    if (error) {
-      setEmailMsg({ type: 'err', text: 'Invalid verification code. Please try again.' })
-      setEmailLoading(false)
-    } else {
-      setEmailStep('enter-new')
-      setEmailMsg(null)
-      setVerificationCode('')
-      setEmailLoading(false)
-    }
   }
 
   async function handleUpdateEmail(e: React.FormEvent) {
@@ -137,10 +125,19 @@ export default function SettingsPage() {
       return
     }
 
+    if (newEmail.toLowerCase() === currentEmail.toLowerCase()) {
+      setEmailMsg({ type: 'err', text: 'New email must be different from current email.' })
+      setEmailLoading(false)
+      return
+    }
+
     const supabase = createClient()
-    const { error } = await supabase.auth.updateUser({
-      email: newEmail
-    })
+    const { error } = await supabase.auth.updateUser(
+      { email: newEmail },
+      {
+        emailRedirectTo: `${window.location.origin}/dashboard/settings?email_updated=true`
+      }
+    )
 
     if (error) {
       setEmailMsg({ type: 'err', text: error.message })
@@ -148,24 +145,18 @@ export default function SettingsPage() {
     } else {
       setEmailMsg({
         type: 'ok',
-        text: 'Email update initiated. Please check your new email for a confirmation link.'
+        text: `A confirmation link has been sent to ${newEmail}. Click the link in that email to complete the change.`
       })
-      setEmailStep('idle')
       setNewEmail('')
       setConfirmNewEmail('')
       setEmailLoading(false)
-
-      // Refresh to show updated email after a delay
-      setTimeout(() => {
-        router.refresh()
-      }, 2000)
+      // Stay on the 'enter-new' step so user can see the message
     }
   }
 
   function cancelEmailChange() {
     setEmailStep('idle')
     setEmailMsg(null)
-    setVerificationCode('')
     setNewEmail('')
     setConfirmNewEmail('')
   }
@@ -176,6 +167,28 @@ export default function SettingsPage() {
   return (
     <div className="max-w-lg space-y-8">
       <h1 className="text-2xl font-extrabold text-[#1B2E4B]">Account Settings</h1>
+
+      {/* Email Updated Success Banner */}
+      {showEmailUpdatedBanner && (
+        <div className="flex items-start gap-3 bg-[#F0FDF4] border border-[#86EFAC] rounded-2xl px-5 py-4">
+          <svg className="w-5 h-5 text-[#16A34A] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-[#16A34A]">Your email address has been successfully updated.</p>
+            <p className="text-xs text-[#16A34A] mt-1">All future communications will be sent to your new email address.</p>
+          </div>
+          <button
+            onClick={() => setShowEmailUpdatedBanner(false)}
+            className="text-[#16A34A] hover:text-[#15803D] transition-colors"
+            aria-label="Dismiss"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Change Email */}
       <div
@@ -205,45 +218,8 @@ export default function SettingsPage() {
             disabled={emailLoading}
             className="flex items-center gap-2 bg-[#1B2E4B] hover:bg-[#16253d] text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors disabled:opacity-60"
           >
-            {emailLoading ? 'Sending code…' : 'Change email address'}
+            Change email address
           </button>
-        )}
-
-        {emailStep === 'verify-current' && (
-          <form onSubmit={handleVerifyCode} className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-[#1B2E4B] mb-1.5">
-                Verification Code
-              </label>
-              <input
-                type="text"
-                required
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value)}
-                placeholder="Enter the code sent to your email"
-                className={inputClass}
-              />
-              <p className="text-xs text-[#9CA3AF] mt-1.5">
-                Check your inbox for the verification code
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                disabled={emailLoading}
-                className="flex items-center gap-2 bg-[#1B2E4B] hover:bg-[#16253d] text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors disabled:opacity-60"
-              >
-                {emailLoading ? 'Verifying…' : 'Verify code'}
-              </button>
-              <button
-                type="button"
-                onClick={cancelEmailChange}
-                className="text-sm font-semibold text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors px-4"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
         )}
 
         {emailStep === 'enter-new' && (
@@ -313,18 +289,32 @@ export default function SettingsPage() {
           </div>
         )}
 
+        {resetPwMsg && (
+          <div
+            className={`flex items-start gap-2.5 rounded-xl px-4 py-3 mb-5 text-sm ${
+              resetPwMsg.type === 'ok'
+                ? 'bg-[#F0FDF4] border border-[#86EFAC] text-[#16A34A]'
+                : 'bg-red-50 border border-red-200 text-red-600'
+            }`}
+          >
+            {resetPwMsg.text}
+          </div>
+        )}
+
         <form onSubmit={handlePasswordUpdate} className="space-y-4">
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-sm font-semibold text-[#1B2E4B]">
                 Current Password
               </label>
-              <Link
-                href="/forgot-password"
-                className="text-xs font-semibold text-[#E8A020] hover:text-[#C4861A] transition-colors"
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                disabled={resetPwLoading}
+                className="text-xs font-semibold text-[#E8A020] hover:text-[#C4861A] transition-colors disabled:opacity-60"
               >
-                Forgot your password?
-              </Link>
+                {resetPwLoading ? 'Sending...' : 'Forgot your password?'}
+              </button>
             </div>
             <div className="relative">
               <input
@@ -420,14 +410,12 @@ export default function SettingsPage() {
         <p className="text-sm text-[#9CA3AF] mb-4">
           Sign out of all active sessions on all devices.
         </p>
-        <form action="/api/auth/signout" method="post">
-          <button
-            type="submit"
-            className="text-sm font-bold text-red-500 hover:text-red-700 transition-colors"
-          >
-            Sign out all sessions
-          </button>
-        </form>
+        <button
+          onClick={() => signOut()}
+          className="text-sm font-bold text-red-500 hover:text-red-700 transition-colors"
+        >
+          Sign out all sessions
+        </button>
       </div>
     </div>
   )

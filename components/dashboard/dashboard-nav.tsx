@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
+import { signOut } from '@/lib/auth/signout'
 
 const LINKS = [
   { href: '/dashboard', label: 'Overview' },
@@ -75,14 +76,12 @@ export default function DashboardNav({ user, profile }: Props) {
               <span className="text-sm font-medium text-[#6B7280]">{displayName}</span>
             </div>
 
-            <form action="/api/auth/signout" method="post">
-              <button
-                type="submit"
-                className="text-sm font-semibold text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors"
-              >
-                Sign out
-              </button>
-            </form>
+            <button
+              onClick={() => signOut()}
+              className="text-sm font-semibold text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors"
+            >
+              Sign out
+            </button>
           </div>
         </div>
 
