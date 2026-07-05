@@ -44,8 +44,18 @@ function validateStep(step: number, data: OrderFormState, file: File | null): Re
         err[`deliverable_${d.id}`] = 'Please select a type.'
       } else if (d.type === 'written' && (!d.quantity || d.quantity <= 0)) {
         err[`deliverable_${d.id}`] = 'Please enter a page or word count.'
-      } else if (d.type === 'presentation' && !d.slideBand) {
-        err[`deliverable_${d.id}`] = 'Please select a slide count.'
+      } else if (d.type === 'presentation') {
+        if (d.slideInputMode === 'exact') {
+          if (!d.slideCount || d.slideCount <= 0) {
+            err[`deliverable_${d.id}`] = 'Please enter slide count.'
+          }
+        } else {
+          if (!d.slideMin || d.slideMin <= 0 || !d.slideMax || d.slideMax <= 0) {
+            err[`deliverable_${d.id}`] = 'Please enter both min and max slide counts.'
+          } else if (d.slideMax <= d.slideMin) {
+            err[`deliverable_${d.id}`] = 'Maximum slides must be greater than minimum.'
+          }
+        }
       } else if (d.type === 'practical' && !d.practicalKey) {
         err[`deliverable_${d.id}`] = 'Please select a category.'
       }

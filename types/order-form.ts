@@ -8,7 +8,11 @@ export interface Deliverable {
   sizeMode: SizeMode
   quantity: number   // pages or words depending on sizeMode
   // Presentation
-  slideBand: string  // SlideBandKey
+  slideBand: string       // Deprecated - kept for backward compat during migration
+  slideInputMode: 'exact' | 'between'  // 'exact' or 'between'
+  slideCount: number      // For 'exact' mode
+  slideMin: number        // For 'between' mode
+  slideMax: number        // For 'between' mode
   // Practical
   practicalKey: string  // PracticalKey
   // Computed base price (before academic/deadline multipliers)
@@ -34,6 +38,10 @@ export function makeDeliverable(): Deliverable {
     sizeMode: 'pages',
     quantity: 0,
     slideBand: '',
+    slideInputMode: 'exact',
+    slideCount: 0,
+    slideMin: 0,
+    slideMax: 0,
     practicalKey: '',
     basePrice: 0,
   }

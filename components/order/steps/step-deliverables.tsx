@@ -1,12 +1,12 @@
 'use client'
 
 import {
-  SLIDE_BANDS,
   PRACTICAL_ITEMS,
   WORDS_PER_PAGE,
   calcWrittenPrice,
   writtenBandLabel,
-  getSlideBandPrice,
+  calcPresentationPrice,
+  presentationLabel,
   getPracticalPrice,
 } from '@/lib/pricing'
 import { fmtInCurrency, getCurrencyDisplayName } from '@/lib/currency'
@@ -28,7 +28,10 @@ function calcPrice(d: Deliverable): number {
         : Math.ceil(d.quantity / WORDS_PER_PAGE)
     return calcWrittenPrice(pages)
   }
-  if (d.type === 'presentation') return getSlideBandPrice(d.slideBand)
+  if (d.type === 'presentation') {
+    const slideCount = d.slideInputMode === 'exact' ? d.slideCount : d.slideMax
+    return calcPresentationPrice(slideCount)
+  }
   if (d.type === 'practical') return getPracticalPrice(d.practicalKey)
   return 0
 }
@@ -64,6 +67,10 @@ function DeliverableCard({
       quantity: 0,
       sizeMode: 'pages',
       slideBand: '',
+      slideInputMode: 'exact',
+      slideCount: 0,
+      slideMin: 0,
+      slideMax: 0,
       practicalKey: '',
       basePrice: 0,
     })
@@ -75,8 +82,28 @@ function DeliverableCard({
     onChange({ quantity, basePrice: calcWrittenPrice(pages) })
   }
 
-  function handleSlideBand(slideBand: string) {
-    onChange({ slideBand, basePrice: getSlideBandPrice(slideBand) })
+  function handleSlideInputMode(mode: 'exact' | 'between') {
+    const slideCount = mode === 'exact' ? d.slideCount || 0 : 0
+    const slideMax = mode === 'between' ? d.slideMax || 0 : 0
+    onChange({
+      slideInputMode: mode,
+      basePrice: calcPresentationPrice(mode === 'exact' ? slideCount : slideMax),
+    })
+  }
+
+  function handleSlideCount(raw: string) {
+    const slideCount = Math.max(1, parseInt(raw) || 0)
+    onChange({ slideCount, basePrice: calcPresentationPrice(slideCount) })
+  }
+
+  function handleSlideMin(raw: string) {
+    const slideMin = Math.max(1, parseInt(raw) || 0)
+    onChange({ slideMin, basePrice: calcPresentationPrice(d.slideMax) })
+  }
+
+  function handleSlideMax(raw: string) {
+    const slideMax = Math.max(1, parseInt(raw) || 0)
+    onChange({ slideMax, basePrice: calcPresentationPrice(slideMax) })
   }
 
   function handlePractical(practicalKey: string) {
@@ -200,19 +227,70 @@ function DeliverableCard({
       )}
 
       {d.type === 'presentation' && (
-        <div>
+        <div className="space-y-3">
           <label className="block text-xs font-semibold text-[#1B2E4B] mb-2">Slide count</label>
-          <select
-            value={d.slideBand}
-            onChange={(e) => handleSlideBand(e.target.value)}
-            className={selectBase}
-            style={{ color: d.slideBand ? '#1A1A2E' : '#9CA3AF' }}
-          >
-            <option value="" disabled>Select slide count…</option>
-            {SLIDE_BANDS.map(({ key, label }) => (
-              <option key={key} value={key}>{label}</option>
-            ))}
-          </select>
+          <div className="flex items-center gap-2">
+            <select
+              value={d.slideInputMode}
+              onChange={(e) => handleSlideInputMode(e.target.value as 'exact' | 'between')}
+              className={selectBase}
+              style={{ width: '110px' }}
+            >
+              <option value="exact">Exactly</option>
+              <option value="between">Between</option>
+            </select>
+
+            {d.slideInputMode === 'exact' ? (
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={d.slideCount || ''}
+                onChange={(e) => handleSlideCount(e.target.value)}
+                placeholder="e.g. 15"
+                className={inputBase}
+              />
+            ) : (
+              <>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={d.slideMin || ''}
+                  onChange={(e) => handleSlideMin(e.target.value)}
+                  placeholder="Min"
+                  className={inputBase}
+                  style={{ width: '80px' }}
+                />
+                <span className="text-xs text-[#6B7280] font-medium">and</span>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={d.slideMax || ''}
+                  onChange={(e) => handleSlideMax(e.target.value)}
+                  placeholder="Max"
+                  className={inputBase}
+                  style={{ width: '80px' }}
+                />
+              </>
+            )}
+          </div>
+
+          {/* Validation error for 'between' mode */}
+          {d.slideInputMode === 'between' && d.slideMin > 0 && d.slideMax > 0 && d.slideMax <= d.slideMin && (
+            <p className="text-xs text-red-500">Maximum must be greater than minimum</p>
+          )}
+
+          {/* Live price preview */}
+          {((d.slideInputMode === 'exact' && d.slideCount > 0) ||
+            (d.slideInputMode === 'between' && d.slideMax > 0)) && (
+            <p className="text-xs text-[#9CA3AF]">
+              {d.slideInputMode === 'exact'
+                ? presentationLabel(d.slideCount)
+                : `${d.slideMin}–${d.slideMax} slides × £2.50 (charged at ${d.slideMax})`}
+            </p>
+          )}
         </div>
       )}
 

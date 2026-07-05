@@ -6,11 +6,10 @@ import { rateLimit, getClientIp, RateLimitPresets, getRateLimitErrorMessage } fr
 import {
   calcOrderTotal,
   calcWrittenPrice,
-  getSlideBandPrice,
+  calcPresentationPrice,
   getPracticalPrice,
   WORDS_PER_PAGE,
   PRACTICAL_ITEMS,
-  SLIDE_BANDS,
 } from '@/lib/pricing'
 import { getBestDiscount } from '@/lib/discount'
 import { completeReferral, markCreditAsUsed } from '@/lib/referral'
@@ -32,7 +31,10 @@ function deliverableBasePrice(d: Deliverable): number {
     const pages = d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE)
     return calcWrittenPrice(pages)
   }
-  if (d.type === 'presentation') return getSlideBandPrice(d.slideBand)
+  if (d.type === 'presentation') {
+    const slideCount = d.slideInputMode === 'exact' ? d.slideCount : d.slideMax
+    return calcPresentationPrice(slideCount)
+  }
   if (d.type === 'practical')    return getPracticalPrice(d.practicalKey)
   return 0
 }
@@ -206,15 +208,28 @@ export async function POST(request: Request) {
 
     // 5. Insert deliverables
     const deliverableRows = orderData.deliverables.map((d) => {
-      const pages = d.type === 'written'
-        ? (d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE))
-        : null
+      let subtype: string | null = null
+      let size_band: string | null = null
+
+      if (d.type === 'written') {
+        const pages = d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE)
+        size_band = String(pages)
+      } else if (d.type === 'presentation') {
+        // Store slide data in subtype field: 'exact:18' or 'between:15:20'
+        if (d.slideInputMode === 'exact') {
+          subtype = `exact:${d.slideCount}`
+        } else {
+          subtype = `between:${d.slideMin}:${d.slideMax}`
+        }
+      } else if (d.type === 'practical') {
+        subtype = d.practicalKey
+      }
 
       return {
         order_id:  order.id,
         type:      d.type,
-        subtype:   d.type === 'practical' ? d.practicalKey : d.type === 'presentation' ? d.slideBand : null,
-        size_band: pages != null ? String(pages) : null,
+        subtype,
+        size_band,
         price:     deliverableBasePrice(d),
       }
     })
@@ -294,7 +309,11 @@ export async function POST(request: Request) {
         return `Written (${pages} pages)`
       }
       if (d.type === 'presentation') {
-        return `Presentation (${SLIDE_BANDS.find((b) => b.key === d.slideBand)?.label ?? d.slideBand})`
+        if (d.slideInputMode === 'exact') {
+          return `Presentation (${d.slideCount} slides)`
+        } else {
+          return `Presentation (${d.slideMin}–${d.slideMax} slides)`
+        }
       }
       if (d.type === 'practical') {
         return `Practical — ${PRACTICAL_ITEMS.find((p) => p.key === d.practicalKey)?.label ?? d.practicalKey}`

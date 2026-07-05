@@ -134,18 +134,38 @@ export default async function AdminOrderDetailPage({ params }: Props) {
             </p>
           </div>
           <div className="divide-y divide-[#E8E2D9]">
-            {order.deliverables.map((d) => (
-              <div key={d.id} className="flex items-center justify-between px-5 py-3.5">
-                <div>
-                  <p className="text-sm font-semibold text-[#1B2E4B] capitalize">{d.type}</p>
-                  {d.subtype   && <p className="text-xs text-[#9CA3AF] mt-0.5">{d.subtype}</p>}
-                  {d.size_band && <p className="text-xs text-[#9CA3AF] mt-0.5">{d.size_band} pages</p>}
+            {order.deliverables.map((d) => {
+              let detailLine = ''
+
+              if (d.type === 'presentation' && d.subtype) {
+                // Parse new format: 'exact:18' or 'between:15:20'
+                const parts = d.subtype.split(':')
+                if (parts[0] === 'exact' && parts[1]) {
+                  detailLine = `${parts[1]} slides`
+                } else if (parts[0] === 'between' && parts[1] && parts[2]) {
+                  detailLine = `${parts[1]}–${parts[2]} slides (charged at ${parts[2]})`
+                } else {
+                  // Legacy format fallback
+                  detailLine = d.subtype
+                }
+              } else if (d.type === 'written' && d.size_band) {
+                detailLine = `${d.size_band} pages`
+              } else if (d.type === 'practical' && d.subtype) {
+                detailLine = d.subtype
+              }
+
+              return (
+                <div key={d.id} className="flex items-center justify-between px-5 py-3.5">
+                  <div>
+                    <p className="text-sm font-semibold text-[#1B2E4B] capitalize">{d.type}</p>
+                    {detailLine && <p className="text-xs text-[#9CA3AF] mt-0.5">{detailLine}</p>}
+                  </div>
+                  <span className="text-sm font-bold text-[#1B2E4B]">
+                    £{d.price % 1 === 0 ? d.price : d.price.toFixed(2)}
+                  </span>
                 </div>
-                <span className="text-sm font-bold text-[#1B2E4B]">
-                  £{d.price % 1 === 0 ? d.price : d.price.toFixed(2)}
-                </span>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}

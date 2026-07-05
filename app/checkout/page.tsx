@@ -13,7 +13,8 @@ import { loadStripe } from '@stripe/stripe-js'
 import {
   calcOrderTotal,
   calcWrittenPrice,
-  getSlideBandPrice,
+  calcPresentationPrice,
+  presentationLabel,
   getPracticalPrice,
   getAcademicMultiplier,
   getDeadlineMultiplier,
@@ -22,7 +23,7 @@ import {
   WORDS_PER_PAGE,
   ORIGINALITY_REPORT_PRICE,
   PRACTICAL_ITEMS,
-  SLIDE_BANDS,
+  PRICE_PER_SLIDE,
 } from '@/lib/pricing'
 import { fmtInCurrency, getCurrencyDisplayName } from '@/lib/currency'
 import type { OrderFormState, Deliverable } from '@/types/order-form'
@@ -36,7 +37,10 @@ function deliverableBasePrice(d: Deliverable): number {
     const pages = d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE)
     return calcWrittenPrice(pages)
   }
-  if (d.type === 'presentation') return getSlideBandPrice(d.slideBand)
+  if (d.type === 'presentation') {
+    const slideCount = d.slideInputMode === 'exact' ? d.slideCount : d.slideMax
+    return calcPresentationPrice(slideCount)
+  }
   if (d.type === 'practical')    return getPracticalPrice(d.practicalKey)
   return 0
 }
@@ -47,7 +51,11 @@ function deliverableLabel(d: Deliverable): string {
     return `Written — ${pages} page${pages !== 1 ? 's' : ''}`
   }
   if (d.type === 'presentation') {
-    return `Presentation — ${SLIDE_BANDS.find((b) => b.key === d.slideBand)?.label ?? ''}`
+    if (d.slideInputMode === 'exact') {
+      return `Presentation — ${presentationLabel(d.slideCount)}`
+    } else {
+      return `Presentation — ${d.slideMin}–${d.slideMax} slides × £${PRICE_PER_SLIDE.toFixed(2)} (charged at ${d.slideMax})`
+    }
   }
   if (d.type === 'practical') {
     return `Practical — ${PRACTICAL_ITEMS.find((p) => p.key === d.practicalKey)?.label ?? ''}`

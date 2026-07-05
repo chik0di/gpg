@@ -81,17 +81,16 @@ export function writtenBandLabel(pages: number): string {
 }
 
 // ── Presentation pricing ──────────────────────────────────────────────────
-export const SLIDE_BANDS = [
-  { key: 'up_to_10', label: 'Up to 10 slides', price: 25 },
-  { key: '10_to_20', label: '10–20 slides', price: 45 },
-  { key: '20_to_30', label: '20–30 slides', price: 65 },
-  { key: '30_plus', label: '30+ slides', price: 85 },
-] as const
+export const PRICE_PER_SLIDE = 2.5
 
-export type SlideBandKey = (typeof SLIDE_BANDS)[number]['key']
+export function calcPresentationPrice(slideCount: number): number {
+  if (!slideCount || slideCount <= 0) return 0
+  return slideCount * PRICE_PER_SLIDE
+}
 
-export function getSlideBandPrice(key: string): number {
-  return SLIDE_BANDS.find((b) => b.key === key)?.price ?? 0
+export function presentationLabel(slideCount: number): string {
+  if (!slideCount || slideCount <= 0) return ''
+  return `${slideCount} slide${slideCount !== 1 ? 's' : ''} × £${PRICE_PER_SLIDE.toFixed(2)}`
 }
 
 // ── Practical pricing ─────────────────────────────────────────────────────
