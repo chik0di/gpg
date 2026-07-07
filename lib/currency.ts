@@ -172,30 +172,49 @@ export function getCurrencyForCountry(country: string): string {
 }
 
 // Fetch live GBP → target currency rate.
-// Uses fawazahmed0 CDN API (free, unlimited, 170+ currencies) with a fallback mirror.
+// Uses our server-side API proxy to avoid CORS issues in production.
 export async function fetchGBPRate(currency: string): Promise<number> {
   if (currency === 'GBP') return 1
 
-  const endpoints = [
-    'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/gbp.json',
-    'https://latest.currency-api.pages.dev/v1/currencies/gbp.json',
-  ]
-
   const key = currency.toLowerCase()
 
-  for (const url of endpoints) {
-    try {
-      const res = await fetch(url)
-      if (!res.ok) continue
-      const data: { date: string; gbp: Record<string, number> } = await res.json()
-      const rate = data.gbp[key]
-      if (rate && rate > 0) return rate
-    } catch {
-      // try next endpoint
-    }
-  }
+  try {
+    // Call our server-side API route which handles the external API calls
+    const res = await fetch('/api/currency/GBP')
 
-  throw new Error(`Could not fetch GBP→${currency} rate`)
+    if (!res.ok) {
+      const errorText = await res.text()
+      console.error('Currency API returned error:', {
+        status: res.status,
+        statusText: res.statusText,
+        body: errorText,
+      })
+      throw new Error(`Currency API failed with status ${res.status}`)
+    }
+
+    const data: { date: string; gbp: Record<string, number> } = await res.json()
+
+    // Validate response structure
+    if (!data || !data.gbp || typeof data.gbp !== 'object') {
+      console.error('Currency API returned invalid format:', data)
+      throw new Error('Invalid response format from currency API')
+    }
+
+    const rate = data.gbp[key]
+
+    if (!rate || rate <= 0) {
+      console.error(`No valid rate found for ${currency}:`, { rate, availableCurrencies: Object.keys(data.gbp).slice(0, 10) })
+      throw new Error(`No rate found for ${currency}`)
+    }
+
+    return rate
+  } catch (err) {
+    console.error(`Failed to fetch GBP→${currency} rate:`, {
+      error: err instanceof Error ? err.message : String(err),
+      currency,
+    })
+    throw err
+  }
 }
 
 // Human-readable name for a currency code: "US Dollar", "Nigerian Naira", etc.
