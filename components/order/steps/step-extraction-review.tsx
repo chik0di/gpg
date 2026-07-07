@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { SUBJECT_GROUPS, ACADEMIC_LEVELS, PRACTICAL_ITEMS } from '@/lib/pricing'
+import { mapAcademicLevel } from '@/lib/academic-level-mapping'
 import type { Deliverable } from '@/types/order-form'
 
 const COUNTRIES = [
@@ -32,9 +33,11 @@ interface ExtractionResult {
 
 interface Props {
   extraction: ExtractionResult
+  extractionFailed?: boolean
   onConfirm: (confirmedData: {
     subjectField: string
     academicLevel: string
+    academicLevelRaw: string | null
     deadline: string
     country: string
     deliverables: Deliverable[]
@@ -64,23 +67,27 @@ function formatPrice(gbp: number, currency: string, rate: number): string {
 
 export default function StepExtractionReview({
   extraction,
+  extractionFailed = false,
   onConfirm,
   onBack,
   selectedCurrency = 'GBP',
   exchangeRate = 1,
   onCurrencyChange,
 }: Props) {
+  // Map academic level to pricing tier
+  const { tier: mappedAcademicLevel, rawTerm: academicLevelRaw } = mapAcademicLevel(extraction.academic_level)
+
   const [subjectField, setSubjectField] = useState(extraction.subject_field || '')
-  const [academicLevel, setAcademicLevel] = useState(extraction.academic_level || '')
+  const [academicLevel, setAcademicLevel] = useState(mappedAcademicLevel)
   const [deadline, setDeadline] = useState(extraction.deadline || '')
   const [country, setCountry] = useState('United Kingdom')
   const [instructions, setInstructions] = useState('')
   const [deliverables, setDeliverables] = useState<ExtractedDeliverable[]>(extraction.deliverables)
 
-  // Edit mode states
-  const [editingSubject, setEditingSubject] = useState(!extraction.subject_field)
-  const [editingLevel, setEditingLevel] = useState(!extraction.academic_level)
-  const [editingDeadline, setEditingDeadline] = useState(!extraction.deadline)
+  // Subject and level are NOT editable if extracted (shown as plain text)
+  // Deadline is ALWAYS editable
+  const subjectExtracted = !!extraction.subject_field
+  const levelExtracted = !!extraction.academic_level
 
   // Add deliverable modal state
   const [showAddDeliverable, setShowAddDeliverable] = useState(false)
@@ -155,31 +162,41 @@ export default function StepExtractionReview({
   }
 
   function handleConfirm() {
+    // Import pricing functions
+    const { calcWrittenPrice, calcPresentationPrice } = require('@/lib/pricing')
+
     // Convert extracted deliverables to order form deliverable format
     const formDeliverables: Deliverable[] = deliverables.map((d) => {
       const id = Math.random().toString(36).slice(2)
 
       if (d.type === 'written') {
-        const quantity = d.quantity_type === 'words' && d.quantity
-          ? Math.ceil(d.quantity / 275) // Convert words to pages
+        const pages = d.quantity_type === 'words' && d.quantity
+          ? Math.ceil(d.quantity / 275) // Convert words to pages using ceiling
           : d.quantity || 0
+
+        // Recalculate price using our tiered pricing to ensure accuracy
+        const recalculatedPrice = calcWrittenPrice(pages)
 
         return {
           id,
           type: 'written',
           sizeMode: 'pages' as const,
-          quantity,
+          quantity: pages,
           slideBand: '',
           slideInputMode: 'exact' as const,
           slideCount: 0,
           slideMin: 0,
           slideMax: 0,
           practicalKey: '',
-          basePrice: d.price_gbp,
+          basePrice: recalculatedPrice, // Use recalculated price
+          aiDescription: d.description,
         }
       }
 
       if (d.type === 'presentation') {
+        const slideCount = d.quantity || 0
+        const recalculatedPrice = calcPresentationPrice(slideCount)
+
         return {
           id,
           type: 'presentation',
@@ -187,11 +204,12 @@ export default function StepExtractionReview({
           quantity: 0,
           slideBand: '',
           slideInputMode: 'exact' as const,
-          slideCount: d.quantity || 0,
+          slideCount,
           slideMin: 0,
           slideMax: 0,
           practicalKey: '',
-          basePrice: d.price_gbp,
+          basePrice: recalculatedPrice,
+          aiDescription: d.description,
         }
       }
 
@@ -213,12 +231,15 @@ export default function StepExtractionReview({
         slideMax: 0,
         practicalKey,
         basePrice: d.price_gbp, // Use the price from AI extraction
+        // Store AI description for display
+        aiDescription: d.description,
       }
     })
 
     onConfirm({
       subjectField,
       academicLevel,
+      academicLevelRaw,
       deadline,
       country,
       deliverables: formDeliverables,
@@ -268,12 +289,15 @@ export default function StepExtractionReview({
           <label className="block text-sm font-semibold text-[#1B2E4B] mb-1.5">
             Subject / Field
           </label>
-          {editingSubject ? (
+          {subjectExtracted ? (
+            <div className="px-4 py-3 border border-[#E8E2D9] rounded-xl bg-[#FDFAF6]">
+              <span className="text-sm text-[#1B2E4B] font-medium">{subjectField}</span>
+            </div>
+          ) : (
             <select
               value={subjectField}
               onChange={(e) => setSubjectField(e.target.value)}
               className={selectClass}
-              autoFocus
             >
               <option value="">Select your subject…</option>
               {SUBJECT_GROUPS.map(({ group, subjects }) => (
@@ -284,17 +308,6 @@ export default function StepExtractionReview({
                 </optgroup>
               ))}
             </select>
-          ) : (
-            <div className="flex items-center justify-between px-4 py-3 border border-[#E8E2D9] rounded-xl bg-[#FDFAF6]">
-              <span className="text-sm text-[#1B2E4B] font-medium">{subjectField}</span>
-              <button
-                type="button"
-                onClick={() => setEditingSubject(true)}
-                className="text-xs font-semibold text-[#E8A020] hover:text-[#C4861A] underline underline-offset-2 transition-colors"
-              >
-                edit
-              </button>
-            </div>
           )}
         </div>
 
@@ -303,60 +316,38 @@ export default function StepExtractionReview({
           <label className="block text-sm font-semibold text-[#1B2E4B] mb-1.5">
             Academic Level
           </label>
-          {editingLevel ? (
+          {levelExtracted ? (
+            <div className="px-4 py-3 border border-[#E8E2D9] rounded-xl bg-[#FDFAF6]">
+              <span className="text-sm text-[#1B2E4B] font-medium">
+                {academicLevelRaw || academicLevel}
+              </span>
+            </div>
+          ) : (
             <select
               value={academicLevel}
-              onChange={(e) => setAcademicLevel(e.target.value)}
+              onChange={(e) => setAcademicLevel(e.target.value as any)}
               className={selectClass}
-              autoFocus
             >
               <option value="">Select level...</option>
               {ACADEMIC_LEVELS.map(({ label }) => (
                 <option key={label} value={label}>{label}</option>
               ))}
             </select>
-          ) : (
-            <div className="flex items-center justify-between px-4 py-3 border border-[#E8E2D9] rounded-xl bg-[#FDFAF6]">
-              <span className="text-sm text-[#1B2E4B] font-medium">{academicLevel}</span>
-              <button
-                type="button"
-                onClick={() => setEditingLevel(true)}
-                className="text-xs font-semibold text-[#E8A020] hover:text-[#C4861A] underline underline-offset-2 transition-colors"
-              >
-                edit
-              </button>
-            </div>
           )}
         </div>
 
-        {/* Deadline */}
+        {/* Deadline - ALWAYS editable */}
         <div>
           <label className="block text-sm font-semibold text-[#1B2E4B] mb-1.5">
             Deadline
           </label>
-          {editingDeadline ? (
-            <input
-              type="date"
-              min={getMinDate()}
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              className={selectClass}
-              autoFocus
-            />
-          ) : (
-            <div className="flex items-center justify-between px-4 py-3 border border-[#E8E2D9] rounded-xl bg-[#FDFAF6]">
-              <span className="text-sm text-[#1B2E4B] font-medium">
-                {deadline ? new Date(deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Not set'}
-              </span>
-              <button
-                type="button"
-                onClick={() => setEditingDeadline(true)}
-                className="text-xs font-semibold text-[#E8A020] hover:text-[#C4861A] underline underline-offset-2 transition-colors"
-              >
-                edit
-              </button>
-            </div>
-          )}
+          <input
+            type="date"
+            min={getMinDate()}
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            className={selectClass}
+          />
         </div>
 
         {/* Country */}
@@ -380,12 +371,31 @@ export default function StepExtractionReview({
       <div className="space-y-4">
         <h3 className="text-base font-semibold text-[#1B2E4B]">Deliverables</h3>
 
-        {deliverables.length === 0 ? (
-          <div className="p-6 bg-amber-50 border border-amber-200 rounded-xl text-center">
-            <p className="text-sm text-amber-800">
-              No deliverables found. Add your deliverables manually below.
-            </p>
+        {/* Extraction failed message */}
+        {extractionFailed && deliverables.length === 0 && (
+          <div className="p-5 bg-blue-50 border border-blue-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <p className="text-sm font-semibold text-blue-900">We couldn't automatically detect your deliverables</p>
+                <p className="text-sm text-blue-800 mt-1">
+                  Please add them manually below using the form. Your brief has been saved and will be sent with your order.
+                </p>
+              </div>
+            </div>
           </div>
+        )}
+
+        {deliverables.length === 0 ? (
+          !extractionFailed && (
+            <div className="p-6 bg-amber-50 border border-amber-200 rounded-xl text-center">
+              <p className="text-sm text-amber-800">
+                No deliverables found. Add your deliverables manually below.
+              </p>
+            </div>
+          )
         ) : (
           <div className="space-y-3">
             {deliverables.map((d, idx) => (

@@ -84,7 +84,8 @@ export default function OrderForm() {
   const [sessionId, setSessionId] = useState<string>('')
   const [usedAIExtraction, setUsedAIExtraction] = useState(false)
   const [extracting, setExtracting] = useState(false)
-  const [extractionError, setExtractionError] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null) // Scenario A: upload failed
+  const [extractionFailed, setExtractionFailed] = useState(false) // Scenario B: extraction returned nothing
   const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null)
   const [briefTempPath, setBriefTempPath] = useState<string | null>(null)
   const router = useRouter()
@@ -116,7 +117,8 @@ export default function OrderForm() {
 
   async function handleBriefUpload(briefFile: File) {
     setExtracting(true)
-    setExtractionError(null)
+    setUploadError(null)
+    setExtractionFailed(false)
 
     try {
       const formData = new FormData()
@@ -131,12 +133,42 @@ export default function OrderForm() {
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to extract brief information')
+        // Check error code to distinguish scenarios
+        if (result.code === 'NO_FILE' || result.code === 'INVALID_FILE_TYPE' ||
+            result.code === 'FILE_TOO_LARGE' || result.code === 'STORAGE_ERROR') {
+          // SCENARIO A: File upload failed
+          setUploadError(result.error || 'Failed to upload file')
+          setExtracting(false)
+          return
+        }
+
+        if (result.code === 'NO_DELIVERABLES' || result.code === 'EXTRACTION_ERROR' || result.code === 'EXTRACTION_FAILED') {
+          // SCENARIO B: Upload OK but extraction failed - proceed to review with manual entry
+          setExtractionResult({
+            subject_field: null,
+            academic_level: null,
+            deadline: null,
+            deliverables: [],
+            additional_notes: null,
+          })
+          setBriefTempPath(result.tempFilePath || null)
+          setUsedAIExtraction(true)
+          setExtractionFailed(true)
+          setExtracting(false)
+          setStep(1)
+          scrollTop()
+          return
+        }
+
+        // Unknown error - treat as upload failure
+        throw new Error(result.error || 'Failed to process brief')
       }
 
+      // Success - extraction returned data
       setExtractionResult(result.extraction)
       setBriefTempPath(result.tempFilePath)
       setUsedAIExtraction(true)
+      setExtractionFailed(false)
       setExtracting(false)
 
       // Advance to review step
@@ -144,23 +176,22 @@ export default function OrderForm() {
       scrollTop()
     } catch (error) {
       console.error('Brief extraction error:', error)
-      setExtractionError(
-        error instanceof Error ? error.message : 'Failed to extract brief information'
+      setUploadError(
+        error instanceof Error ? error.message : 'Failed to upload file. Please try again.'
       )
       setExtracting(false)
     }
   }
 
-  function handleSkipAI() {
-    // Skip AI flow, use manual path starting at Basic Info
-    setUsedAIExtraction(false)
-    setStep(0) // Step 0 in manual path is Basic Info
-    scrollTop()
+  function handleRetryUpload() {
+    setUploadError(null)
+    setExtractionFailed(false)
   }
 
   function handleExtractionConfirm(confirmedData: {
     subjectField: string
     academicLevel: string
+    academicLevelRaw: string | null
     deadline: string
     country: string
     deliverables: Deliverable[]
@@ -177,9 +208,12 @@ export default function OrderForm() {
       instructions: confirmedData.instructions,
     }))
 
-    // Store brief temp path for later file move
+    // Store brief temp path and academic level raw for later
     if (briefTempPath) {
       sessionStorage.setItem('gpg_brief_temp_path', briefTempPath)
+    }
+    if (confirmedData.academicLevelRaw) {
+      sessionStorage.setItem('gpg_academic_level_raw', confirmedData.academicLevelRaw)
     }
 
     // AI path: go directly to Summary (step 2 in AI flow)
@@ -211,9 +245,13 @@ export default function OrderForm() {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
+    // Get academic_level_raw from sessionStorage if it was set
+    const academicLevelRaw = sessionStorage.getItem('gpg_academic_level_raw')
+
     // Prepare order data
     const orderData = {
       ...formData,
+      academicLevelRaw: academicLevelRaw || null,
       fileName: file?.name ?? null,
       fileSize: file?.size ?? null,
       usedAIExtraction,
@@ -294,9 +332,10 @@ export default function OrderForm() {
             {step === 0 && (
               <StepUploadBrief
                 onFileSelect={handleBriefUpload}
-                onSkip={handleSkipAI}
                 loading={extracting}
-                error={extractionError}
+                uploadError={uploadError}
+                extractionFailed={extractionFailed}
+                onRetry={handleRetryUpload}
               />
             )}
 
@@ -304,6 +343,7 @@ export default function OrderForm() {
             {step === 1 && extractionResult && (
               <StepExtractionReview
                 extraction={extractionResult}
+                extractionFailed={extractionFailed}
                 onConfirm={handleExtractionConfirm}
                 onBack={back}
                 selectedCurrency={formData.selectedCurrency}

@@ -19,6 +19,7 @@ import type { Deliverable } from '@/types/order-form'
 interface OrderData {
   subjectField: string
   academicLevel: string
+  academicLevelRaw?: string | null
   deadline: string
   country?: string
   deliverables: Deliverable[]
@@ -201,6 +202,7 @@ export async function POST(request: Request) {
         status:                    'pending',
         total_amount:              total,
         academic_level:            orderData.academicLevel,
+        academic_level_raw:        orderData.academicLevelRaw || null,
         subject_field:             orderData.subjectField,
         deadline:                  orderData.deadline,
         country:                   orderData.country || 'United Kingdom',

@@ -17,6 +17,8 @@ export interface Deliverable {
   practicalKey: string  // PracticalKey
   // Computed base price (before academic/deadline multipliers)
   basePrice: number
+  // AI extraction metadata
+  aiDescription?: string  // Claude's description for this deliverable
 }
 
 export interface OrderFormState {

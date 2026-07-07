@@ -27,7 +27,7 @@ const USER_PROMPT_TEMPLATE = `Analyse this assignment brief and extract the foll
       "quantity": number or null (word count for written, slide count for presentation, null for technical),
       "quantity_type": "words" or "pages" or "slides" or null,
       "complexity": "simple" or "moderate" or "complex" or "expert" or null (for technical only — assess based on what is described),
-      "price_gbp": number (calculate the price: for written use £5 per page where 275 words = 1 page, for presentation use £2.50 per slide, for technical use: simple=£40, moderate=£65, complex=£95, expert=£130),
+      "price_gbp": number (calculate the price: for written use £5 per page where 275 words = 1 page rounded UP to nearest page using ceiling division, for presentation use £2.50 per slide, for technical use: simple=£40, moderate=£65, complex=£95, expert=£130),
       "confidence": "high" or "medium" or "low" (how confident you are in this deliverable extraction)
     }
   ],

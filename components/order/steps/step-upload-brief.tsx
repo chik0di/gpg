@@ -7,9 +7,10 @@ const MAX_MB = 20
 
 interface Props {
   onFileSelect: (file: File) => void
-  onSkip: () => void
   loading: boolean
-  error: string | null
+  uploadError: string | null // File upload failed
+  extractionFailed: boolean // File uploaded but extraction returned nothing
+  onRetry: () => void
 }
 
 function formatBytes(bytes: number) {
@@ -20,9 +21,10 @@ function formatBytes(bytes: number) {
 
 export default function StepUploadBrief({
   onFileSelect,
-  onSkip,
   loading,
-  error,
+  uploadError,
+  extractionFailed,
+  onRetry,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
@@ -56,6 +58,11 @@ export default function StepUploadBrief({
     handleFiles(e.dataTransfer.files)
   }
 
+  function handleRetry() {
+    setSelectedFile(null)
+    onRetry()
+  }
+
   return (
     <div className="space-y-7">
       <div>
@@ -81,21 +88,21 @@ export default function StepUploadBrief({
         </div>
       )}
 
-      {/* Error state */}
-      {error && (
+      {/* SCENARIO A: Upload error - show error and retry button */}
+      {uploadError && (
         <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
           <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
           </svg>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-red-800">Could not extract information</p>
-            <p className="text-sm text-red-700 mt-1">{error}</p>
+            <p className="text-sm font-semibold text-red-800">Upload failed</p>
+            <p className="text-sm text-red-700 mt-1">{uploadError}</p>
             <button
               type="button"
-              onClick={onSkip}
-              className="mt-3 text-sm font-semibold text-red-700 hover:text-red-800 underline underline-offset-2 transition-colors"
+              onClick={handleRetry}
+              className="mt-3 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
             >
-              Continue with manual entry instead
+              Try again
             </button>
           </div>
         </div>
@@ -187,15 +194,19 @@ export default function StepUploadBrief({
             </p>
           </div>
 
-          {/* Skip option */}
+          {/* Help text */}
           <div className="flex items-center justify-center pt-4 border-t border-[#E8E2D9]">
-            <button
-              type="button"
-              onClick={onSkip}
-              className="text-sm font-semibold text-[#6B7280] hover:text-[#1B2E4B] underline underline-offset-2 transition-colors"
-            >
-              Skip — I'll fill this in manually
-            </button>
+            <p className="text-xs text-[#9CA3AF]">
+              Don't have a brief?{' '}
+              <a
+                href="https://wa.me/447880213838"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-[#6B7280] hover:text-[#1B2E4B] underline underline-offset-2 transition-colors"
+              >
+                Contact us on WhatsApp
+              </a>
+            </p>
           </div>
         </>
       )}

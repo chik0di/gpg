@@ -29,6 +29,11 @@ interface Props {
 }
 
 function deliverableLabel(d: Deliverable): string {
+  // For AI-extracted deliverables, use the AI description if available
+  if (d.aiDescription) {
+    return d.aiDescription
+  }
+
   if (d.type === 'written') {
     const pages = d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE)
     return `Written — ${pages} page${pages !== 1 ? 's' : ''} (${d.sizeMode === 'words' ? `${d.quantity} words` : `${pages * WORDS_PER_PAGE} words`})`
