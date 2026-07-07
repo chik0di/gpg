@@ -24,6 +24,8 @@ interface OrderData {
   instructions: string
   includeOriginalityReport: boolean
   fileName?: string | null
+  usedAIExtraction?: boolean
+  briefTempPath?: string | null
 }
 
 function deliverableBasePrice(d: Deliverable): number {
@@ -231,6 +233,7 @@ export async function POST(request: Request) {
         subtype,
         size_band,
         price:     deliverableBasePrice(d),
+        extracted_by_ai: orderData.usedAIExtraction || false,
       }
     })
 
@@ -299,6 +302,85 @@ export async function POST(request: Request) {
       } catch (err) {
         console.error('[orders/create] file upload error:', err)
         // Non-fatal — order is created, admin can obtain file manually if needed
+      }
+    }
+
+    // 7b. If this order used AI extraction, move the brief file from temp storage
+    if (orderData.usedAIExtraction && orderData.briefTempPath) {
+      try {
+        console.log('[orders/create] Moving brief from temp storage:', orderData.briefTempPath)
+
+        // Download from temp location
+        const { data: tempFile, error: downloadErr } = await supabaseAdmin.storage
+          .from('order-files')
+          .download(orderData.briefTempPath)
+
+        if (downloadErr || !tempFile) {
+          console.error('[orders/create] Failed to download brief from temp:', downloadErr)
+        } else {
+          // Extract original filename and extension
+          const tempFilename = orderData.briefTempPath.split('/').pop() || ''
+          const sessionPrefix = tempFilename.split('_')[0] // Remove session ID prefix
+          const originalName = tempFilename.substring(sessionPrefix.length + 1) // Skip "sessionID_"
+          const dotIndex = originalName.lastIndexOf('.')
+          const ext = dotIndex !== -1 ? originalName.slice(dotIndex).toLowerCase() : '.pdf'
+
+          // Get meaningful name parts
+          const [firstName, lastName] = await getUserNameForFilename(user.id, user.email ?? '')
+
+          // Build brief filename: SubjectField_FirstName_LastName_OrderID_brief.ext
+          const nameParts = [
+            seg(orderData.subjectField),
+            seg(firstName),
+          ]
+          if (lastName) {
+            nameParts.push(seg(lastName))
+          }
+          nameParts.push(order.id, 'brief')
+
+          const briefFilename = nameParts.join('_') + ext
+          const briefPath = `assignments/${briefFilename}`
+
+          // Upload to permanent location
+          const bytes = await tempFile.arrayBuffer()
+          const { error: uploadErr } = await supabaseAdmin.storage
+            .from('order-files')
+            .upload(briefPath, Buffer.from(bytes), {
+              contentType: tempFile.type || 'application/pdf',
+              upsert: false,
+            })
+
+          if (uploadErr) {
+            console.error('[orders/create] Failed to upload brief to permanent location:', uploadErr)
+          } else {
+            // Record in order_files table
+            const { error: fileErr } = await supabaseAdmin
+              .from('order_files')
+              .insert({
+                order_id: order.id,
+                file_url: briefPath,
+                file_type: 'brief',
+              })
+
+            if (fileErr) {
+              console.error('[orders/create] Failed to record brief in order_files:', fileErr)
+            }
+
+            // Delete temp file
+            const { error: deleteErr } = await supabaseAdmin.storage
+              .from('order-files')
+              .remove([orderData.briefTempPath])
+
+            if (deleteErr) {
+              console.error('[orders/create] Failed to delete temp brief:', deleteErr)
+            } else {
+              console.log('[orders/create] Successfully moved brief from temp to:', briefPath)
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[orders/create] Brief file move error:', err)
+        // Non-fatal — order is created, brief is still in temp location
       }
     }
 

@@ -31,6 +31,8 @@ interface Props {
     additionalNotes: string
   }) => void
   onBack: () => void
+  selectedCurrency?: string
+  exchangeRate?: number
 }
 
 function formatPrice(gbp: number, currency: string, rate: number): string {
@@ -49,7 +51,13 @@ function formatPrice(gbp: number, currency: string, rate: number): string {
   }
 }
 
-export default function StepExtractionReview({ extraction, onConfirm, onBack }: Props) {
+export default function StepExtractionReview({
+  extraction,
+  onConfirm,
+  onBack,
+  selectedCurrency = 'GBP',
+  exchangeRate = 1,
+}: Props) {
   const [subjectField, setSubjectField] = useState(extraction.subject_field || '')
   const [academicLevel, setAcademicLevel] = useState(extraction.academic_level || '')
   const [deadline, setDeadline] = useState(extraction.deadline || '')
@@ -229,7 +237,7 @@ export default function StepExtractionReview({ extraction, onConfirm, onBack }: 
                   <div className="flex items-center gap-3">
                     <div className="text-right">
                       <p className="text-base font-bold text-[#1B2E4B]">
-                        {formatPrice(d.price_gbp, 'GBP', 1)}
+                        {formatPrice(d.price_gbp, selectedCurrency, exchangeRate)}
                       </p>
                       <p className="text-xs text-[#9CA3AF]">base price</p>
                     </div>

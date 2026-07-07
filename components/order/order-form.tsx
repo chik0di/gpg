@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import StepIndicator from './step-indicator'
+import StepUploadBrief from './steps/step-upload-brief'
+import StepExtractionReview from './steps/step-extraction-review'
 import StepBasicInfo from './steps/step-basic-info'
 import StepDeliverables from './steps/step-deliverables'
 import StepUpload from './steps/step-upload'
@@ -11,7 +13,23 @@ import { INITIAL_FORM_STATE, type OrderFormState, type Deliverable } from '@/typ
 import { daysUntil } from '@/lib/pricing'
 import { createClient } from '@/lib/supabase/client'
 
-const STEPS = ['Basic Info', 'Deliverables', 'Upload', 'Summary']
+const STEPS = ['Upload Brief', 'Review', 'Basic Info', 'Instructions', 'Summary']
+
+interface ExtractionResult {
+  subject_field: string | null
+  academic_level: 'A-Level / College' | 'Undergraduate' | 'Masters' | null
+  deadline: string | null
+  deliverables: Array<{
+    type: 'written' | 'presentation' | 'technical'
+    description: string
+    quantity: number | null
+    quantity_type: 'words' | 'pages' | 'slides' | null
+    complexity: 'simple' | 'moderate' | 'complex' | 'expert' | null
+    price_gbp: number
+    confidence: 'high' | 'medium' | 'low'
+  }>
+  additional_notes: string | null
+}
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -22,10 +40,19 @@ function fileToBase64(file: File): Promise<string> {
   })
 }
 
-function validateStep(step: number, data: OrderFormState, file: File | null): Record<string, string> {
+function validateStep(
+  step: number,
+  data: OrderFormState,
+  file: File | null,
+  usedAIExtraction: boolean
+): Record<string, string> {
   const err: Record<string, string> = {}
 
-  if (step === 0) {
+  // Step 0: Upload Brief - no validation needed (handled in component)
+  // Step 1: Extraction Review - no validation needed (handled in component)
+
+  // Step 2: Basic Info
+  if (step === 2) {
     if (!data.subjectField) err.subjectField = 'Please select a subject.'
     if (!data.academicLevel) err.academicLevel = 'Please select your academic level.'
     if (!data.deadline) {
@@ -35,36 +62,12 @@ function validateStep(step: number, data: OrderFormState, file: File | null): Re
     }
   }
 
-  if (step === 1) {
-    if (data.deliverables.length === 0) {
-      err.deliverables = 'Add at least one deliverable.'
-    }
-    data.deliverables.forEach((d) => {
-      if (!d.type) {
-        err[`deliverable_${d.id}`] = 'Please select a type.'
-      } else if (d.type === 'written' && (!d.quantity || d.quantity <= 0)) {
-        err[`deliverable_${d.id}`] = 'Please enter a page or word count.'
-      } else if (d.type === 'presentation') {
-        if (d.slideInputMode === 'exact') {
-          if (!d.slideCount || d.slideCount <= 0) {
-            err[`deliverable_${d.id}`] = 'Please enter slide count.'
-          }
-        } else {
-          if (!d.slideMin || d.slideMin <= 0 || !d.slideMax || d.slideMax <= 0) {
-            err[`deliverable_${d.id}`] = 'Please enter both min and max slide counts.'
-          } else if (d.slideMax <= d.slideMin) {
-            err[`deliverable_${d.id}`] = 'Maximum slides must be greater than minimum.'
-          }
-        }
-      } else if (d.type === 'practical' && !d.practicalKey) {
-        err[`deliverable_${d.id}`] = 'Please select a category.'
-      }
-    })
-  }
-
-  if (step === 2) {
+  // Step 3: Instructions (Upload) - file is required
+  if (step === 3) {
     if (!file) err.file = 'Please upload your assignment document.'
   }
+
+  // Step 4: Summary - no validation needed
 
   return err
 }
@@ -75,8 +78,22 @@ export default function OrderForm() {
   const [formData, setFormData]   = useState<OrderFormState>(INITIAL_FORM_STATE)
   const [file, setFile]           = useState<File | null>(null)
   const [proceeding, setProceeding] = useState(false)
+  const [sessionId, setSessionId] = useState<string>('')
+  const [usedAIExtraction, setUsedAIExtraction] = useState(false)
+  const [extracting, setExtracting] = useState(false)
+  const [extractionError, setExtractionError] = useState<string | null>(null)
+  const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null)
+  const [briefTempPath, setBriefTempPath] = useState<string | null>(null)
   const router = useRouter()
   const topRef = useRef<HTMLDivElement>(null)
+
+  // Generate session ID on mount
+  useEffect(() => {
+    const id = crypto.randomUUID()
+    setSessionId(id)
+    // Store in sessionStorage for access during order creation
+    sessionStorage.setItem('gpg_brief_session_id', id)
+  }, [])
 
   function scrollTop() {
     topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -94,8 +111,79 @@ export default function OrderForm() {
     setFormData((prev) => ({ ...prev, selectedCurrency, exchangeRate }))
   }
 
+  async function handleBriefUpload(briefFile: File) {
+    setExtracting(true)
+    setExtractionError(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', briefFile)
+      formData.append('sessionId', sessionId)
+
+      const response = await fetch('/api/extract-brief', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to extract brief information')
+      }
+
+      setExtractionResult(result.extraction)
+      setBriefTempPath(result.tempFilePath)
+      setUsedAIExtraction(true)
+      setExtracting(false)
+
+      // Advance to review step
+      setStep(1)
+      scrollTop()
+    } catch (error) {
+      console.error('Brief extraction error:', error)
+      setExtractionError(
+        error instanceof Error ? error.message : 'Failed to extract brief information'
+      )
+      setExtracting(false)
+    }
+  }
+
+  function handleSkipAI() {
+    // Skip to Basic Info step (step 2)
+    setUsedAIExtraction(false)
+    setStep(2)
+    scrollTop()
+  }
+
+  function handleExtractionConfirm(confirmedData: {
+    subjectField: string
+    academicLevel: string
+    deadline: string
+    deliverables: Deliverable[]
+    additionalNotes: string
+  }) {
+    // Populate form data with confirmed extraction
+    setFormData((prev) => ({
+      ...prev,
+      subjectField: confirmedData.subjectField,
+      academicLevel: confirmedData.academicLevel,
+      deadline: confirmedData.deadline,
+      deliverables: confirmedData.deliverables,
+      instructions: confirmedData.additionalNotes,
+    }))
+
+    // Store brief temp path for later file move
+    if (briefTempPath) {
+      sessionStorage.setItem('gpg_brief_temp_path', briefTempPath)
+    }
+
+    // Advance to Basic Info step (now pre-filled, but user can edit)
+    setStep(2)
+    scrollTop()
+  }
+
   function advance() {
-    const err = validateStep(step, formData, file)
+    const err = validateStep(step, formData, file, usedAIExtraction)
     if (Object.keys(err).length > 0) {
       setErrors(err)
       return
@@ -123,6 +211,8 @@ export default function OrderForm() {
       ...formData,
       fileName: file?.name ?? null,
       fileSize: file?.size ?? null,
+      usedAIExtraction,
+      briefTempPath: briefTempPath || null,
     }
 
     let fileDataBase64: string | null = null
@@ -187,7 +277,29 @@ export default function OrderForm() {
       >
         <StepIndicator steps={STEPS} current={step} />
 
+        {/* Step 0: Upload Brief */}
         {step === 0 && (
+          <StepUploadBrief
+            onFileSelect={handleBriefUpload}
+            onSkip={handleSkipAI}
+            loading={extracting}
+            error={extractionError}
+          />
+        )}
+
+        {/* Step 1: Extraction Review */}
+        {step === 1 && extractionResult && (
+          <StepExtractionReview
+            extraction={extractionResult}
+            onConfirm={handleExtractionConfirm}
+            onBack={back}
+            selectedCurrency={formData.selectedCurrency}
+            exchangeRate={formData.exchangeRate}
+          />
+        )}
+
+        {/* Step 2: Basic Info */}
+        {step === 2 && (
           <StepBasicInfo
             data={formData}
             errors={errors}
@@ -196,17 +308,8 @@ export default function OrderForm() {
           />
         )}
 
-        {step === 1 && (
-          <StepDeliverables
-            deliverables={formData.deliverables}
-            errors={errors}
-            onChange={updateDeliverables}
-            selectedCurrency={formData.selectedCurrency}
-            exchangeRate={formData.exchangeRate}
-          />
-        )}
-
-        {step === 2 && (
+        {/* Step 3: Instructions (Upload assignment file) */}
+        {step === 3 && (
           <StepUpload
             file={file}
             instructions={formData.instructions}
@@ -216,7 +319,8 @@ export default function OrderForm() {
           />
         )}
 
-        {step === 3 && (
+        {/* Step 4: Summary */}
+        {step === 4 && (
           <StepSummary
             data={formData}
             file={file}
@@ -229,14 +333,13 @@ export default function OrderForm() {
           />
         )}
 
-        {/* Nav buttons (not shown on summary step — it has its own CTA) */}
-        {step < 3 && (
+        {/* Nav buttons (not shown on step 0, 1, or summary step — they have their own CTAs) */}
+        {step >= 2 && step < 4 && (
           <div className="flex items-center justify-between mt-8 pt-6 border-t border-[#E8E2D9]">
             <button
               type="button"
               onClick={back}
-              disabled={step === 0}
-              className="flex items-center gap-1.5 text-sm font-semibold text-[#6B7280] hover:text-[#1B2E4B] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1.5 text-sm font-semibold text-[#6B7280] hover:text-[#1B2E4B] transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
