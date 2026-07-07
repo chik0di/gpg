@@ -47,6 +47,12 @@ function deliverableLabel(d: Deliverable): string {
 }
 
 function deliverableBasePrice(d: Deliverable): number {
+  // If basePrice is already set (from AI extraction or manual premium pricing), use it
+  if (d.basePrice && d.basePrice > 0) {
+    return d.basePrice
+  }
+
+  // Otherwise calculate from deliverable details
   if (d.type === 'written') {
     const pages = d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE)
     return calcWrittenPrice(pages)

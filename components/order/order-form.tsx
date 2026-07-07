@@ -13,7 +13,10 @@ import { INITIAL_FORM_STATE, type OrderFormState, type Deliverable } from '@/typ
 import { daysUntil } from '@/lib/pricing'
 import { createClient } from '@/lib/supabase/client'
 
-const STEPS = ['Upload Brief', 'Review', 'Basic Info', 'Instructions', 'Summary']
+// AI path: Upload Brief → Review → Summary
+// Manual path: Basic Info → Deliverables → Upload & Instructions → Summary
+const AI_STEPS = ['Upload Brief', 'Review', 'Summary']
+const MANUAL_STEPS = ['Basic Info', 'Deliverables', 'Upload & Instructions', 'Summary']
 
 interface ExtractionResult {
   subject_field: string | null
@@ -149,9 +152,9 @@ export default function OrderForm() {
   }
 
   function handleSkipAI() {
-    // Skip to Basic Info step (step 2)
+    // Skip AI flow, use manual path starting at Basic Info
     setUsedAIExtraction(false)
-    setStep(2)
+    setStep(0) // Step 0 in manual path is Basic Info
     scrollTop()
   }
 
@@ -159,8 +162,9 @@ export default function OrderForm() {
     subjectField: string
     academicLevel: string
     deadline: string
+    country: string
     deliverables: Deliverable[]
-    additionalNotes: string
+    instructions: string
   }) {
     // Populate form data with confirmed extraction
     setFormData((prev) => ({
@@ -168,8 +172,9 @@ export default function OrderForm() {
       subjectField: confirmedData.subjectField,
       academicLevel: confirmedData.academicLevel,
       deadline: confirmedData.deadline,
+      country: confirmedData.country,
       deliverables: confirmedData.deliverables,
-      instructions: confirmedData.additionalNotes,
+      instructions: confirmedData.instructions,
     }))
 
     // Store brief temp path for later file move
@@ -177,7 +182,7 @@ export default function OrderForm() {
       sessionStorage.setItem('gpg_brief_temp_path', briefTempPath)
     }
 
-    // Advance to Basic Info step (now pre-filled, but user can edit)
+    // AI path: go directly to Summary (step 2 in AI flow)
     setStep(2)
     scrollTop()
   }
@@ -268,6 +273,11 @@ export default function OrderForm() {
     setProceeding(false)
   }
 
+  // Determine which flow we're in and map steps accordingly
+  const isAIPath = usedAIExtraction || step === 0 || step === 1
+  const steps = isAIPath ? AI_STEPS : MANUAL_STEPS
+  const currentStepIndex = step
+
   return (
     <div ref={topRef}>
       {/* Form card */}
@@ -275,89 +285,126 @@ export default function OrderForm() {
         className="bg-white rounded-3xl border border-[#E8E2D9] p-6 sm:p-8"
         style={{ boxShadow: '0 8px 32px -4px rgba(26,26,46,0.10)' }}
       >
-        <StepIndicator steps={STEPS} current={step} />
+        <StepIndicator steps={steps} current={currentStepIndex} />
 
-        {/* Step 0: Upload Brief */}
-        {step === 0 && (
-          <StepUploadBrief
-            onFileSelect={handleBriefUpload}
-            onSkip={handleSkipAI}
-            loading={extracting}
-            error={extractionError}
-          />
+        {/* AI PATH */}
+        {isAIPath && (
+          <>
+            {/* AI Step 0: Upload Brief */}
+            {step === 0 && (
+              <StepUploadBrief
+                onFileSelect={handleBriefUpload}
+                onSkip={handleSkipAI}
+                loading={extracting}
+                error={extractionError}
+              />
+            )}
+
+            {/* AI Step 1: Extraction Review */}
+            {step === 1 && extractionResult && (
+              <StepExtractionReview
+                extraction={extractionResult}
+                onConfirm={handleExtractionConfirm}
+                onBack={back}
+                selectedCurrency={formData.selectedCurrency}
+                exchangeRate={formData.exchangeRate}
+                onCurrencyChange={handleCurrencyChange}
+              />
+            )}
+
+            {/* AI Step 2: Summary */}
+            {step === 2 && (
+              <StepSummary
+                data={formData}
+                file={null} // No file in AI path - brief was already uploaded
+                proceeding={proceeding}
+                onToggleReport={(val) =>
+                  setFormData((prev) => ({ ...prev, includeOriginalityReport: val }))
+                }
+                onBack={back}
+                onProceed={handleProceed}
+              />
+            )}
+          </>
         )}
 
-        {/* Step 1: Extraction Review */}
-        {step === 1 && extractionResult && (
-          <StepExtractionReview
-            extraction={extractionResult}
-            onConfirm={handleExtractionConfirm}
-            onBack={back}
-            selectedCurrency={formData.selectedCurrency}
-            exchangeRate={formData.exchangeRate}
-          />
-        )}
+        {/* MANUAL PATH */}
+        {!isAIPath && (
+          <>
+            {/* Manual Step 0: Basic Info */}
+            {step === 0 && (
+              <StepBasicInfo
+                data={formData}
+                errors={errors}
+                onChange={updateField}
+                onCurrencyChange={handleCurrencyChange}
+              />
+            )}
 
-        {/* Step 2: Basic Info */}
-        {step === 2 && (
-          <StepBasicInfo
-            data={formData}
-            errors={errors}
-            onChange={updateField}
-            onCurrencyChange={handleCurrencyChange}
-          />
-        )}
+            {/* Manual Step 1: Deliverables */}
+            {step === 1 && (
+              <StepDeliverables
+                deliverables={formData.deliverables}
+                errors={errors}
+                onChange={updateDeliverables}
+                selectedCurrency={formData.selectedCurrency}
+                exchangeRate={formData.exchangeRate}
+              />
+            )}
 
-        {/* Step 3: Instructions (Upload assignment file) */}
-        {step === 3 && (
-          <StepUpload
-            file={file}
-            instructions={formData.instructions}
-            errors={errors}
-            onFileChange={setFile}
-            onInstructionsChange={(val) => updateField('instructions', val)}
-          />
-        )}
+            {/* Manual Step 2: Upload & Instructions */}
+            {step === 2 && (
+              <StepUpload
+                file={file}
+                instructions={formData.instructions}
+                errors={errors}
+                onFileChange={setFile}
+                onInstructionsChange={(val) => updateField('instructions', val)}
+              />
+            )}
 
-        {/* Step 4: Summary */}
-        {step === 4 && (
-          <StepSummary
-            data={formData}
-            file={file}
-            proceeding={proceeding}
-            onToggleReport={(val) =>
-              setFormData((prev) => ({ ...prev, includeOriginalityReport: val }))
-            }
-            onBack={back}
-            onProceed={handleProceed}
-          />
-        )}
+            {/* Manual Step 3: Summary */}
+            {step === 3 && (
+              <StepSummary
+                data={formData}
+                file={file}
+                proceeding={proceeding}
+                onToggleReport={(val) =>
+                  setFormData((prev) => ({ ...prev, includeOriginalityReport: val }))
+                }
+                onBack={back}
+                onProceed={handleProceed}
+              />
+            )}
 
-        {/* Nav buttons (not shown on step 0, 1, or summary step — they have their own CTAs) */}
-        {step >= 2 && step < 4 && (
-          <div className="flex items-center justify-between mt-8 pt-6 border-t border-[#E8E2D9]">
-            <button
-              type="button"
-              onClick={back}
-              className="flex items-center gap-1.5 text-sm font-semibold text-[#6B7280] hover:text-[#1B2E4B] transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-              </svg>
-              Back
-            </button>
+            {/* Nav buttons for manual path (not shown on summary step) */}
+            {step < 3 && (
+              <div className="flex items-center justify-between mt-8 pt-6 border-t border-[#E8E2D9]">
+                <button
+                  type="button"
+                  onClick={back}
+                  disabled={step === 0}
+                  className="flex items-center gap-1.5 text-sm font-semibold text-[#6B7280] hover:text-[#1B2E4B] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                  </svg>
+                  Back
+                </button>
 
-            <button
-              type="button"
-              onClick={advance}
-              className="flex items-center gap-2 bg-[#1B2E4B] hover:bg-[#16253d] text-white font-bold text-sm px-7 py-3 rounded-xl transition-colors"
-            >
-              Continue
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </button>
-          </div>
+                <button
+                  type="button"
+                  onClick={advance}
+                  className="flex items-center gap-2 bg-[#1B2E4B] hover:bg-[#16253d] text-white font-bold text-sm px-7 py-3 rounded-xl transition-colors"
+                >
+                  Continue
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

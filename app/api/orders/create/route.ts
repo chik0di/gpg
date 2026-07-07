@@ -20,6 +20,7 @@ interface OrderData {
   subjectField: string
   academicLevel: string
   deadline: string
+  country?: string
   deliverables: Deliverable[]
   instructions: string
   includeOriginalityReport: boolean
@@ -29,6 +30,12 @@ interface OrderData {
 }
 
 function deliverableBasePrice(d: Deliverable): number {
+  // If basePrice is already set (from AI extraction or manual premium pricing), use it
+  if (d.basePrice && d.basePrice > 0) {
+    return d.basePrice
+  }
+
+  // Otherwise calculate from deliverable details
   if (d.type === 'written') {
     const pages = d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE)
     return calcWrittenPrice(pages)
@@ -196,6 +203,7 @@ export async function POST(request: Request) {
         academic_level:            orderData.academicLevel,
         subject_field:             orderData.subjectField,
         deadline:                  orderData.deadline,
+        country:                   orderData.country || 'United Kingdom',
         additional_instructions:   orderData.instructions || null,
         originality_report:        orderData.includeOriginalityReport,
         stripe_payment_intent_id:  paymentIntentId,
