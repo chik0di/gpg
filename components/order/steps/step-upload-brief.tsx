@@ -2,8 +2,21 @@
 
 import { useRef, useState } from 'react'
 
-const ACCEPTED = '.pdf,.doc,.docx'
+const ACCEPTED = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.webp'
 const MAX_MB = 20
+
+// Helper to check if file is an image
+function isImageFile(fileName: string): boolean {
+  const lower = fileName.toLowerCase()
+  return lower.endsWith('.jpg') || lower.endsWith('.jpeg') ||
+         lower.endsWith('.png') || lower.endsWith('.webp')
+}
+
+// Helper to check if file is a document
+function isDocumentFile(fileName: string): boolean {
+  const lower = fileName.toLowerCase()
+  return lower.endsWith('.pdf') || lower.endsWith('.doc') || lower.endsWith('.docx')
+}
 
 interface Props {
   onFileSelect: (file: File) => void
@@ -34,11 +47,11 @@ export default function StepUploadBrief({
     if (!files || files.length === 0) return
 
     const f = files[0]
-    const fileName = f.name.toLowerCase()
+    const fileName = f.name
 
     // Validate file type
-    if (!fileName.endsWith('.pdf') && !fileName.endsWith('.doc') && !fileName.endsWith('.docx')) {
-      alert('Please upload a PDF or Word document (.pdf, .doc, .docx)')
+    if (!isDocumentFile(fileName) && !isImageFile(fileName)) {
+      alert('Please upload a PDF, Word document, or image file (.pdf, .doc, .docx, .jpg, .png, .webp)')
       return
     }
 
@@ -143,7 +156,7 @@ export default function StepUploadBrief({
                     <span className="text-[#E8A020]">browse</span>
                   </p>
                   <p className="text-xs text-[#9CA3AF] mt-1">
-                    PDF or Word document — max {MAX_MB} MB
+                    PDF, Word, or image files (JPG, PNG) — max {MAX_MB} MB
                   </p>
                 </div>
                 <input

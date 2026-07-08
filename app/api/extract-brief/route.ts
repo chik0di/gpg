@@ -75,16 +75,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate file type
+    // Validate file type - accept PDF, Word, and images
     const fileName = file.name.toLowerCase()
-    const isValidType = fileName.endsWith('.pdf') ||
-                       fileName.endsWith('.doc') ||
-                       fileName.endsWith('.docx')
+    const mimeType = file.type.toLowerCase()
 
-    if (!isValidType) {
+    const isPDF = fileName.endsWith('.pdf') || mimeType === 'application/pdf'
+    const isWord = fileName.endsWith('.doc') || fileName.endsWith('.docx') ||
+                   mimeType === 'application/msword' ||
+                   mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    const isImage = fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') ||
+                    fileName.endsWith('.png') || fileName.endsWith('.webp') ||
+                    mimeType.startsWith('image/')
+
+    if (!isPDF && !isWord && !isImage) {
       return NextResponse.json(
         {
-          error: 'Invalid file type. Please upload a PDF or Word document (.pdf, .doc, .docx)',
+          error: 'Invalid file type. Please upload a PDF, Word document, or image file (.pdf, .doc, .docx, .jpg, .png, .webp)',
           code: 'INVALID_FILE_TYPE'
         },
         { status: 400 }
@@ -140,6 +146,56 @@ export async function POST(request: NextRequest) {
             content: [
               {
                 type: 'document',
+                source: {
+                  type: 'base64',
+                  media_type: mediaType,
+                  data: base64Data,
+                },
+              },
+              {
+                type: 'text',
+                text: USER_PROMPT_TEMPLATE,
+              },
+            ],
+          },
+        ],
+      })
+
+      // Extract text content from response
+      const textContent = message.content.find((block) => block.type === 'text')
+      if (!textContent || textContent.type !== 'text') {
+        throw new Error('No text content in Claude response')
+      }
+
+      // Parse JSON from response
+      const jsonMatch = textContent.text.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        throw new Error('No JSON found in Claude response')
+      }
+
+      extractionResult = JSON.parse(jsonMatch[0])
+    } else if (isImage) {
+      // Process image file - send to Claude as image content block
+      const base64Data = fileBuffer.toString('base64')
+
+      // Determine media type from file extension and MIME type
+      let mediaType = 'image/jpeg' // default
+      if (fileName.endsWith('.png') || mimeType === 'image/png') {
+        mediaType = 'image/png'
+      } else if (fileName.endsWith('.webp') || mimeType === 'image/webp') {
+        mediaType = 'image/webp'
+      }
+
+      const message = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4096,
+        system: SYSTEM_PROMPT,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
                 source: {
                   type: 'base64',
                   media_type: mediaType,
