@@ -155,6 +155,8 @@ export default function OrderForm() {
           setUsedAIExtraction(true)
           setExtractionFailed(true)
           setExtracting(false)
+          // Store brief filename even when extraction fails
+          setFormData((prev) => ({ ...prev, briefFileName: briefFile.name }))
           setStep(1)
           scrollTop()
           return
@@ -170,6 +172,9 @@ export default function OrderForm() {
       setUsedAIExtraction(true)
       setExtractionFailed(false)
       setExtracting(false)
+
+      // Store brief filename in form state for display in summary
+      setFormData((prev) => ({ ...prev, briefFileName: briefFile.name }))
 
       // Advance to review step
       setStep(1)

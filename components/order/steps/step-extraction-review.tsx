@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { SUBJECT_GROUPS, ACADEMIC_LEVELS, PRACTICAL_ITEMS } from '@/lib/pricing'
 import { mapAcademicLevel } from '@/lib/academic-level-mapping'
+import { matchSubjectField } from '@/lib/subject-matching'
 import type { Deliverable } from '@/types/order-form'
 
 const COUNTRIES = [
@@ -91,7 +92,10 @@ export default function StepExtractionReview({
     return d
   })
 
-  const [subjectField, setSubjectField] = useState(extraction.subject_field || '')
+  // Match extracted subject to our predefined fields for clean display
+  const matchedSubject = matchSubjectField(extraction.subject_field)
+
+  const [subjectField, setSubjectField] = useState(matchedSubject || '')
   const [academicLevel, setAcademicLevel] = useState(mappedAcademicLevel)
   const [deadline, setDeadline] = useState(extraction.deadline || '')
   const [country, setCountry] = useState('United Kingdom')
@@ -475,16 +479,29 @@ export default function StepExtractionReview({
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-[#1B2E4B]">{d.description}</p>
 
-                    {/* Show quantity or editable field for presentations/written with defaults */}
-                    {d.type === 'presentation' && d.quantity === 10 && (
+                    {/* Show quantity or editable field for presentations with estimated slides */}
+                    {d.type === 'presentation' && d.confidence === 'low' && d.quantity && d.quantity > 0 && (
                       <div className="mt-2">
-                        <p className="text-xs text-amber-700 mb-1">Estimated 10 slides — adjust if needed:</p>
+                        <p className="text-xs text-amber-700 mb-1">
+                          {d.quantity === 10 ? 'Estimated 10 slides — adjust if needed:' : `${d.quantity} slides — adjust if needed:`}
+                        </p>
                         <div className="flex items-center gap-2">
                           <input
                             type="number"
                             min="1"
-                            value={d.quantity}
-                            onChange={(e) => updateDeliverableQuantity(idx, parseInt(e.target.value) || 10)}
+                            value={d.quantity || ''}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value)
+                              if (!isNaN(val) && val >= 1) {
+                                updateDeliverableQuantity(idx, val)
+                              }
+                            }}
+                            onBlur={(e) => {
+                              const val = parseInt(e.target.value)
+                              if (isNaN(val) || val < 1) {
+                                updateDeliverableQuantity(idx, 10) // Reset to default
+                              }
+                            }}
                             className="w-24 px-2 py-1 border border-amber-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                           />
                           <span className="text-xs text-[#6B7280]">slides</span>
@@ -492,8 +509,8 @@ export default function StepExtractionReview({
                       </div>
                     )}
 
-                    {/* Show regular quantity if not editable */}
-                    {!(d.type === 'presentation' && d.quantity === 10) && d.quantity && d.quantity > 0 && (
+                    {/* Show regular quantity if not editable presentation */}
+                    {!(d.type === 'presentation' && d.confidence === 'low') && d.quantity && d.quantity > 0 && (
                       <p className="text-xs text-[#9CA3AF] mt-1">
                         {d.quantity} {d.quantity_type}
                       </p>

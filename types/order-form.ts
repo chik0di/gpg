@@ -31,6 +31,7 @@ export interface OrderFormState {
   includeOriginalityReport: boolean
   selectedCurrency: string   // ISO 4217 code, e.g. 'GBP', 'USD'
   exchangeRate: number       // 1 GBP → N selectedCurrency
+  briefFileName?: string     // Name of uploaded brief file (for AI extraction flow)
 }
 
 export function makeDeliverable(): Deliverable {

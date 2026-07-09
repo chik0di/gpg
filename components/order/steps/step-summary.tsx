@@ -143,7 +143,7 @@ export default function StepSummary({ data, file, proceeding = false, onToggleRe
               ? new Date(data.deadline).toLocaleDateString('en-GB', { dateStyle: 'long' })
               : '—',
           },
-          { label: 'File', value: file ? file.name : 'None uploaded' },
+          { label: 'File', value: file ? file.name : (data.briefFileName || 'None uploaded') },
         ].map(({ label, value }) => (
           <div key={label} className="bg-[#F5F0E8] rounded-xl px-3 py-2">
             <p className="text-[0.65rem] font-bold text-[#9CA3AF] uppercase tracking-wide">{label}</p>
