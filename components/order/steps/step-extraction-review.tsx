@@ -77,12 +77,27 @@ export default function StepExtractionReview({
   // Map academic level to pricing tier
   const { tier: mappedAcademicLevel, rawTerm: academicLevelRaw } = mapAcademicLevel(extraction.academic_level)
 
+  // Apply defaults for presentations with no slide count
+  const processedDeliverables = extraction.deliverables.map(d => {
+    if (d.type === 'presentation' && (!d.quantity || d.quantity === 0)) {
+      return {
+        ...d,
+        quantity: 10, // Default to 10 slides
+        quantity_type: 'slides' as const,
+        price_gbp: 10 * 2.5, // 10 slides × £2.50
+        confidence: 'low' as const, // Mark as low confidence since it's estimated
+      }
+    }
+    return d
+  })
+
   const [subjectField, setSubjectField] = useState(extraction.subject_field || '')
   const [academicLevel, setAcademicLevel] = useState(mappedAcademicLevel)
   const [deadline, setDeadline] = useState(extraction.deadline || '')
   const [country, setCountry] = useState('United Kingdom')
   const [instructions, setInstructions] = useState('')
-  const [deliverables, setDeliverables] = useState<ExtractedDeliverable[]>(extraction.deliverables)
+  const [deliverables, setDeliverables] = useState<ExtractedDeliverable[]>(processedDeliverables)
+  const [editingDeliverableId, setEditingDeliverableId] = useState<number | null>(null)
 
   // Subject and level are NOT editable if extracted (shown as plain text)
   // Deadline is ALWAYS editable
@@ -251,6 +266,31 @@ export default function StepExtractionReview({
     setDeliverables((prev) => prev.filter((_, i) => i !== index))
   }
 
+  function updateDeliverableQuantity(index: number, newQuantity: number) {
+    setDeliverables((prev) => prev.map((d, i) => {
+      if (i !== index) return d
+
+      let updatedPrice = d.price_gbp
+
+      // Recalculate price based on type and new quantity
+      if (d.type === 'written') {
+        const pages = d.quantity_type === 'words'
+          ? Math.ceil(newQuantity / 275)
+          : newQuantity
+        const { calcWrittenPrice } = require('@/lib/pricing')
+        updatedPrice = calcWrittenPrice(pages)
+      } else if (d.type === 'presentation') {
+        updatedPrice = newQuantity * 2.5 // £2.50 per slide
+      }
+
+      return {
+        ...d,
+        quantity: newQuantity,
+        price_gbp: updatedPrice,
+      }
+    }))
+  }
+
   async function handleCountryChange(newCountry: string) {
     setCountry(newCountry)
     if (onCurrencyChange) {
@@ -407,8 +447,20 @@ export default function StepExtractionReview({
                   background: d.confidence === 'low' ? '#FFFBEB' : '#FDFAF6',
                 }}
               >
-                {/* Confidence warning for low confidence only */}
-                {d.confidence === 'low' && (
+                {/* £0 price warning */}
+                {d.price_gbp === 0 && (
+                  <div className="flex items-start gap-2 mb-3 pb-3 border-b border-amber-200">
+                    <svg className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    <p className="text-xs text-amber-700 font-semibold">
+                      Missing quantity — please specify below
+                    </p>
+                  </div>
+                )}
+
+                {/* Confidence warning for low confidence (non-£0) */}
+                {d.confidence === 'low' && d.price_gbp > 0 && (
                   <div className="flex items-start gap-2 mb-3 pb-3 border-b border-amber-200">
                     <svg className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -422,15 +474,55 @@ export default function StepExtractionReview({
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-[#1B2E4B]">{d.description}</p>
-                    {d.quantity && (
+
+                    {/* Show quantity or editable field for presentations/written with defaults */}
+                    {d.type === 'presentation' && d.quantity === 10 && (
+                      <div className="mt-2">
+                        <p className="text-xs text-amber-700 mb-1">Estimated 10 slides — adjust if needed:</p>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="1"
+                            value={d.quantity}
+                            onChange={(e) => updateDeliverableQuantity(idx, parseInt(e.target.value) || 10)}
+                            className="w-24 px-2 py-1 border border-amber-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                          />
+                          <span className="text-xs text-[#6B7280]">slides</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Show regular quantity if not editable */}
+                    {!(d.type === 'presentation' && d.quantity === 10) && d.quantity && d.quantity > 0 && (
                       <p className="text-xs text-[#9CA3AF] mt-1">
                         {d.quantity} {d.quantity_type}
                       </p>
                     )}
+
+                    {/* Editable field for £0 deliverables */}
+                    {d.price_gbp === 0 && (
+                      <div className="mt-2">
+                        <label className="text-xs font-semibold text-[#1B2E4B] mb-1 block">
+                          {d.type === 'written' && 'Enter page count:'}
+                          {d.type === 'presentation' && 'Enter slide count:'}
+                          {d.type === 'technical' && 'Specify quantity (if applicable):'}
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder={d.type === 'written' ? 'e.g., 5' : d.type === 'presentation' ? 'e.g., 10' : 'N/A for technical'}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 0
+                            if (val > 0) updateDeliverableQuantity(idx, val)
+                          }}
+                          className="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                        />
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <p className="text-base font-bold text-[#1B2E4B]">
+                      <p className={`text-base font-bold ${d.price_gbp === 0 ? 'text-amber-600' : 'text-[#1B2E4B]'}`}>
                         {formatPrice(d.price_gbp, selectedCurrency, exchangeRate)}
                       </p>
                       <p className="text-xs text-[#9CA3AF]">base price</p>
@@ -610,10 +702,19 @@ export default function StepExtractionReview({
         <button
           type="button"
           onClick={handleConfirm}
-          disabled={!subjectField || !academicLevel || !deadline || !country || deliverables.length === 0}
+          disabled={
+            !subjectField ||
+            !academicLevel ||
+            !deadline ||
+            !country ||
+            deliverables.length === 0 ||
+            deliverables.some(d => d.price_gbp === 0 || !d.price_gbp)
+          }
           className="flex-1 py-3 px-6 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
-            background: subjectField && academicLevel && deadline && country && deliverables.length > 0
+            background: subjectField && academicLevel && deadline && country &&
+                       deliverables.length > 0 &&
+                       deliverables.every(d => d.price_gbp > 0)
               ? '#E8A020'
               : '#9CA3AF',
           }}
@@ -621,6 +722,13 @@ export default function StepExtractionReview({
           Looks good — Continue to summary
         </button>
       </div>
+
+      {/* Validation message */}
+      {deliverables.some(d => d.price_gbp === 0) && (
+        <p className="text-sm text-amber-600 text-center mt-2">
+          Please specify quantities for all deliverables before continuing
+        </p>
+      )}
     </div>
   )
 }
