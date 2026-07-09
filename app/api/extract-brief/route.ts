@@ -32,7 +32,32 @@ const USER_PROMPT_TEMPLATE = `Analyse this assignment brief and extract the foll
     }
   ],
   "additional_notes": string or null (any other important requirements noticed in the brief that don't fit the above fields)
-}`
+}
+
+CRITICAL TYPE CLASSIFICATION RULES:
+- "written" = essays, reports, dissertations, literature reviews, case studies, research papers — text documents with word/page counts
+- "presentation" = PowerPoint, Google Slides, Keynote, or any slide deck — always has a slide count
+- "technical" = ANY programming/coding task, source code, software, applications, scripts, executables, databases, SQL queries, network simulations (Cisco/GNS3), algorithms, pseudocode, flowcharts, ERD diagrams, circuits, dashboards, prototypes, APIs, web apps, mobile apps — anything involving code or technical implementation
+
+EXAMPLES OF "technical" TYPE (NEVER classify these as "written"):
+✓ "Write a Python program that..." → type: "technical"
+✓ "Develop a web application using..." → type: "technical"
+✓ "Create a database schema with..." → type: "technical"
+✓ "Implement an algorithm for..." → type: "technical"
+✓ "Build a REST API that..." → type: "technical"
+✓ "Design a network topology using Cisco Packet Tracer" → type: "technical"
+✓ "Source code for a calculator application" → type: "technical"
+✓ "Flowchart and pseudocode for sorting algorithm" → type: "technical"
+✓ "Java program to manage student records" → type: "technical"
+✓ "SQL queries to extract customer data" → type: "technical"
+
+EXAMPLES OF "written" TYPE:
+✓ "2000-word essay on climate change" → type: "written"
+✓ "Literature review (3000 words)" → type: "written"
+✓ "Case study analysis report" → type: "written"
+✓ "Research dissertation" → type: "written"
+
+When in doubt between "written" and "technical": if it involves ANY code, programming, software development, databases, or network configuration → choose "technical"`
 
 interface ExtractionResult {
   subject_field: string | null

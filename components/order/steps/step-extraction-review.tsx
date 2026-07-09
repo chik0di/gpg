@@ -5,6 +5,7 @@ import { SUBJECT_GROUPS, ACADEMIC_LEVELS, PRACTICAL_ITEMS } from '@/lib/pricing'
 import { mapAcademicLevel } from '@/lib/academic-level-mapping'
 import { matchSubjectField } from '@/lib/subject-matching'
 import { isStandardSubject } from '@/lib/subject-validation'
+import { correctDeliverableType } from '@/lib/deliverable-type-detection'
 import type { Deliverable } from '@/types/order-form'
 
 const COUNTRIES = [
@@ -80,18 +81,27 @@ export default function StepExtractionReview({
   // Map academic level to pricing tier
   const { tier: mappedAcademicLevel, rawTerm: academicLevelRaw } = mapAcademicLevel(extraction.academic_level)
 
-  // Apply defaults for presentations with no slide count
+  // Apply type correction and defaults
   const processedDeliverables = extraction.deliverables.map(d => {
-    if (d.type === 'presentation' && (!d.quantity || d.quantity === 0)) {
+    // CRITICAL: Correct deliverable type before any other processing
+    // This prevents technical deliverables from being misclassified as written
+    const correctedType = correctDeliverableType(d.type, d.description)
+
+    // Apply corrected type
+    const corrected = { ...d, type: correctedType }
+
+    // Apply defaults for presentations with no slide count
+    if (corrected.type === 'presentation' && (!corrected.quantity || corrected.quantity === 0)) {
       return {
-        ...d,
+        ...corrected,
         quantity: 10, // Default to 10 slides
         quantity_type: 'slides' as const,
         price_gbp: 10 * 2.5, // 10 slides × £2.50
         confidence: 'low' as const, // Mark as low confidence since it's estimated
       }
     }
-    return d
+
+    return corrected
   })
 
   // Match extracted subject to our predefined fields for clean display
@@ -497,7 +507,22 @@ export default function StepExtractionReview({
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-[#1B2E4B]">{d.description}</p>
 
-                    {/* Show quantity or editable field for presentations with estimated slides */}
+                    {/* Technical deliverable metadata - no quantity inputs ever */}
+                    {d.type === 'technical' && (
+                      <div className="mt-2">
+                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-50 border border-purple-200 rounded-lg">
+                          <svg className="w-3.5 h-3.5 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-xs font-semibold text-purple-700">
+                            Practical & Technical
+                            {d.complexity && ` • ${d.complexity.charAt(0).toUpperCase() + d.complexity.slice(1)} complexity`}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Presentation: show quantity or editable field for estimated slides */}
                     {d.type === 'presentation' && d.confidence === 'low' && d.quantity && d.quantity > 0 && (
                       <div className="mt-2">
                         <p className="text-xs text-amber-700 mb-1">
@@ -527,25 +552,24 @@ export default function StepExtractionReview({
                       </div>
                     )}
 
-                    {/* Show regular quantity if not editable presentation */}
-                    {!(d.type === 'presentation' && d.confidence === 'low') && d.quantity && d.quantity > 0 && (
+                    {/* Show regular quantity for written/presentation (non-editable cases) */}
+                    {d.type !== 'technical' && !(d.type === 'presentation' && d.confidence === 'low') && d.quantity && d.quantity > 0 && (
                       <p className="text-xs text-[#9CA3AF] mt-1">
                         {d.quantity} {d.quantity_type}
                       </p>
                     )}
 
-                    {/* Editable field for £0 deliverables */}
-                    {d.price_gbp === 0 && (
+                    {/* Editable field for £0 deliverables - ONLY for written/presentation, NEVER technical */}
+                    {d.price_gbp === 0 && d.type !== 'technical' && (
                       <div className="mt-2">
                         <label className="text-xs font-semibold text-[#1B2E4B] mb-1 block">
                           {d.type === 'written' && 'Enter page count:'}
                           {d.type === 'presentation' && 'Enter slide count:'}
-                          {d.type === 'technical' && 'Specify quantity (if applicable):'}
                         </label>
                         <input
                           type="number"
                           min="1"
-                          placeholder={d.type === 'written' ? 'e.g., 5' : d.type === 'presentation' ? 'e.g., 10' : 'N/A for technical'}
+                          placeholder={d.type === 'written' ? 'e.g., 5' : 'e.g., 10'}
                           onChange={(e) => {
                             const val = parseInt(e.target.value) || 0
                             if (val > 0) updateDeliverableQuantity(idx, val)
