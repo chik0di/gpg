@@ -32,6 +32,7 @@ export interface OrderFormState {
   selectedCurrency: string   // ISO 4217 code, e.g. 'GBP', 'USD'
   exchangeRate: number       // 1 GBP → N selectedCurrency
   briefFileName?: string     // Name of uploaded brief file (for AI extraction flow)
+  isOutsideStandardFields?: boolean  // True if subject is not in our standard list
 }
 
 export function makeDeliverable(): Deliverable {

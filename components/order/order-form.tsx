@@ -201,6 +201,7 @@ export default function OrderForm() {
     country: string
     deliverables: Deliverable[]
     instructions: string
+    isOutsideStandardFields: boolean
   }) {
     // Populate form data with confirmed extraction
     setFormData((prev) => ({
@@ -211,6 +212,7 @@ export default function OrderForm() {
       country: confirmedData.country,
       deliverables: confirmedData.deliverables,
       instructions: confirmedData.instructions,
+      isOutsideStandardFields: confirmedData.isOutsideStandardFields,
     }))
 
     // Store brief temp path and academic level raw for later

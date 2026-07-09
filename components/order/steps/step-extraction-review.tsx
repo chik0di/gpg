@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { SUBJECT_GROUPS, ACADEMIC_LEVELS, PRACTICAL_ITEMS } from '@/lib/pricing'
 import { mapAcademicLevel } from '@/lib/academic-level-mapping'
 import { matchSubjectField } from '@/lib/subject-matching'
+import { isStandardSubject } from '@/lib/subject-validation'
 import type { Deliverable } from '@/types/order-form'
 
 const COUNTRIES = [
@@ -43,6 +44,7 @@ interface Props {
     country: string
     deliverables: Deliverable[]
     instructions: string
+    isOutsideStandardFields: boolean
   }) => void
   onBack: () => void
   selectedCurrency?: string
@@ -263,6 +265,7 @@ export default function StepExtractionReview({
       country,
       deliverables: formDeliverables,
       instructions,
+      isOutsideStandardFields: !isStandardSubject(subjectField),
     })
   }
 
@@ -352,6 +355,21 @@ export default function StepExtractionReview({
                 </optgroup>
               ))}
             </select>
+          )}
+
+          {/* Outside standard fields warning */}
+          {subjectField && !isStandardSubject(subjectField) && (
+            <div className="mt-2 flex items-start gap-2.5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
+              <svg className="w-5 h-5 text-amber-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-900">Outside our standard subject areas</p>
+                <p className="text-sm text-amber-800 mt-0.5">
+                  We'll review your brief carefully — if we're unable to complete your order, you'll receive a full refund within 24 hours.
+                </p>
+              </div>
+            </div>
           )}
         </div>
 

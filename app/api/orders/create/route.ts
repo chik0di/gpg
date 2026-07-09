@@ -28,6 +28,7 @@ interface OrderData {
   fileName?: string | null
   usedAIExtraction?: boolean
   briefTempPath?: string | null
+  isOutsideStandardFields?: boolean
 }
 
 function deliverableBasePrice(d: Deliverable): number {
@@ -209,6 +210,7 @@ export async function POST(request: Request) {
         additional_instructions:   orderData.instructions || null,
         originality_report:        orderData.includeOriginalityReport,
         stripe_payment_intent_id:  paymentIntentId,
+        is_outside_standard_fields: orderData.isOutsideStandardFields || false,
       })
       .select('id')
       .single()
@@ -425,6 +427,7 @@ export async function POST(request: Request) {
       deadline:           orderData.deadline,
       totalAmount:        total,
       deliverableSummary,
+      isOutsideStandardFields: orderData.isOutsideStandardFields || false,
     }).catch((e) => console.error('[email] client confirmation failed:', e))
 
     sendAdminNewOrderAlert({

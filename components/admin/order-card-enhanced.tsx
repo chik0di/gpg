@@ -15,6 +15,7 @@ interface Order {
   client_name?: string
   client_email?: string
   deliverables_count?: number
+  is_outside_standard_fields?: boolean
 }
 
 interface Props {
@@ -104,8 +105,8 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
       }}
     >
       <div className="p-3">
-        {/* Compact header: ID + Urgency Badge */}
-        <div className="flex items-center gap-2 mb-2">
+        {/* Compact header: ID + Urgency Badge + Outside Standard Fields Badge */}
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
           <p className="text-xs font-mono font-bold text-[#6B7280]">#{order.id.slice(0, 8).toUpperCase()}</p>
           {/* Only show urgency badges for non-completed orders */}
           {order.status !== 'completed' && urgency === 'overdue' && (
@@ -139,6 +140,14 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
               {config.label}
+            </span>
+          )}
+          {order.is_outside_standard_fields && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">
+              <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              Outside standard fields
             </span>
           )}
         </div>

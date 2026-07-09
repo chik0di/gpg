@@ -62,19 +62,26 @@ export async function sendOrderConfirmation(params: {
   deadline: string
   totalAmount: number
   deliverableSummary: string  // e.g. "Written (5 pages), Presentation (10 slides)"
+  isOutsideStandardFields?: boolean
 }) {
   const {
     to, firstName, orderId, subjectField,
     academicLevel, deadline, totalAmount, deliverableSummary,
+    isOutsideStandardFields = false,
   } = params
 
   const deadlineFormatted = new Date(deadline).toLocaleDateString('en-GB', { dateStyle: 'long' })
   const totalFormatted    = `£${totalAmount % 1 === 0 ? totalAmount : totalAmount.toFixed(2)}`
   const shortId           = orderId.slice(0, 8).toUpperCase()
 
+  const outsideFieldsNotice = isOutsideStandardFields
+    ? p('<strong>Please note:</strong> As your assignment falls outside our standard subject areas, our team will review your brief within 24 hours to confirm we can complete your work. If we are unable to proceed for any reason, you will receive a full refund immediately — no questions asked.')
+    : ''
+
   const html = base(`
     ${h1(`Order confirmed, ${firstName || 'there'}!`)}
     ${p('Your order has been received and our team will get started right away. You\'ll hear from us as soon as your work is ready.')}
+    ${outsideFieldsNotice}
     ${divider()}
     ${table(
       row('Order ID', `#${shortId}`) +

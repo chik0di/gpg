@@ -14,6 +14,7 @@ interface AdminOrder {
   deadline: string
   created_at: string
   user_id: string
+  is_outside_standard_fields: boolean | null
   profiles: { first_name: string | null; last_name: string | null; email: string } | null
   deliverables: Array<{ id: string }>
 }
@@ -22,7 +23,7 @@ export default async function AdminPage() {
   const { data: orders } = await supabaseAdmin
     .from('orders')
     .select(`
-      id, status, total_amount, academic_level, subject_field, deadline, created_at, user_id,
+      id, status, total_amount, academic_level, subject_field, deadline, created_at, user_id, is_outside_standard_fields,
       profiles ( first_name, last_name, email ),
       deliverables ( id )
     `)
@@ -45,6 +46,7 @@ export default async function AdminPage() {
       client_name: clientName,
       client_email: client?.email || '',
       deliverables_count: order.deliverables?.length || 0,
+      is_outside_standard_fields: order.is_outside_standard_fields || false,
     }
   }))
 
