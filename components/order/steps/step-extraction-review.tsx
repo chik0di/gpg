@@ -25,7 +25,7 @@ interface ExtractedDeliverable {
 
 interface ExtractionResult {
   subject_field: string | null
-  academic_level: 'A-Level / College' | 'Undergraduate' | 'Masters' | null
+  academic_level: 'College' | 'Undergraduate' | 'Masters' | null
   deadline: string | null
   deliverables: ExtractedDeliverable[]
   additional_notes: string | null

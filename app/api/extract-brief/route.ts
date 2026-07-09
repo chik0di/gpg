@@ -18,7 +18,7 @@ const USER_PROMPT_TEMPLATE = `Analyse this assignment brief and extract the foll
 
 {
   "subject_field": string or null (the academic subject/field this assignment is for),
-  "academic_level": "A-Level / College" or "Undergraduate" or "Masters" or null (if stated or clearly implied),
+  "academic_level": "College" or "Undergraduate" or "Masters" or null (if stated or clearly implied),
   "deadline": string or null (any deadline or submission date mentioned, in ISO format if possible),
   "deliverables": [
     {
@@ -36,7 +36,7 @@ const USER_PROMPT_TEMPLATE = `Analyse this assignment brief and extract the foll
 
 interface ExtractionResult {
   subject_field: string | null
-  academic_level: 'A-Level / College' | 'Undergraduate' | 'Masters' | null
+  academic_level: 'College' | 'Undergraduate' | 'Masters' | null
   deadline: string | null
   deliverables: Array<{
     type: 'written' | 'presentation' | 'technical'

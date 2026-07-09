@@ -2,7 +2,7 @@
  * Maps various academic level terms found in briefs to our three pricing tiers
  */
 
-export type PricingTier = 'A-Level / College' | 'Undergraduate' | 'Masters'
+export type PricingTier = 'College' | 'Undergraduate' | 'Masters'
 
 // A-Level/College tier (0.8× multiplier)
 const COLLEGE_TIER_TERMS = [
@@ -45,7 +45,7 @@ export function mapAcademicLevel(rawTerm: string | null): {
 
   // Check college tier
   if (COLLEGE_TIER_TERMS.some(term => normalized.includes(term))) {
-    return { tier: 'A-Level / College', rawTerm }
+    return { tier: 'College', rawTerm }
   }
 
   // Check undergraduate tier

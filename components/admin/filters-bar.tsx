@@ -93,7 +93,7 @@ export default function FiltersBar({ filters, onChange, onClear, resultCount, to
             className="px-3 py-2 border border-[#E8E2D9] rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/40"
           >
             <option value="all">All levels</option>
-            <option value="A-Level / College">A-Level</option>
+            <option value="College">College</option>
             <option value="Undergraduate">Undergraduate</option>
             <option value="Masters">Masters</option>
           </select>

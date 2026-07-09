@@ -27,7 +27,7 @@ export const SUBJECT_GROUPS = [
 
 // ── Academic level multipliers ────────────────────────────────────────────
 export const ACADEMIC_LEVELS = [
-  { label: 'A-Level / College', multiplier: 0.8 },
+  { label: 'College', multiplier: 0.8 },
   { label: 'Undergraduate', multiplier: 1 },
   { label: 'Masters', multiplier: 1.3 },
 ] as const
@@ -113,7 +113,7 @@ export function getPracticalPrice(key: string): number {
 
 // ── Adjustment labels ─────────────────────────────────────────────────────
 
-// Returns e.g. "Masters level +30%" or "A-Level / College −20%", null for Undergraduate
+// Returns e.g. "Masters level +30%" or "College −20%", null for Undergraduate
 export function getAcademicLevelAdjLabel(academicLevel: string): string | null {
   const mult = getAcademicMultiplier(academicLevel)
   if (mult === 1) return null
