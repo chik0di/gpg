@@ -35,29 +35,61 @@ const USER_PROMPT_TEMPLATE = `Analyse this assignment brief and extract the foll
 }
 
 CRITICAL TYPE CLASSIFICATION RULES:
-- "written" = essays, reports, dissertations, literature reviews, case studies, research papers — text documents with word/page counts
-- "presentation" = PowerPoint, Google Slides, Keynote, or any slide deck — always has a slide count
-- "technical" = ANY programming/coding task, source code, software, applications, scripts, executables, databases, SQL queries, network simulations (Cisco/GNS3), algorithms, pseudocode, flowcharts, ERD diagrams, circuits, dashboards, prototypes, APIs, web apps, mobile apps — anything involving code or technical implementation
 
-EXAMPLES OF "technical" TYPE (NEVER classify these as "written"):
-✓ "Write a Python program that..." → type: "technical"
-✓ "Develop a web application using..." → type: "technical"
-✓ "Create a database schema with..." → type: "technical"
-✓ "Implement an algorithm for..." → type: "technical"
-✓ "Build a REST API that..." → type: "technical"
-✓ "Design a network topology using Cisco Packet Tracer" → type: "technical"
-✓ "Source code for a calculator application" → type: "technical"
-✓ "Flowchart and pseudocode for sorting algorithm" → type: "technical"
-✓ "Java program to manage student records" → type: "technical"
-✓ "SQL queries to extract customer data" → type: "technical"
+TYPE "written" = Any text document with a word count or page count:
+  - Essays, reports, dissertations, literature reviews, case studies, research papers
+  - Written reports, evaluative reports, reflective reports, analysis reports
+  - Word documents, written assignments, written evaluations
+  - ANY deliverable described as a "report" or "essay" or "written" or "document"
+
+TYPE "presentation" = Any slide deck with a slide count:
+  - PowerPoint, Google Slides, Keynote, Prezi
+  - Presentations, slideshows, slide decks
+  - ANY deliverable described as a "presentation" or mentioning "slides"
+
+TYPE "technical" = Actual code files, programs, executables, and technical implementations:
+  - Source code files (.py, .java, .cs, .cpp, .js, etc.)
+  - Programs, scripts, executables (.exe, .app, .bin)
+  - Databases, SQL files (.sql, .db)
+  - Network simulations (Cisco Packet Tracer, GNS3)
+  - Flowcharts, ERD diagrams (as standalone technical artifacts)
+  - Web/mobile applications (the actual running code)
+  - APIs, backend/frontend code
+  - ONLY when the deliverable IS the code itself, not a report ABOUT code
+
+CRITICAL DISTINCTION — "written" vs "technical":
+  ✓ "Written report evaluating a Python program" → type: "written" (it's a REPORT)
+  ✓ "Essay discussing database design" → type: "written" (it's an ESSAY)
+  ✓ "Analysis of software development lifecycle" → type: "written" (it's ANALYSIS)
+  ✓ "Evaluation report on network security" → type: "written" (it's a REPORT)
+
+  ✓ "Python program (.py file) to calculate grades" → type: "technical" (actual CODE)
+  ✓ "Source code for calculator application" → type: "technical" (actual CODE)
+  ✓ "Java program to manage records" → type: "technical" (actual PROGRAM)
+  ✓ "SQL database with queries" → type: "technical" (actual DATABASE)
 
 EXAMPLES OF "written" TYPE:
-✓ "2000-word essay on climate change" → type: "written"
-✓ "Literature review (3000 words)" → type: "written"
-✓ "Case study analysis report" → type: "written"
-✓ "Research dissertation" → type: "written"
+✓ "2000-word essay on climate change" → written, quantity: 2000, quantity_type: "words"
+✓ "Written report (2000-2500 words) evaluating the software" → written, quantity: 2500, quantity_type: "words"
+✓ "Reflective report (1500 words) on project management" → written, quantity: 1500, quantity_type: "words"
+✓ "Case study analysis (3000 words)" → written, quantity: 3000, quantity_type: "words"
+✓ "Literature review (10 pages)" → written, quantity: 10, quantity_type: "pages"
+✓ "Evaluation report discussing database implementation" → written, quantity: (extract from brief), quantity_type: "words"
 
-When in doubt between "written" and "technical": if it involves ANY code, programming, software development, databases, or network configuration → choose "technical"`
+EXAMPLES OF "presentation" TYPE:
+✓ "PowerPoint presentation (10-15 slides)" → presentation, quantity: 15, quantity_type: "slides"
+✓ "Presentation (8-10 slides) on marketing strategy" → presentation, quantity: 10, quantity_type: "slides"
+✓ "Slide deck explaining the system design" → presentation, quantity: (extract from brief), quantity_type: "slides"
+
+EXAMPLES OF "technical" TYPE:
+✓ "Python program to calculate student grades" → technical, complexity: "moderate", quantity: null
+✓ "Visual Basic source code (.vb file)" → technical, complexity: "moderate", quantity: null
+✓ "Executable program (.exe) for data entry" → technical, complexity: "complex", quantity: null
+✓ "SQL database with 5 tables" → technical, complexity: "complex", quantity: null
+✓ "Network simulation using Cisco Packet Tracer" → technical, complexity: "complex", quantity: null
+✓ "Flowchart and ERD diagram for system design" → technical, complexity: "simple", quantity: null
+
+DEFAULT RULE: If the brief says "report", "essay", "written", "document", "analysis", "evaluation" → type is "written" (NOT technical), even if it mentions code/software/databases in the context`
 
 interface ExtractionResult {
   subject_field: string | null
