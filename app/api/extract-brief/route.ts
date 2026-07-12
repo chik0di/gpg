@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import mammoth from 'mammoth'
 import { createClient } from '@supabase/supabase-js'
+import { validateExtraction, applySanityBounds, containsSuspiciousPhrases } from '@/lib/extraction-validation'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
