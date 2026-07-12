@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { SUBJECT_GROUPS, ACADEMIC_LEVELS, PRACTICAL_ITEMS } from '@/lib/pricing'
+import { SUBJECT_GROUPS, ACADEMIC_LEVELS, PRACTICAL_ITEMS, daysUntil, getUrgencyWarning } from '@/lib/pricing'
 import { mapAcademicLevel } from '@/lib/academic-level-mapping'
 import { matchSubjectField } from '@/lib/subject-matching'
 import { isStandardSubject } from '@/lib/subject-validation'
@@ -69,6 +69,27 @@ function formatPrice(gbp: number, currency: string, rate: number): string {
   }
 }
 
+/**
+ * Truncate description to first sentence (max 1 sentence)
+ * Looks for sentence endings: . ! ? followed by space or end of string
+ */
+function truncateToFirstSentence(description: string): string {
+  if (!description) return ''
+
+  // Match first sentence ending with . ! or ?
+  const match = description.match(/^[^.!?]+[.!?]/)
+  if (match) {
+    return match[0].trim()
+  }
+
+  // No sentence ending found - truncate at reasonable length
+  if (description.length > 80) {
+    return description.substring(0, 80).trim() + '...'
+  }
+
+  return description.trim()
+}
+
 export default function StepExtractionReview({
   extraction,
   extractionFailed = false,
@@ -107,9 +128,13 @@ export default function StepExtractionReview({
   // Match extracted subject to our predefined fields for clean display
   const matchedSubject = matchSubjectField(extraction.subject_field)
 
+  // Validate extracted deadline - must be at least 2 days from today
+  const extractedDeadlineValid = extraction.deadline && daysUntil(extraction.deadline) >= 2
+  const deadlinePassedOrTooSoon = extraction.deadline && !extractedDeadlineValid
+
   const [subjectField, setSubjectField] = useState(matchedSubject || '')
   const [academicLevel, setAcademicLevel] = useState(mappedAcademicLevel)
-  const [deadline, setDeadline] = useState(extraction.deadline || '')
+  const [deadline, setDeadline] = useState(extractedDeadlineValid ? extraction.deadline : '')
   const [country, setCountry] = useState('United Kingdom')
   const [instructions, setInstructions] = useState('')
   const [deliverables, setDeliverables] = useState<ExtractedDeliverable[]>(processedDeliverables)
@@ -119,6 +144,9 @@ export default function StepExtractionReview({
   // Deadline is ALWAYS editable
   const subjectExtracted = !!extraction.subject_field
   const levelExtracted = !!extraction.academic_level
+
+  // Urgency warning for deadline
+  const urgencyWarning = getUrgencyWarning(deadline)
 
   // Add deliverable modal state
   const [showAddDeliverable, setShowAddDeliverable] = useState(false)
@@ -420,6 +448,30 @@ export default function StepExtractionReview({
             onChange={(e) => setDeadline(e.target.value)}
             className={selectClass}
           />
+
+          {/* Deadline passed or too soon warning */}
+          {deadlinePassedOrTooSoon && !deadline && (
+            <div className="mt-2 flex items-start gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+              <svg className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <p className="text-xs text-amber-700 font-medium">
+                The deadline mentioned in your brief has passed or is too soon. Please select a new deadline.
+              </p>
+            </div>
+          )}
+
+          {/* Urgency premium warning */}
+          {urgencyWarning && (
+            <div className="mt-2 flex items-start gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+              <svg className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+              </svg>
+              <p className="text-xs text-amber-700 font-medium">
+                {urgencyWarning}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Country */}
@@ -505,7 +557,7 @@ export default function StepExtractionReview({
 
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-[#1B2E4B]">{d.description}</p>
+                    <p className="text-sm font-semibold text-[#1B2E4B]">{truncateToFirstSentence(d.description)}</p>
 
                     {/* Technical deliverable metadata - no quantity inputs ever */}
                     {d.type === 'technical' && (
