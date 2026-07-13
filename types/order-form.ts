@@ -33,6 +33,7 @@ export interface OrderFormState {
   exchangeRate: number       // 1 GBP → N selectedCurrency
   briefFileName?: string     // Name of uploaded brief file (for AI extraction flow)
   isOutsideStandardFields?: boolean  // True if subject is not in our standard list
+  quoteGeneratedAt?: string  // ISO timestamp when order summary was first shown (for quote expiry)
 }
 
 export function makeDeliverable(): Deliverable {

@@ -5,12 +5,24 @@ import { stripe } from '@/lib/stripe/server'
 import { rateLimit, getClientIp, RateLimitPresets, getRateLimitErrorMessage } from '@/lib/rate-limit'
 import {
   calcOrderTotal,
-  calcWrittenPrice,
-  calcPresentationPrice,
-  getPracticalPrice,
   WORDS_PER_PAGE,
   PRACTICAL_ITEMS,
 } from '@/lib/pricing'
+import {
+  calcWrittenPricePence,
+  calcPresentationPricePence,
+  validateTechnicalPricePence,
+  applyAcademicMultiplier,
+  applyDeadlineMultiplier,
+  TECHNICAL_SIMPLE,
+  TECHNICAL_MODERATE,
+  TECHNICAL_COMPLEX,
+  TECHNICAL_EXPERT,
+  WRITTEN_RATE_AI,
+  SLIDE_RATE_AI,
+  ORIGINALITY_REPORT_PENCE,
+  ACADEMIC_MULTIPLIERS,
+} from '@/lib/pricing-pence'
 import { getBestDiscount } from '@/lib/discount'
 import { completeReferral, markCreditAsUsed } from '@/lib/referral'
 import { sendOrderConfirmation, sendAdminNewOrderAlert } from '@/lib/resend'
@@ -31,22 +43,39 @@ interface OrderData {
   isOutsideStandardFields?: boolean
 }
 
-function deliverableBasePrice(d: Deliverable): number {
-  // If basePrice is already set (from AI extraction or manual premium pricing), use it
-  if (d.basePrice && d.basePrice > 0) {
-    return d.basePrice
-  }
+/**
+ * Calculate deliverable base price in PENCE from raw inputs
+ * NEVER trust client-sent prices - always recalculate server-side
+ */
+function deliverableBasePricePence(d: Deliverable, isManual: boolean = false): number {
+  // SECURITY: Ignore client-sent basePrice, always recalculate from raw inputs
 
-  // Otherwise calculate from deliverable details
   if (d.type === 'written') {
     const pages = d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE)
-    return calcWrittenPrice(pages)
+    return calcWrittenPricePence(pages, isManual)
   }
+
   if (d.type === 'presentation') {
     const slideCount = d.slideInputMode === 'exact' ? d.slideCount : d.slideMax
-    return calcPresentationPrice(slideCount)
+    return calcPresentationPricePence(slideCount, isManual)
   }
-  if (d.type === 'practical')    return getPracticalPrice(d.practicalKey)
+
+  if (d.type === 'practical') {
+    // Map practicalKey to technical price in pence
+    const priceMap: Record<string, number> = {
+      'flowchart': TECHNICAL_SIMPLE,
+      'python': TECHNICAL_MODERATE,
+      'database': TECHNICAL_MODERATE,
+      'data_analysis': TECHNICAL_MODERATE,
+      'network': TECHNICAL_COMPLEX,
+      'web_dev': TECHNICAL_COMPLEX,
+      'security': TECHNICAL_EXPERT,
+      'bi_dashboard': TECHNICAL_EXPERT,
+    }
+    const pricePence = priceMap[d.practicalKey] || TECHNICAL_MODERATE
+    return validateTechnicalPricePence(pricePence)
+  }
+
   return 0
 }
 
@@ -166,42 +195,67 @@ export async function POST(request: Request) {
       return NextResponse.json({ orderId: existing.id })
     }
 
-    // 3. Recalculate total server-side (prevents client tampering)
-    const subtotal = orderData.deliverables.reduce(
-      (sum, d) => sum + deliverableBasePrice(d),
-      0
-    )
+    // 3. Recalculate total server-side in PENCE (prevents client tampering)
+    // Calculate base prices for all deliverables
+    const deliverablesPence = orderData.deliverables.map(d => {
+      const basePence = deliverableBasePricePence(d, false) // AI path always non-manual
+      // Apply multipliers
+      let finalPence = basePence
+      finalPence = applyAcademicMultiplier(finalPence, orderData.academicLevel)
+      finalPence = applyDeadlineMultiplier(finalPence, orderData.deadline)
+      return finalPence
+    })
+
+    const subtotalPence = deliverablesPence.reduce((sum, price) => sum + price, 0)
+    const reportPence = orderData.includeOriginalityReport ? ORIGINALITY_REPORT_PENCE : 0
 
     // Determine best discount to apply
     const discount = await getBestDiscount(supabase, user.id)
     const discountPercent = discount.percent
 
-    const { total } = calcOrderTotal({
-      deliverableSubtotal: subtotal,
-      academicLevel: orderData.academicLevel,
-      deadline: orderData.deadline,
-      includeOriginalityReport: orderData.includeOriginalityReport,
-      applyFirstOrderDiscount: discountPercent > 0,
-      discountPercent,
-    })
+    let totalPence = subtotalPence + reportPence
+
+    // Apply discount if applicable
+    if (discountPercent > 0) {
+      const discountAmount = Math.round((totalPence * discountPercent) / 100)
+      totalPence = totalPence - discountAmount
+    }
 
     // Verify the payment intent amount matches our server-side calculation
-    const expectedAmount = Math.round(total * 100)
-    if (pi.amount !== expectedAmount) {
-      console.error(`[orders/create] amount mismatch: PI=${pi.amount}, expected=${expectedAmount}`)
+    if (pi.amount !== totalPence) {
+      console.error(`[orders/create] amount mismatch: PI=${pi.amount} pence, expected=${totalPence} pence`)
       // Allow a 1 pence tolerance for rounding differences
-      if (Math.abs(pi.amount - expectedAmount) > 1) {
+      if (Math.abs(pi.amount - totalPence) > 1) {
         return NextResponse.json({ error: 'Payment amount mismatch' }, { status: 400 })
       }
     }
 
-    // 4. Create order row
+    // Create pricing snapshot for this order
+    const pricingSnapshot = {
+      written_rate_pence: WRITTEN_RATE_AI,
+      slide_rate_pence: SLIDE_RATE_AI,
+      technical_simple_pence: TECHNICAL_SIMPLE,
+      technical_moderate_pence: TECHNICAL_MODERATE,
+      technical_complex_pence: TECHNICAL_COMPLEX,
+      technical_expert_pence: TECHNICAL_EXPERT,
+      academic_multipliers: ACADEMIC_MULTIPLIERS,
+      deadline_multipliers: {
+        '2-3d': 180,
+        '4-6d': 150,
+        '7-13d': 120,
+        '14+d': 100,
+      },
+      originality_report_pence: ORIGINALITY_REPORT_PENCE,
+      calculated_at: new Date().toISOString(),
+    }
+
+    // 4. Create order row with pricing snapshot
     const { data: order, error: orderErr } = await supabase
       .from('orders')
       .insert({
         user_id:                   user.id,
         status:                    'pending',
-        total_amount:              total,
+        total_amount:              totalPence / 100, // Store as pounds for display
         academic_level:            orderData.academicLevel,
         academic_level_raw:        orderData.academicLevelRaw || null,
         subject_field:             orderData.subjectField,
@@ -211,6 +265,7 @@ export async function POST(request: Request) {
         originality_report:        orderData.includeOriginalityReport,
         stripe_payment_intent_id:  paymentIntentId,
         is_outside_standard_fields: orderData.isOutsideStandardFields || false,
+        pricing_snapshot:          pricingSnapshot,
       })
       .select('id')
       .single()
@@ -220,8 +275,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to create order' }, { status: 500 })
     }
 
-    // 5. Insert deliverables
-    const deliverableRows = orderData.deliverables.map((d) => {
+    // 5. Insert deliverables with recalculated prices in pence
+    const deliverableRows = orderData.deliverables.map((d, index) => {
       let subtype: string | null = null
       let size_band: string | null = null
 
@@ -239,12 +294,16 @@ export async function POST(request: Request) {
         subtype = d.practicalKey
       }
 
+      // Use server-calculated price in pence (already has multipliers applied)
+      const pricePence = deliverablesPence[index]
+
       return {
         order_id:  order.id,
         type:      d.type,
         subtype,
         size_band,
-        price:     deliverableBasePrice(d),
+        price:     pricePence / 100, // Store as pounds for backward compat
+        price_pence: pricePence,     // Store exact pence
         extracted_by_ai: orderData.usedAIExtraction || false,
       }
     })

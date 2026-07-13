@@ -113,6 +113,67 @@ async function extractTextFromWord(buffer: Buffer): Promise<string> {
   return result.value
 }
 
+/**
+ * Extract brief information with automatic retry on failure
+ * @returns Validated extraction result
+ * @throws Error if both attempts fail
+ */
+async function extractWithRetry(
+  anthropic: Anthropic,
+  params: {
+    model: string
+    max_tokens: number
+    system: string
+    messages: any[]
+  }
+): Promise<ExtractionResult> {
+  let lastError: Error | null = null
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      console.log(`[extract-brief] Extraction attempt ${attempt}/2`)
+
+      const message = await anthropic.messages.create(params)
+
+      // Extract text content from response
+      const textContent = message.content.find((block) => block.type === 'text')
+      if (!textContent || textContent.type !== 'text') {
+        throw new Error('No text content in Claude response')
+      }
+
+      // Parse JSON from response
+      const jsonMatch = textContent.text.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        throw new Error('No JSON found in Claude response')
+      }
+
+      const rawExtraction = JSON.parse(jsonMatch[0])
+
+      // Validate with Zod schema
+      const extraction = validateExtraction(rawExtraction)
+
+      // Apply sanity bounds (clamp out-of-range values)
+      const boundedExtraction = applySanityBounds(extraction)
+
+      console.log(`[extract-brief] Extraction succeeded on attempt ${attempt}`)
+      return boundedExtraction
+
+    } catch (error) {
+      lastError = error as Error
+      console.warn(`[extract-brief] Attempt ${attempt} failed:`, error instanceof Error ? error.message : error)
+
+      if (attempt < 2) {
+        // Wait 1 second before retry
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+    }
+  }
+
+  // Both attempts failed
+  console.error('[extract-brief] Extraction failed after 2 attempts:', lastError)
+  throw lastError!
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
@@ -187,6 +248,7 @@ export async function POST(request: NextRequest) {
     }
 
     let extractionResult: ExtractionResult
+    let briefTextForInjectionCheck: string | null = null
 
     // Process based on file type
     if (fileName.endsWith('.pdf')) {
@@ -194,44 +256,55 @@ export async function POST(request: NextRequest) {
       const base64Data = fileBuffer.toString('base64')
       const mediaType = 'application/pdf'
 
-      const message = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4096,
-        system: SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'document',
-                source: {
-                  type: 'base64',
-                  media_type: mediaType,
-                  data: base64Data,
+      try {
+        extractionResult = await extractWithRetry(anthropic, {
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 4096,
+          system: SYSTEM_PROMPT,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'document',
+                  source: {
+                    type: 'base64',
+                    media_type: mediaType,
+                    data: base64Data,
+                  },
                 },
-              },
-              {
-                type: 'text',
-                text: USER_PROMPT_TEMPLATE,
-              },
-            ],
+                {
+                  type: 'text',
+                  text: USER_PROMPT_TEMPLATE,
+                },
+              ],
+            },
+          ],
+        })
+      } catch (error) {
+        // Check for password-protected PDF
+        if (error instanceof Error &&
+            (error.message?.toLowerCase().includes('password') ||
+             error.message?.toLowerCase().includes('encrypted'))) {
+          return NextResponse.json(
+            {
+              error: 'This PDF appears to be password-protected. Please upload an unprotected version.',
+              code: 'PASSWORD_PROTECTED_PDF',
+            },
+            { status: 400 }
+          )
+        }
+
+        // Generic extraction failure
+        return NextResponse.json(
+          {
+            error: 'Could not extract information from brief. Please fill in the form manually.',
+            code: 'EXTRACTION_FAILED',
+            tempFilePath: tempPath,
           },
-        ],
-      })
-
-      // Extract text content from response
-      const textContent = message.content.find((block) => block.type === 'text')
-      if (!textContent || textContent.type !== 'text') {
-        throw new Error('No text content in Claude response')
+          { status: 400 }
+        )
       }
-
-      // Parse JSON from response
-      const jsonMatch = textContent.text.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) {
-        throw new Error('No JSON found in Claude response')
-      }
-
-      extractionResult = JSON.parse(jsonMatch[0])
     } else if (isImage) {
       // Process image file - send to Claude as image content block
       const base64Data = fileBuffer.toString('base64')
@@ -244,44 +317,41 @@ export async function POST(request: NextRequest) {
         mediaType = 'image/webp'
       }
 
-      const message = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4096,
-        system: SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: mediaType,
-                  data: base64Data,
+      try {
+        extractionResult = await extractWithRetry(anthropic, {
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 4096,
+          system: SYSTEM_PROMPT,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'image',
+                  source: {
+                    type: 'base64',
+                    media_type: mediaType,
+                    data: base64Data,
+                  },
                 },
-              },
-              {
-                type: 'text',
-                text: USER_PROMPT_TEMPLATE,
-              },
-            ],
+                {
+                  type: 'text',
+                  text: USER_PROMPT_TEMPLATE,
+                },
+              ],
+            },
+          ],
+        })
+      } catch (error) {
+        return NextResponse.json(
+          {
+            error: 'Could not extract information from image. Please fill in the form manually.',
+            code: 'EXTRACTION_FAILED',
+            tempFilePath: tempPath,
           },
-        ],
-      })
-
-      // Extract text content from response
-      const textContent = message.content.find((block) => block.type === 'text')
-      if (!textContent || textContent.type !== 'text') {
-        throw new Error('No text content in Claude response')
+          { status: 400 }
+        )
       }
-
-      // Parse JSON from response
-      const jsonMatch = textContent.text.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) {
-        throw new Error('No JSON found in Claude response')
-      }
-
-      extractionResult = JSON.parse(jsonMatch[0])
     } else {
       // Extract text from Word document first
       const text = await extractTextFromWord(fileBuffer)
@@ -290,55 +360,61 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             error: 'Could not extract text from document. Please ensure the file is not empty or corrupted.',
-            code: 'EXTRACTION_FAILED'
+            code: 'NO_EXTRACTABLE_TEXT'
           },
           { status: 400 }
         )
       }
 
-      const message = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4096,
-        system: SYSTEM_PROMPT,
-        messages: [
+      // Store text for prompt injection check
+      briefTextForInjectionCheck = text
+
+      try {
+        extractionResult = await extractWithRetry(anthropic, {
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 4096,
+          system: SYSTEM_PROMPT,
+          messages: [
+            {
+              role: 'user',
+              content: `${USER_PROMPT_TEMPLATE}\n\nDocument content:\n${text}`,
+            },
+          ],
+        })
+      } catch (error) {
+        return NextResponse.json(
           {
-            role: 'user',
-            content: `${USER_PROMPT_TEMPLATE}\n\nDocument content:\n${text}`,
+            error: 'Could not extract information from document. Please fill in the form manually.',
+            code: 'EXTRACTION_FAILED',
+            tempFilePath: tempPath,
           },
-        ],
-      })
-
-      // Extract text content from response
-      const textContent = message.content.find((block) => block.type === 'text')
-      if (!textContent || textContent.type !== 'text') {
-        throw new Error('No text content in Claude response')
+          { status: 400 }
+        )
       }
-
-      // Parse JSON from response
-      const jsonMatch = textContent.text.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) {
-        throw new Error('No JSON found in Claude response')
-      }
-
-      extractionResult = JSON.parse(jsonMatch[0])
     }
 
-    // Validate extraction result
-    if (!extractionResult.deliverables || !Array.isArray(extractionResult.deliverables)) {
-      throw new Error('Invalid extraction result: missing deliverables array')
+    // Check for prompt injection phrases (flag only, don't block)
+    let suspiciousFlag = false
+    if (briefTextForInjectionCheck) {
+      suspiciousFlag = containsSuspiciousPhrases(briefTextForInjectionCheck)
+      if (suspiciousFlag) {
+        console.warn(`[extract-brief] Suspicious phrases detected in session ${sessionId}`)
+      }
     }
 
-    if (extractionResult.deliverables.length === 0) {
+    // Validate deliverables exist
+    if (!extractionResult.deliverables || extractionResult.deliverables.length === 0) {
       return NextResponse.json(
         {
           error: 'Could not identify any deliverables in the brief. Please fill in the form manually.',
-          code: 'NO_DELIVERABLES'
+          code: 'NO_DELIVERABLES',
+          tempFilePath: tempPath,
         },
         { status: 400 }
       )
     }
 
-    // Store extraction in database
+    // Store extraction in database with suspicious flag
     const { error: dbError } = await supabase
       .from('brief_extractions')
       .insert({
@@ -346,6 +422,7 @@ export async function POST(request: NextRequest) {
         file_name: file.name,
         raw_extraction: extractionResult,
         model_used: 'claude-haiku-4-5-20251001',
+        suspicious_content_flag: suspiciousFlag,
       })
 
     if (dbError) {
@@ -353,7 +430,7 @@ export async function POST(request: NextRequest) {
       // Don't fail the request if we can't store it, just log the error
     }
 
-    // Return extraction result
+    // Return extraction result (suspiciousFlag is logged but doesn't affect client)
     return NextResponse.json({
       success: true,
       extraction: extractionResult,

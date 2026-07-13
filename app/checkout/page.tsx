@@ -78,7 +78,8 @@ function StripeForm({ grandTotalGBP }: { grandTotalGBP: number }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!stripe || !elements) return
+    if (!stripe || !elements || processing) return // Prevent double-click
+
     setProcessing(true)
     setError(null)
 
@@ -92,8 +93,9 @@ function StripeForm({ grandTotalGBP }: { grandTotalGBP: number }) {
     // Only reaches here on error — success causes a browser redirect
     if (stripeErr) {
       setError(stripeErr.message ?? 'Payment failed. Please try again.')
-      setProcessing(false)
+      setProcessing(false) // Re-enable button on error
     }
+    // On success, browser redirects - button stays disabled
   }
 
   return (
