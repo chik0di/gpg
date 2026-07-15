@@ -484,7 +484,7 @@ export async function POST(request: Request) {
       subjectField:       orderData.subjectField,
       academicLevel:      orderData.academicLevel,
       deadline:           orderData.deadline,
-      totalAmount:        total,
+      totalAmount:        totalPence / 100,
       deliverableSummary,
       isOutsideStandardFields: orderData.isOutsideStandardFields || false,
     }).catch((e) => console.error('[email] client confirmation failed:', e))
@@ -496,7 +496,7 @@ export async function POST(request: Request) {
       subjectField:       orderData.subjectField,
       academicLevel:      orderData.academicLevel,
       deadline:           orderData.deadline,
-      totalAmount:        total,
+      totalAmount:        totalPence / 100,
       deliverableSummary,
       instructions:       orderData.instructions || null,
     }).catch((e) => console.error('[email] admin alert failed:', e))
