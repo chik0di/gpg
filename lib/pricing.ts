@@ -131,7 +131,7 @@ export function getDeadlinePremiumLabel(dateStr: string): string | null {
 }
 
 // Returns an urgency warning message for 2–6 day deadlines, null otherwise
-export function getUrgencyWarning(dateStr: string): string | null {
+export function getUrgencyWarning(dateStr: string | null): string | null {
   if (!dateStr) return null
   const days = daysUntil(dateStr)
   if (days <= 3) return 'This deadline attracts an urgency premium — your final price will include a +80% adjustment, shown in the order summary.'
