@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import mammoth from 'mammoth'
 import { createClient } from '@supabase/supabase-js'
-import { validateExtraction, applySanityBounds, containsSuspiciousPhrases } from '@/lib/extraction-validation'
+import { validateClaudeExtraction, applySanityBounds, containsSuspiciousPhrases } from '@/lib/extraction-validation'
+import { matchSubjectField } from '@/lib/subject-matching'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -18,7 +19,8 @@ const SYSTEM_PROMPT = `You are an academic assignment brief analyser. Extract st
 const USER_PROMPT_TEMPLATE = `Analyse this assignment brief and extract the following information as JSON:
 
 {
-  "subject_field": string or null (the academic subject/field this assignment is for),
+  "module_name": string or null (the EXACT module or unit name as written in the brief — e.g. "Strategic Financial Management", "Unit 1: Programming", "Advanced Database Systems", "COMP101", "Business Finance 201". Extract it verbatim including any course codes or unit numbers. If no module name is found, return null),
+  "subject_area": string or null (a SHORT 2-4 word description of the broad ACADEMIC DISCIPLINE or field of study that this module belongs to — NOT the deliverable type or task being performed. Examples: "astrophysics", "computer science", "financial management", "network security", "business strategy", "nursing care", "mechanical engineering". Focus on the MODULE's academic field, not on technical keywords that appear in the brief content like "analysis", "code", or "presentation". Return null only if you cannot determine any subject area),
   "academic_level": "College" or "Undergraduate" or "Masters" or null (if stated or clearly implied),
   "deadline": string or null (any deadline or submission date mentioned, in ISO format if possible),
   "deliverables": [
@@ -47,8 +49,9 @@ TYPE "presentation" = Any slide deck with a slide count:
   - PowerPoint, Google Slides, Keynote, Prezi
   - Presentations, slideshows, slide decks
   - ANY deliverable described as a "presentation" or mentioning "slides"
+  - EXCLUDE: viva voce examinations, oral examinations, or vivas (these are "technical" not "presentation")
 
-TYPE "technical" = Actual code files, programs, executables, and technical implementations:
+TYPE "technical" = Actual code files, programs, executables, technical implementations, and oral examinations:
   - Source code files (.py, .java, .cs, .cpp, .js, etc.)
   - Programs, scripts, executables (.exe, .app, .bin)
   - Databases, SQL files (.sql, .db)
@@ -56,6 +59,7 @@ TYPE "technical" = Actual code files, programs, executables, and technical imple
   - Flowcharts, ERD diagrams (as standalone technical artifacts)
   - Web/mobile applications (the actual running code)
   - APIs, backend/frontend code
+  - Viva voce examinations, vivas, oral examinations (NOT presentations)
   - ONLY when the deliverable IS the code itself, not a report ABOUT code
 
 CRITICAL DISTINCTION — "written" vs "technical":
@@ -89,11 +93,14 @@ EXAMPLES OF "technical" TYPE:
 ✓ "SQL database with 5 tables" → technical, complexity: "complex", quantity: null
 ✓ "Network simulation using Cisco Packet Tracer" → technical, complexity: "complex", quantity: null
 ✓ "Flowchart and ERD diagram for system design" → technical, complexity: "simple", quantity: null
+✓ "Viva voce examination" → technical, complexity: "moderate", quantity: null
+✓ "Oral examination defending the project" → technical, complexity: "moderate", quantity: null
 
 DEFAULT RULE: If the brief says "report", "essay", "written", "document", "analysis", "evaluation" → type is "written" (NOT technical), even if it mentions code/software/databases in the context`
 
-interface ExtractionResult {
-  subject_field: string | null
+interface ClaudeExtractionResult {
+  module_name: string | null
+  subject_area: string | null
   academic_level: 'College' | 'Undergraduate' | 'Masters' | null
   deadline: string | null
   deliverables: Array<{
@@ -108,14 +115,63 @@ interface ExtractionResult {
   additional_notes: string | null
 }
 
+interface ExtractionResult extends ClaudeExtractionResult {
+  subject_field: string | null
+}
+
 async function extractTextFromWord(buffer: Buffer): Promise<string> {
   const result = await mammoth.extractRawText({ buffer })
   return result.value
 }
 
 /**
+ * Clean module name by stripping academic formatting that adds no meaningful information:
+ * - Module codes at start: 'PHYS3021 Stellar Astrophysics' → 'Stellar Astrophysics'
+ * - Forward slashes and everything after: 'A / B' → 'A'
+ * - Parentheses and content: 'Business Strategy (BU7087)' → 'Business Strategy'
+ * - Unit/Module prefixes: 'Unit 1: Programming' → 'Programming'
+ * - Trailing single characters: 'Programming H' → 'Programming'
+ *
+ * Examples:
+ * - 'PHYS3021 Stellar Astrophysics and Observational Techniques' → 'Stellar Astrophysics and Observational Techniques'
+ * - 'Unit 1: Programming H/618/7388' → 'Programming'
+ * - 'Unit 3: Business Strategy and Planning' → 'Business Strategy and Planning'
+ * - 'Module 2: Advanced Database Systems' → 'Advanced Database Systems'
+ * - 'Strategic Financial Management (BU7087)' → 'Strategic Financial Management'
+ */
+function cleanModuleName(moduleName: string | null): string | null {
+  if (!moduleName) return null
+
+  let cleaned = moduleName
+
+  // 1. Strip leading module codes (e.g., PHYS3021, CS101, BU7087, HNC001)
+  //    Pattern: letters (2+) followed by numbers, then space
+  cleaned = cleaned.replace(/^[A-Z]{2,}\d+\s+/i, '')
+
+  // 2. Strip everything after forward slash
+  cleaned = cleaned.split('/')[0]
+
+  // 3. Strip parentheses and their content
+  cleaned = cleaned.replace(/\s*\(.*?\)\s*/g, '')
+
+  // 4. Remove 'Unit X:' or 'Unit X -' prefix (where X is any number/letter)
+  cleaned = cleaned.replace(/^\s*Unit\s+[A-Za-z0-9]+\s*[:\-]\s*/i, '')
+
+  // 5. Remove 'Module X:' or 'Module X -' prefix
+  cleaned = cleaned.replace(/^\s*Module\s+[A-Za-z0-9]+\s*[:\-]\s*/i, '')
+
+  // 6. Remove trailing single character (qualification level indicators like 'H', 'L', etc.)
+  //    Only if preceded by a space (to avoid stripping meaningful single-letter words)
+  cleaned = cleaned.replace(/\s+[A-Za-z]$/, '')
+
+  // Trim and return null if empty
+  cleaned = cleaned.trim()
+  return cleaned || null
+}
+
+/**
  * Extract brief information with automatic retry on failure
- * @returns Validated extraction result
+ * @returns Validated extraction result with server-side domain matching
  * @throws Error if both attempts fail
  */
 async function extractWithRetry(
@@ -149,14 +205,42 @@ async function extractWithRetry(
 
       const rawExtraction = JSON.parse(jsonMatch[0])
 
-      // Validate with Zod schema
-      const extraction = validateExtraction(rawExtraction)
+      // Validate Claude's extraction (without subject_field)
+      const claudeExtraction = validateClaudeExtraction(rawExtraction)
 
       // Apply sanity bounds (clamp out-of-range values)
-      const boundedExtraction = applySanityBounds(extraction)
+      const boundedExtraction = applySanityBounds(claudeExtraction)
+
+      // Clean module name (strip prefixes, parentheses, trailing chars)
+      const cleanedModuleName = cleanModuleName(boundedExtraction.module_name)
+
+      // SERVER-SIDE: Match to our 11 standard domains using multiple context sources
+      // Try matching in order of confidence:
+      // 1. Cleaned module name (most specific, but may be too short after cleaning)
+      // 2. Subject area from Claude (broad context, usually reliable)
+      // Only pass module name and subject_area - never pass full brief text or deliverables
+      console.log('[extract-brief] Domain matching inputs:')
+      console.log('  - cleanedModuleName:', JSON.stringify(cleanedModuleName))
+      console.log('  - subject_area:', JSON.stringify(boundedExtraction.subject_area))
+
+      const matchedDomain = matchSubjectField(
+        cleanedModuleName,
+        boundedExtraction.subject_area
+      )
+
+      console.log('[extract-brief] Domain matching result:', JSON.stringify(matchedDomain))
+
+      // Build final extraction result with cleaned module name and matched domain
+      const finalExtraction: ExtractionResult = {
+        ...boundedExtraction,
+        module_name: cleanedModuleName,
+        subject_field: matchedDomain,
+      }
 
       console.log(`[extract-brief] Extraction succeeded on attempt ${attempt}`)
-      return boundedExtraction
+      console.log(`[extract-brief] Module: "${boundedExtraction.module_name}" → cleaned: "${cleanedModuleName}"`)
+      console.log(`[extract-brief] Subject area: "${boundedExtraction.subject_area}" → Domain: "${matchedDomain}"`)
+      return finalExtraction
 
     } catch (error) {
       lastError = error as Error

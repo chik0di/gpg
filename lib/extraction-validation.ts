@@ -47,9 +47,11 @@ export function containsSuspiciousPhrases(text: string): boolean {
 
 /**
  * Zod schema for validating Claude extraction response
+ * Note: subject_field is added server-side via keyword matching, not extracted by Claude
  */
-export const ExtractionResultSchema = z.object({
-  subject_field: z.string().nullable(),
+export const ClaudeExtractionSchema = z.object({
+  module_name: z.string().nullable(),
+  subject_area: z.string().nullable(),
   academic_level: z.enum(['College', 'Undergraduate', 'Masters']).nullable(),
   deadline: z.string().nullable(),
   deliverables: z.array(
@@ -64,6 +66,15 @@ export const ExtractionResultSchema = z.object({
     })
   ).min(EXTRACTION_BOUNDS.DELIVERABLE_COUNT_MIN).max(EXTRACTION_BOUNDS.DELIVERABLE_COUNT_MAX),
   additional_notes: z.string().nullable(),
+})
+
+export type ClaudeExtractionResult = z.infer<typeof ClaudeExtractionSchema>
+
+/**
+ * Full extraction result including server-side matched domain
+ */
+export const ExtractionResultSchema = ClaudeExtractionSchema.extend({
+  subject_field: z.string().nullable(),
 })
 
 export type ExtractionResult = z.infer<typeof ExtractionResultSchema>
@@ -126,11 +137,34 @@ export function applySanityBounds(extraction: ExtractionResult): ExtractionResul
 }
 
 /**
- * Validate extraction result with Zod schema
+ * Validate Claude extraction result (without subject_field)
+ * Returns parsed result or throws ZodError
+ */
+export function validateClaudeExtraction(data: unknown): ClaudeExtractionResult {
+  return ClaudeExtractionSchema.parse(data)
+}
+
+/**
+ * Validate full extraction result (with subject_field added server-side)
  * Returns parsed result or throws ZodError
  */
 export function validateExtraction(data: unknown): ExtractionResult {
   return ExtractionResultSchema.parse(data)
+}
+
+/**
+ * Safe validation for Claude extraction that returns success/error instead of throwing
+ */
+export function safeValidateClaudeExtraction(data: unknown): {
+  success: boolean
+  data?: ClaudeExtractionResult
+  error?: z.ZodError
+} {
+  const result = ClaudeExtractionSchema.safeParse(data)
+  if (result.success) {
+    return { success: true, data: result.data }
+  }
+  return { success: false, error: result.error }
 }
 
 /**

@@ -194,6 +194,7 @@ export default function OrderForm() {
   }
 
   function handleExtractionConfirm(confirmedData: {
+    moduleName: string | null
     subjectField: string
     academicLevel: string
     academicLevelRaw: string | null
@@ -206,6 +207,7 @@ export default function OrderForm() {
     // Populate form data with confirmed extraction
     setFormData((prev) => ({
       ...prev,
+      moduleName: confirmedData.moduleName || undefined,
       subjectField: confirmedData.subjectField,
       academicLevel: confirmedData.academicLevel,
       deadline: confirmedData.deadline,

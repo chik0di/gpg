@@ -22,6 +22,7 @@ export interface Deliverable {
 }
 
 export interface OrderFormState {
+  moduleName?: string        // Exact module name extracted from brief (e.g. 'Strategic Financial Management')
   subjectField: string
   academicLevel: string
   country: string

@@ -135,7 +135,8 @@ export default function StepSummary({ data, file, proceeding = false, onToggleRe
       {/* Order details chip row */}
       <div className="flex flex-wrap gap-2">
         {[
-          { label: 'Subject', value: data.subjectField },
+          ...(data.moduleName ? [{ label: 'Module', value: data.moduleName }] : []),
+          { label: 'Domain', value: data.subjectField },
           { label: 'Level', value: data.academicLevel },
           {
             label: 'Deadline',

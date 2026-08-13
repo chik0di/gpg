@@ -29,6 +29,7 @@ import { sendOrderConfirmation, sendAdminNewOrderAlert } from '@/lib/resend'
 import type { Deliverable } from '@/types/order-form'
 
 interface OrderData {
+  moduleName?: string | null
   subjectField: string
   academicLevel: string
   academicLevelRaw?: string | null
@@ -258,6 +259,7 @@ export async function POST(request: Request) {
         total_amount:              totalPence / 100, // Store as pounds for display
         academic_level:            orderData.academicLevel,
         academic_level_raw:        orderData.academicLevelRaw || null,
+        module_name:               orderData.moduleName || null,
         subject_field:             orderData.subjectField,
         deadline:                  orderData.deadline,
         country:                   orderData.country || 'United Kingdom',
@@ -481,6 +483,7 @@ export async function POST(request: Request) {
       to:                 clientEmail,
       firstName:          profile?.first_name ?? '',
       orderId:            order.id,
+      moduleName:         orderData.moduleName || null,
       subjectField:       orderData.subjectField,
       academicLevel:      orderData.academicLevel,
       deadline:           orderData.deadline,
@@ -493,6 +496,7 @@ export async function POST(request: Request) {
       orderId:            order.id,
       clientName,
       clientEmail,
+      moduleName:         orderData.moduleName || null,
       subjectField:       orderData.subjectField,
       academicLevel:      orderData.academicLevel,
       deadline:           orderData.deadline,

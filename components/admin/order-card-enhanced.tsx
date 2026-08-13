@@ -5,6 +5,7 @@ import Link from 'next/link'
 
 interface Order {
   id: string
+  module_name?: string | null
   subject_field: string
   academic_level: string
   deadline: string
@@ -171,13 +172,20 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
 
         {/* Compact info grid: Subject + Level chips inline, Deadline + Price on same line */}
         <div className="space-y-1.5 mb-2">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="px-1.5 py-0.5 bg-[#F5F0E8] rounded text-[10px] font-semibold text-[#1B2E4B]">
-              {order.subject_field}
-            </span>
-            <span className="px-1.5 py-0.5 bg-[#F5F0E8] rounded text-[10px] font-semibold text-[#6B7280]">
-              {order.academic_level}
-            </span>
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="px-1.5 py-0.5 bg-[#F5F0E8] rounded text-[10px] font-semibold text-[#1B2E4B]">
+                {order.subject_field}
+              </span>
+              <span className="px-1.5 py-0.5 bg-[#F5F0E8] rounded text-[10px] font-semibold text-[#6B7280]">
+                {order.academic_level}
+              </span>
+            </div>
+            {order.module_name && (
+              <div className="text-[10px] text-[#9CA3AF] pl-0.5">
+                {order.module_name}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-between text-xs">

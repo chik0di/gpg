@@ -10,6 +10,7 @@ interface AdminOrder {
   status: string
   total_amount: number
   academic_level: string
+  module_name: string | null
   subject_field: string
   deadline: string
   created_at: string
@@ -23,7 +24,7 @@ export default async function AdminPage() {
   const { data: orders } = await supabaseAdmin
     .from('orders')
     .select(`
-      id, status, total_amount, academic_level, subject_field, deadline, created_at, user_id, is_outside_standard_fields,
+      id, status, total_amount, academic_level, module_name, subject_field, deadline, created_at, user_id, is_outside_standard_fields,
       profiles ( first_name, last_name, email ),
       deliverables ( id )
     `)
@@ -39,6 +40,7 @@ export default async function AdminPage() {
       status: order.status,
       total_amount: order.total_amount,
       academic_level: order.academic_level,
+      module_name: order.module_name,
       subject_field: order.subject_field,
       deadline: order.deadline,
       created_at: order.created_at,

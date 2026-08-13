@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { SUBJECT_GROUPS, ACADEMIC_LEVELS, PRACTICAL_ITEMS, daysUntil, getUrgencyWarning } from '@/lib/pricing'
 import { mapAcademicLevel } from '@/lib/academic-level-mapping'
-import { matchSubjectField } from '@/lib/subject-matching'
 import { isStandardSubject } from '@/lib/subject-validation'
 import { correctDeliverableType } from '@/lib/deliverable-type-detection'
 import type { Deliverable } from '@/types/order-form'
@@ -27,6 +26,7 @@ interface ExtractedDeliverable {
 }
 
 interface ExtractionResult {
+  module_name: string | null
   subject_field: string | null
   academic_level: 'College' | 'Undergraduate' | 'Masters' | null
   deadline: string | null
@@ -38,6 +38,7 @@ interface Props {
   extraction: ExtractionResult
   extractionFailed?: boolean
   onConfirm: (confirmedData: {
+    moduleName: string | null
     subjectField: string
     academicLevel: string
     academicLevelRaw: string | null
@@ -70,24 +71,33 @@ function formatPrice(gbp: number, currency: string, rate: number): string {
 }
 
 /**
- * Truncate description to first sentence (max 1 sentence)
- * Looks for sentence endings: . ! ? followed by space or end of string
+ * Truncate description to first complete sentence
+ * - If description has a full stop: cut at first full stop (no ellipsis)
+ * - If no full stop: truncate at 120 chars at word boundary and add full stop
  */
 function truncateToFirstSentence(description: string): string {
   if (!description) return ''
 
-  // Match first sentence ending with . ! or ?
-  const match = description.match(/^[^.!?]+[.!?]/)
+  // Match first sentence ending with full stop followed by space or end of string
+  const match = description.match(/^[^.]+\.(?:\s|$)/)
   if (match) {
     return match[0].trim()
   }
 
-  // No sentence ending found - truncate at reasonable length
-  if (description.length > 80) {
-    return description.substring(0, 80).trim() + '...'
+  // No full stop found - truncate at 120 chars at nearest word boundary
+  if (description.length > 120) {
+    // Find last space before 120 chars
+    const truncated = description.substring(0, 120)
+    const lastSpace = truncated.lastIndexOf(' ')
+    if (lastSpace > 0) {
+      return truncated.substring(0, lastSpace).trim() + '.'
+    }
+    return truncated.trim() + '.'
   }
 
-  return description.trim()
+  // Short description with no full stop - add one
+  const trimmed = description.trim()
+  return trimmed.endsWith('.') ? trimmed : trimmed + '.'
 }
 
 export default function StepExtractionReview({
@@ -102,7 +112,7 @@ export default function StepExtractionReview({
   // Map academic level to pricing tier
   const { tier: mappedAcademicLevel, rawTerm: academicLevelRaw } = mapAcademicLevel(extraction.academic_level)
 
-  // Apply type correction and defaults
+  // Apply type correction, defaults, and recalculate prices to match server-side pricing
   const processedDeliverables = extraction.deliverables.map(d => {
     // CRITICAL: Correct deliverable type before any other processing
     // This prevents technical deliverables from being misclassified as written
@@ -122,17 +132,32 @@ export default function StepExtractionReview({
       }
     }
 
+    // Recalculate written prices using tiered pricing (same as server-side)
+    if (corrected.type === 'written' && corrected.quantity) {
+      const { calcWrittenPrice } = require('@/lib/pricing')
+      const pages = corrected.quantity_type === 'words'
+        ? Math.ceil(corrected.quantity / 275) // ceiling division for words-to-pages
+        : corrected.quantity
+      const recalculatedPrice = calcWrittenPrice(pages)
+
+      return {
+        ...corrected,
+        price_gbp: recalculatedPrice,
+      }
+    }
+
     return corrected
   })
 
-  // Match extracted subject to our predefined fields for clean display
-  const matchedSubject = matchSubjectField(extraction.subject_field)
+  // Module name is already cleaned server-side (slash stripped)
+  // Domain is already matched server-side using keyword matching
 
   // Validate extracted deadline - must be at least 2 days from today
   const extractedDeadlineValid = extraction.deadline && daysUntil(extraction.deadline) >= 2
   const deadlinePassedOrTooSoon = extraction.deadline && !extractedDeadlineValid
 
-  const [subjectField, setSubjectField] = useState(matchedSubject || '')
+  const [moduleName] = useState(extraction.module_name)
+  const [subjectField] = useState(extraction.subject_field)
   const [academicLevel, setAcademicLevel] = useState(mappedAcademicLevel)
   const [deadline, setDeadline] = useState(extractedDeadlineValid ? extraction.deadline : '')
   const [country, setCountry] = useState('United Kingdom')
@@ -140,9 +165,9 @@ export default function StepExtractionReview({
   const [deliverables, setDeliverables] = useState<ExtractedDeliverable[]>(processedDeliverables)
   const [editingDeliverableId, setEditingDeliverableId] = useState<number | null>(null)
 
-  // Subject and level are NOT editable if extracted (shown as plain text)
+  // Module name is NEVER editable (shown as plain text or "Not found in brief")
+  // Domain field is NEVER editable (shown as plain text or "Not determined")
   // Deadline is ALWAYS editable
-  const subjectExtracted = !!extraction.subject_field
   const levelExtracted = !!extraction.academic_level
 
   // Urgency warning for deadline
@@ -296,6 +321,7 @@ export default function StepExtractionReview({
     })
 
     onConfirm({
+      moduleName,
       subjectField,
       academicLevel,
       academicLevelRaw,
@@ -303,7 +329,8 @@ export default function StepExtractionReview({
       country,
       deliverables: formDeliverables,
       instructions,
-      isOutsideStandardFields: !isStandardSubject(subjectField),
+      // Flag as outside standard fields if domain is null OR not in our 11 standard subjects
+      isOutsideStandardFields: !subjectField || !isStandardSubject(subjectField),
     })
   }
 
@@ -369,47 +396,51 @@ export default function StepExtractionReview({
       <div className="space-y-4">
         <h3 className="text-base font-semibold text-[#1B2E4B]">Basic information</h3>
 
-        {/* Subject field */}
-        <div>
-          <label className="block text-sm font-semibold text-[#1B2E4B] mb-1.5">
-            Subject / Field
-          </label>
-          {subjectExtracted ? (
+        {/* Module and Domain - side by side */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Module field (left) */}
+          <div>
+            <label className="block text-sm font-semibold text-[#1B2E4B] mb-1.5">
+              Module
+            </label>
             <div className="px-4 py-3 border border-[#E8E2D9] rounded-xl bg-[#FDFAF6]">
-              <span className="text-sm text-[#1B2E4B] font-medium">{subjectField}</span>
+              {moduleName ? (
+                <span className="text-sm text-[#1B2E4B] font-medium">{moduleName}</span>
+              ) : (
+                <span className="text-sm text-[#9CA3AF] italic">Not found in brief</span>
+              )}
             </div>
-          ) : (
-            <select
-              value={subjectField}
-              onChange={(e) => setSubjectField(e.target.value)}
-              className={selectClass}
-            >
-              <option value="">Select your subject…</option>
-              {SUBJECT_GROUPS.map(({ group, subjects }) => (
-                <optgroup key={group} label={group}>
-                  {subjects.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          )}
+          </div>
 
-          {/* Outside standard fields warning */}
-          {subjectField && !isStandardSubject(subjectField) && (
-            <div className="mt-2 flex items-start gap-2.5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
-              <svg className="w-5 h-5 text-amber-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-amber-900">Outside our standard subject areas</p>
-                <p className="text-sm text-amber-800 mt-0.5">
-                  We'll review your brief carefully — if we're unable to complete your order, you'll receive a full refund within 24 hours.
-                </p>
-              </div>
+          {/* Domain field (right) */}
+          <div>
+            <label className="block text-sm font-semibold text-[#1B2E4B] mb-1.5">
+              Domain
+            </label>
+            <div className="px-4 py-3 border border-[#E8E2D9] rounded-xl bg-[#FDFAF6]">
+              {subjectField ? (
+                <span className="text-sm text-[#1B2E4B] font-medium">{subjectField}</span>
+              ) : (
+                <span className="text-sm text-[#9CA3AF] italic">Not determined</span>
+              )}
             </div>
-          )}
+          </div>
         </div>
+
+        {/* Outside standard fields warning - show if domain is null OR not in our 11 standard fields */}
+        {(!subjectField || !isStandardSubject(subjectField)) && (
+          <div className="flex items-start gap-2.5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
+            <svg className="w-5 h-5 text-amber-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900">Subject area review required</p>
+              <p className="text-sm text-amber-800 mt-0.5">
+                This subject area isn't one we typically cover. We'll review your brief carefully — if we're unable to complete your order, you'll receive a full refund within 24 hours.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Academic level */}
         <div>

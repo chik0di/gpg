@@ -57,6 +57,7 @@ export async function sendOrderConfirmation(params: {
   to: string
   firstName: string
   orderId: string
+  moduleName?: string | null
   subjectField: string
   academicLevel: string
   deadline: string
@@ -65,7 +66,7 @@ export async function sendOrderConfirmation(params: {
   isOutsideStandardFields?: boolean
 }) {
   const {
-    to, firstName, orderId, subjectField,
+    to, firstName, orderId, moduleName, subjectField,
     academicLevel, deadline, totalAmount, deliverableSummary,
     isOutsideStandardFields = false,
   } = params
@@ -85,7 +86,8 @@ export async function sendOrderConfirmation(params: {
     ${divider()}
     ${table(
       row('Order ID', `#${shortId}`) +
-      row('Subject', subjectField) +
+      (moduleName ? row('Module', moduleName) : '') +
+      row('Domain', subjectField) +
       row('Academic level', academicLevel) +
       row('Deadline', deadlineFormatted) +
       row('Deliverables', deliverableSummary) +
@@ -110,6 +112,7 @@ export async function sendAdminNewOrderAlert(params: {
   orderId: string
   clientName: string
   clientEmail: string
+  moduleName?: string | null
   subjectField: string
   academicLevel: string
   deadline: string
@@ -118,7 +121,7 @@ export async function sendAdminNewOrderAlert(params: {
   instructions?: string | null
 }) {
   const {
-    orderId, clientName, clientEmail, subjectField,
+    orderId, clientName, clientEmail, moduleName, subjectField,
     academicLevel, deadline, totalAmount, deliverableSummary, instructions,
   } = params
 
@@ -133,7 +136,8 @@ export async function sendAdminNewOrderAlert(params: {
     ${table(
       row('Order ID', `#${shortId}`) +
       row('Client', `${clientName} &lt;${clientEmail}&gt;`) +
-      row('Subject', subjectField) +
+      (moduleName ? row('Module', moduleName) : '') +
+      row('Domain', subjectField) +
       row('Academic level', academicLevel) +
       row('Deadline', deadlineFormatted) +
       row('Deliverables', deliverableSummary) +

@@ -12,11 +12,16 @@ export const metadata: Metadata = { title: 'Admin — Order Detail' }
 
 interface Props { params: { id: string } }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, secondary }: { label: string; value: string; secondary?: string | null }) {
   return (
     <div className="flex items-start justify-between gap-4 py-3 border-b border-[#E8E2D9] last:border-0">
       <span className="text-sm text-[#9CA3AF] shrink-0 w-36">{label}</span>
-      <span className="text-sm font-semibold text-[#1B2E4B] text-right">{value}</span>
+      <div className="text-right">
+        <div className="text-sm font-semibold text-[#1B2E4B]">{value}</div>
+        {secondary && (
+          <div className="text-xs text-[#9CA3AF] mt-1">{secondary}</div>
+        )}
+      </div>
     </div>
   )
 }
@@ -34,7 +39,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
     .single() as {
       data: {
         id: string; status: string; total_amount: number; academic_level: string; user_id: string
-        subject_field: string; deadline: string; additional_instructions: string | null
+        module_name: string | null; subject_field: string; deadline: string; additional_instructions: string | null
         originality_report: boolean; stripe_payment_intent_id: string | null; created_at: string
         is_outside_standard_fields: boolean | null
         profiles: { first_name: string | null; last_name: string | null; email: string } | null
@@ -130,10 +135,10 @@ export default async function AdminOrderDetailPage({ params }: Props) {
           <p className="text-xs font-bold text-[#6B7280] uppercase tracking-wide">Order Details</p>
         </div>
         <div className="px-5">
-          <Row label="Subject"       value={order.subject_field} />
+          <Row label="Domain" value={order.subject_field} secondary={order.module_name} />
           <Row label="Academic level" value={order.academic_level} />
-          <Row label="Deadline"      value={deadline} />
-          <Row label="Total paid"    value={total} />
+          <Row label="Deadline" value={deadline} />
+          <Row label="Total paid" value={total} />
           <Row label="Originality report" value={order.originality_report ? 'Included' : 'Not included'} />
           {order.stripe_payment_intent_id && (
             <Row label="Payment ref" value={order.stripe_payment_intent_id.slice(0, 24) + '…'} />
