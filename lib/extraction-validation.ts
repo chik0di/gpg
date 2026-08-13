@@ -90,7 +90,7 @@ function clamp(value: number, min: number, max: number): number {
  * Apply sanity bounds to extraction result
  * Clamps out-of-range values and nulls invalid data
  */
-export function applySanityBounds(extraction: ExtractionResult): ExtractionResult {
+export function applySanityBounds(extraction: ClaudeExtractionResult): ClaudeExtractionResult {
   return {
     ...extraction,
     deliverables: extraction.deliverables.map(d => {
