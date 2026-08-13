@@ -19,6 +19,8 @@ const AI_STEPS = ['Upload Brief', 'Review', 'Summary']
 const MANUAL_STEPS = ['Basic Info', 'Deliverables', 'Upload & Instructions', 'Summary']
 
 interface ExtractionResult {
+  module_name: string | null
+  subject_area: string | null
   subject_field: string | null
   academic_level: 'College' | 'Undergraduate' | 'Masters' | null
   deadline: string | null
@@ -145,6 +147,8 @@ export default function OrderForm() {
         if (result.code === 'NO_DELIVERABLES' || result.code === 'EXTRACTION_ERROR' || result.code === 'EXTRACTION_FAILED') {
           // SCENARIO B: Upload OK but extraction failed - proceed to review with manual entry
           setExtractionResult({
+            module_name: null,
+            subject_area: null,
             subject_field: null,
             academic_level: null,
             deadline: null,
