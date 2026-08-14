@@ -159,7 +159,7 @@ export default function StepExtractionReview({
   const [moduleName] = useState(extraction.module_name)
   const [subjectField] = useState(extraction.subject_field)
   const [academicLevel, setAcademicLevel] = useState(mappedAcademicLevel)
-  const [deadline, setDeadline] = useState(extractedDeadlineValid ? extraction.deadline : '')
+  const [deadline, setDeadline] = useState(extractedDeadlineValid ? (extraction.deadline ?? '') : '')
   const [country, setCountry] = useState('United Kingdom')
   const [instructions, setInstructions] = useState('')
   const [deliverables, setDeliverables] = useState<ExtractedDeliverable[]>(processedDeliverables)
@@ -455,7 +455,7 @@ export default function StepExtractionReview({
             </div>
           ) : (
             <select
-              value={academicLevel}
+              value={academicLevel ?? ''}
               onChange={(e) => setAcademicLevel(e.target.value as any)}
               className={selectClass}
             >
@@ -475,7 +475,7 @@ export default function StepExtractionReview({
           <input
             type="date"
             min={getMinDate()}
-            value={deadline}
+            value={deadline ?? ''}
             onChange={(e) => setDeadline(e.target.value)}
             className={selectClass}
           />
