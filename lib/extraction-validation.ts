@@ -123,7 +123,7 @@ export function applySanityBounds(extraction: ClaudeExtractionResult): ClaudeExt
       // Validate technical prices (in GBP, convert to pence for check)
       if (d.type === 'technical') {
         const pricePence = Math.round(d.price_gbp * 100)
-        const validPrices = EXTRACTION_BOUNDS.TECHNICAL_PRICES_PENCE
+        const validPrices = EXTRACTION_BOUNDS.TECHNICAL_PRICES_PENCE as readonly number[]
 
         if (!validPrices.includes(pricePence)) {
           console.warn(`[extraction-validation] Invalid technical price ${d.price_gbp} GBP (${pricePence} pence), should be one of: £40, £65, £95, £130`)
