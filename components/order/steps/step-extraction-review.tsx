@@ -322,10 +322,10 @@ export default function StepExtractionReview({
 
     onConfirm({
       moduleName,
-      subjectField,
-      academicLevel,
+      subjectField: subjectField ?? '',
+      academicLevel: academicLevel ?? '',
       academicLevelRaw,
-      deadline,
+      deadline: deadline ?? '',
       country,
       deliverables: formDeliverables,
       instructions,
