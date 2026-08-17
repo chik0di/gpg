@@ -35,8 +35,12 @@ function deliverableLabel(d: Deliverable): string {
   }
 
   if (d.type === 'written') {
-    const pages = d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE)
-    return `Written — ${pages} page${pages !== 1 ? 's' : ''} (${d.sizeMode === 'words' ? `${d.quantity} words` : `${pages * WORDS_PER_PAGE} words`})`
+    // Show exactly what was entered - no conversion
+    if (d.sizeMode === 'words') {
+      return `Written — ${d.quantity} word${d.quantity !== 1 ? 's' : ''}`
+    } else {
+      return `Written — ${d.quantity} page${d.quantity !== 1 ? 's' : ''}`
+    }
   }
   if (d.type === 'presentation') {
     if (d.slideInputMode === 'exact') {

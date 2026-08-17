@@ -15,6 +15,20 @@ const COUNTRIES = [
   'Germany', 'France', 'Spain', 'Italy', 'Netherlands',
 ]
 
+const STANDARD_SUBJECTS = [
+  'Computer Science',
+  'Information Technology',
+  'Cybersecurity',
+  'Networking & Communications',
+  'Software Engineering',
+  'Artificial Intelligence & Machine Learning',
+  'Data Science',
+  'Business Administration',
+  'Project Management',
+  'Finance & Accounting',
+  'Marketing',
+]
+
 interface ExtractedDeliverable {
   type: 'written' | 'presentation' | 'technical'
   description: string
@@ -157,7 +171,7 @@ export default function StepExtractionReview({
   const deadlinePassedOrTooSoon = extraction.deadline && !extractedDeadlineValid
 
   const [moduleName] = useState(extraction.module_name)
-  const [subjectField] = useState(extraction.subject_field)
+  const [subjectField, setSubjectField] = useState(extraction.subject_field)
   const [academicLevel, setAcademicLevel] = useState(mappedAcademicLevel)
   const [deadline, setDeadline] = useState(extractedDeadlineValid ? (extraction.deadline ?? '') : '')
   const [country, setCountry] = useState('United Kingdom')
@@ -211,10 +225,13 @@ export default function StepExtractionReview({
     let complexity: 'simple' | 'moderate' | 'complex' | 'expert' | null = null
 
     if (newDeliverableType === 'written') {
-      const pages = newDeliverableSizeMode === 'pages' ? newDeliverableQuantity : Math.ceil(newDeliverableQuantity / 275)
-      description = `Written assignment (${pages} pages)`
-      quantity = pages
-      quantityType = 'pages'
+      // Store original quantity and type as entered by user
+      quantity = newDeliverableQuantity
+      quantityType = newDeliverableSizeMode === 'pages' ? 'pages' : 'words'
+      // Description shows what the user entered
+      description = newDeliverableSizeMode === 'pages'
+        ? `Written report (${newDeliverableQuantity} pages)`
+        : `Written report (${newDeliverableQuantity} words)`
     } else if (newDeliverableType === 'presentation') {
       description = `Presentation (${newDeliverableSlideCount} slides)`
       quantity = newDeliverableSlideCount
@@ -246,6 +263,22 @@ export default function StepExtractionReview({
   }
 
   function handleConfirm() {
+    console.log('=== CONTINUE BUTTON CLICKED ===')
+    console.log('All validation state:', {
+      subjectField,
+      academicLevel,
+      deadline,
+      country,
+      deliverables_count: deliverables.length,
+      deliverables_with_zero_price: deliverables.filter(d => d.price_gbp === 0 || !d.price_gbp).length,
+      all_deliverables: deliverables.map(d => ({
+        type: d.type,
+        description: d.description,
+        quantity: d.quantity,
+        price_gbp: d.price_gbp,
+      }))
+    })
+
     // Import pricing functions
     const { calcWrittenPrice, calcPresentationPrice } = require('@/lib/pricing')
 
@@ -254,18 +287,23 @@ export default function StepExtractionReview({
       const id = Math.random().toString(36).slice(2)
 
       if (d.type === 'written') {
+        // Preserve original quantity type (words or pages) for display
+        const sizeMode = d.quantity_type === 'words' ? 'words' : 'pages'
+        const quantity = d.quantity || 0
+
+        // Calculate pages for pricing (internal calculation)
         const pages = d.quantity_type === 'words' && d.quantity
           ? Math.ceil(d.quantity / 275) // Convert words to pages using ceiling
           : d.quantity || 0
 
-        // Recalculate price using our tiered pricing to ensure accuracy
+        // Recalculate price using flat £5/page pricing
         const recalculatedPrice = calcWrittenPrice(pages)
 
         return {
           id,
           type: 'written',
-          sizeMode: 'pages' as const,
-          quantity: pages,
+          sizeMode,  // Preserve original input type
+          quantity,  // Preserve original quantity
           slideBand: '',
           slideInputMode: 'exact' as const,
           slideCount: 0,
@@ -329,8 +367,8 @@ export default function StepExtractionReview({
       country,
       deliverables: formDeliverables,
       instructions,
-      // Flag as outside standard fields if domain is null OR not in our 11 standard subjects
-      isOutsideStandardFields: !subjectField || !isStandardSubject(subjectField),
+      // Flag as outside standard fields ONLY if "Other / Not listed" was explicitly selected
+      isOutsideStandardFields: subjectField === 'Other / Not listed',
     })
   }
 
@@ -383,6 +421,41 @@ export default function StepExtractionReview({
 
   const selectClass = 'w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/40 focus:border-[#E8A020] transition-all'
 
+  // Calculate all validation conditions
+  const hasSubjectField = !!subjectField
+  const hasAcademicLevel = !!academicLevel
+  const hasDeadline = !!deadline
+  const hasCountry = !!country
+  const hasDeliverables = deliverables.length > 0
+  const allDeliverablesHavePrice = deliverables.every(d => d.price_gbp > 0)
+
+  const isButtonDisabled = !hasSubjectField || !hasAcademicLevel || !hasDeadline || !hasCountry || !hasDeliverables || !allDeliverablesHavePrice
+
+  // Log validation state whenever it changes
+  console.log('=== BUTTON VALIDATION STATE ===', {
+    isButtonDisabled,
+    conditions: {
+      hasSubjectField,
+      hasAcademicLevel,
+      hasDeadline,
+      hasCountry,
+      hasDeliverables,
+      allDeliverablesHavePrice,
+    },
+    values: {
+      subjectField,
+      academicLevel,
+      deadline,
+      country,
+      deliverables_count: deliverables.length,
+      deliverables_with_prices: deliverables.map(d => ({
+        type: d.type,
+        description: d.description.substring(0, 50) + '...',
+        price: d.price_gbp,
+      })),
+    }
+  })
+
   return (
     <div className="space-y-7">
       <div>
@@ -417,18 +490,35 @@ export default function StepExtractionReview({
             <label className="block text-sm font-semibold text-[#1B2E4B] mb-1.5">
               Domain
             </label>
-            <div className="px-4 py-3 border border-[#E8E2D9] rounded-xl bg-[#FDFAF6]">
-              {subjectField ? (
+            {extraction.subject_field ? (
+              // Domain was extracted - show as read-only
+              <div className="px-4 py-3 border border-[#E8E2D9] rounded-xl bg-[#FDFAF6]">
                 <span className="text-sm text-[#1B2E4B] font-medium">{subjectField}</span>
-              ) : (
-                <span className="text-sm text-[#9CA3AF] italic">Not determined</span>
-              )}
-            </div>
+              </div>
+            ) : (
+              // No domain extracted - show dropdown for manual selection
+              <select
+                value={subjectField ?? ''}
+                onChange={(e) => setSubjectField(e.target.value || null)}
+                className={selectClass}
+              >
+                <option value="">Select domain...</option>
+                {STANDARD_SUBJECTS.map((subject) => (
+                  <option key={subject} value={subject}>{subject}</option>
+                ))}
+                <option value="Other / Not listed">Other / Not listed</option>
+              </select>
+            )}
           </div>
         </div>
 
-        {/* Outside standard fields warning - show if domain is null OR not in our 11 standard fields */}
-        {(!subjectField || !isStandardSubject(subjectField)) && (
+        {/* Outside standard fields warning - show in two contexts with different wording */}
+        {(
+          // Context 1: Domain was extracted but doesn't match our standard fields
+          (extraction.subject_field && !isStandardSubject(extraction.subject_field)) ||
+          // Context 2: User manually selected "Other / Not listed"
+          subjectField === 'Other / Not listed'
+        ) && (
           <div className="flex items-start gap-2.5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
             <svg className="w-5 h-5 text-amber-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
@@ -436,7 +526,14 @@ export default function StepExtractionReview({
             <div className="flex-1">
               <p className="text-sm font-semibold text-amber-900">Subject area review required</p>
               <p className="text-sm text-amber-800 mt-0.5">
-                This subject area isn't one we typically cover. We'll review your brief carefully — if we're unable to complete your order, you'll receive a full refund within 24 hours.
+                {/* Different wording based on whether domain was extracted or manually selected */}
+                {extraction.subject_field && !isStandardSubject(extraction.subject_field) ? (
+                  // Domain was extracted but outside our standard fields - we know what it is
+                  <>This subject area isn't one we typically cover. We'll review your brief carefully — if we're unable to complete your order, you'll receive a full refund within 24 hours.</>
+                ) : (
+                  // User selected "Other / Not listed" - we don't know what it is
+                  <>This subject area may not be one we typically cover. We'll review your brief carefully — if we're unable to complete your order, you'll receive a full refund within 24 hours.</>
+                )}
               </p>
             </div>
           </div>
@@ -844,21 +941,20 @@ export default function StepExtractionReview({
         <button
           type="button"
           onClick={handleConfirm}
-          disabled={
-            !subjectField ||
-            !academicLevel ||
-            !deadline ||
-            !country ||
-            deliverables.length === 0 ||
-            deliverables.some(d => d.price_gbp === 0 || !d.price_gbp)
-          }
-          className="flex-1 py-3 px-6 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isButtonDisabled}
+          className="flex-1 py-3 px-6 rounded-xl text-sm font-semibold text-white transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           style={{
-            background: subjectField && academicLevel && deadline && country &&
-                       deliverables.length > 0 &&
-                       deliverables.every(d => d.price_gbp > 0)
-              ? '#E8A020'
-              : '#9CA3AF',
+            background: !isButtonDisabled ? '#E8A020' : '#9CA3AF',
+          }}
+          onMouseEnter={(e) => {
+            if (!isButtonDisabled) {
+              e.currentTarget.style.background = '#D4901A'
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isButtonDisabled) {
+              e.currentTarget.style.background = '#E8A020'
+            }
           }}
         >
           Looks good — Continue to summary

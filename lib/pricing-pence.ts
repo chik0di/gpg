@@ -82,16 +82,8 @@ export function calcWrittenPricePence(pages: number, isManual: boolean = false):
 
   const rate = isManual ? WRITTEN_RATE_MANUAL : WRITTEN_RATE_AI
 
-  // Tiered pricing for AI-extracted written deliverables
-  if (!isManual) {
-    if (pages <= 2) return 1000  // Flat £10
-    if (pages <= 5) return pages * 500   // £5/page
-    if (pages <= 10) return pages * 450  // £4.50/page
-    if (pages <= 20) return pages * 400  // £4/page
-    return pages * 350  // £3.50/page for 20+
-  }
-
-  // Manual deliverables: flat premium rate
+  // AI extraction path: flat £5 per page (500 pence) for ALL page counts
+  // Manual path: flat £6 per page (600 pence) premium pricing
   return pages * rate
 }
 

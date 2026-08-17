@@ -62,22 +62,15 @@ export function getDeadlineBandLabel(dateStr: string): string {
 }
 
 // ── Written pricing ───────────────────────────────────────────────────────
+// AI extraction path: flat £5/page for ALL page counts
 export function calcWrittenPrice(pages: number): number {
   if (!pages || pages <= 0) return 0
-  if (pages <= 2) return 10
-  if (pages <= 5) return pages * 5
-  if (pages <= 10) return pages * 4.5
-  if (pages <= 20) return pages * 4
-  return pages * 3.5
+  return pages * 5  // Flat £5 per page
 }
 
 export function writtenBandLabel(pages: number): string {
   if (!pages || pages <= 0) return ''
-  if (pages <= 2) return 'Up to 2 pages — flat rate'
-  if (pages <= 5) return '3–5 pages — £5/page'
-  if (pages <= 10) return '6–10 pages — £4.50/page'
-  if (pages <= 20) return '11–20 pages — £4/page'
-  return '20+ pages — £3.50/page'
+  return `${pages} page${pages !== 1 ? 's' : ''} — £5/page`
 }
 
 // ── Presentation pricing ──────────────────────────────────────────────────
