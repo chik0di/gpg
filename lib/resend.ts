@@ -53,6 +53,11 @@ function divider() {
 
 // ── Email: client order confirmation ─────────────────────────────────────────
 
+interface DeliverableItem {
+  description: string
+  basePrice: number
+}
+
 export async function sendOrderConfirmation(params: {
   to: string
   firstName: string
@@ -62,37 +67,100 @@ export async function sendOrderConfirmation(params: {
   academicLevel: string
   deadline: string
   totalAmount: number
-  deliverableSummary: string  // e.g. "Written (5 pages), Presentation (10 slides)"
+  deliverableItems: DeliverableItem[]  // Individual deliverable items with base prices
+  academicLevelAdjustment?: number | null  // Adjustment amount (can be negative or positive)
+  urgencyPremium?: number | null  // Urgency premium amount (always positive or zero)
+  originalityReportPrice?: number | null  // Originality report addon price
   isOutsideStandardFields?: boolean
 }) {
   const {
     to, firstName, orderId, moduleName, subjectField,
-    academicLevel, deadline, totalAmount, deliverableSummary,
+    academicLevel, deadline, totalAmount, deliverableItems,
+    academicLevelAdjustment = null, urgencyPremium = null,
+    originalityReportPrice = null,
     isOutsideStandardFields = false,
   } = params
 
+  const now = new Date()
+  const dateFormatted = now.toLocaleDateString('en-GB', { dateStyle: 'long' })
   const deadlineFormatted = new Date(deadline).toLocaleDateString('en-GB', { dateStyle: 'long' })
-  const totalFormatted    = `£${totalAmount % 1 === 0 ? totalAmount : totalAmount.toFixed(2)}`
-  const shortId           = orderId.slice(0, 8).toUpperCase()
+  const totalFormatted = `£${totalAmount % 1 === 0 ? totalAmount : totalAmount.toFixed(2)}`
+  const shortId = orderId.slice(0, 8).toUpperCase()
+
+  const fmt = (n: number) => `£${n % 1 === 0 ? n : n.toFixed(2)}`
 
   const outsideFieldsNotice = isOutsideStandardFields
     ? p('<strong>Please note:</strong> As your assignment falls outside our standard subject areas, our team will review your brief within 24 hours to confirm we can complete your work. If we are unable to proceed for any reason, you will receive a full refund immediately — no questions asked.')
     : ''
 
+  // Build itemized receipt table
+  let receiptRows = ''
+
+  // Deliverable items
+  deliverableItems.forEach((item, index) => {
+    receiptRows += `<tr>
+      <td style="padding:10px 0;font-size:14px;color:#1B2E4B;vertical-align:top;border-top:${index === 0 ? '1px solid #E8E2D9' : 'none'};">${item.description}</td>
+      <td style="padding:10px 0;font-size:14px;color:#1B2E4B;font-weight:600;text-align:right;vertical-align:top;border-top:${index === 0 ? '1px solid #E8E2D9' : 'none'};">${fmt(item.basePrice)}</td>
+    </tr>`
+  })
+
+  // Academic level adjustment (can be positive or negative)
+  if (academicLevelAdjustment !== null && academicLevelAdjustment !== 0) {
+    const isIncrease = academicLevelAdjustment > 0
+    const color = isIncrease ? '#C4861A' : '#16A34A'
+    const sign = isIncrease ? '+' : '−'
+    receiptRows += `<tr>
+      <td style="padding:8px 0;font-size:13px;color:#9CA3AF;vertical-align:top;">Academic level adjustment (${academicLevel})</td>
+      <td style="padding:8px 0;font-size:13px;font-weight:600;text-align:right;vertical-align:top;color:${color};">${sign}${fmt(Math.abs(academicLevelAdjustment))}</td>
+    </tr>`
+  }
+
+  // Urgency premium
+  if (urgencyPremium !== null && urgencyPremium > 0) {
+    receiptRows += `<tr>
+      <td style="padding:8px 0;font-size:13px;color:#9CA3AF;vertical-align:top;">Urgency premium</td>
+      <td style="padding:8px 0;font-size:13px;font-weight:600;text-align:right;vertical-align:top;color:#C4861A;">+${fmt(urgencyPremium)}</td>
+    </tr>`
+  }
+
+  // Originality report addon
+  if (originalityReportPrice !== null && originalityReportPrice > 0) {
+    receiptRows += `<tr>
+      <td style="padding:8px 0;font-size:13px;color:#9CA3AF;vertical-align:top;">Originality &amp; AI Detection Report</td>
+      <td style="padding:8px 0;font-size:13px;font-weight:600;text-align:right;vertical-align:top;color:#1B2E4B;">+${fmt(originalityReportPrice)}</td>
+    </tr>`
+  }
+
+  // Grand total
+  receiptRows += `<tr>
+    <td style="padding:12px 0 0;font-size:16px;color:#1B2E4B;font-weight:700;vertical-align:top;border-top:2px solid #E8E2D9;">Total charged</td>
+    <td style="padding:12px 0 0;font-size:16px;color:#1B2E4B;font-weight:700;text-align:right;vertical-align:top;border-top:2px solid #E8E2D9;">${totalFormatted}</td>
+  </tr>`
+
   const html = base(`
     ${h1(`Order confirmed, ${firstName || 'there'}!`)}
-    ${p('Your order has been received and our team will get started right away. You\'ll hear from us as soon as your work is ready.')}
+    ${p('Your payment was successful and your order is now with our team. We\'ll get to work right away and deliver before your deadline.')}
     ${outsideFieldsNotice}
     ${divider()}
+
+    <div style="background:#F5F0E8;border-radius:12px;padding:20px;margin:16px 0;">
+      <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.5px;">Receipt</p>
+      <p style="margin:0 0 12px;font-size:13px;color:#6B7280;">Order #${shortId} &middot; ${dateFormatted}</p>
+      <table style="width:100%;border-collapse:collapse;">
+        ${receiptRows}
+      </table>
+    </div>
+
+    ${divider()}
+
+    <p style="margin:0 0 4px;font-size:13px;font-weight:600;color:#1B2E4B;">Order details</p>
     ${table(
-      row('Order ID', `#${shortId}`) +
       (moduleName ? row('Module', moduleName) : '') +
       row('Domain', subjectField) +
       row('Academic level', academicLevel) +
-      row('Deadline', deadlineFormatted) +
-      row('Deliverables', deliverableSummary) +
-      row('Total paid', totalFormatted)
+      row('Deadline', deadlineFormatted)
     )}
+
     ${divider()}
     ${btn('View my orders', `${APP_URL}/dashboard/orders`)}
     ${p('<span style="font-size:13px;color:#9CA3AF;">Your order includes 3 free revisions. If you have any questions, reply to this email.</span>')}

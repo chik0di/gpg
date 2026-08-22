@@ -453,6 +453,7 @@ export async function POST(request: Request) {
     }
 
     // 8. Send notification emails (fire-and-forget)
+    // Build deliverable summary for admin email and itemized list for client receipt
     const deliverableSummary = orderData.deliverables.map((d) => {
       if (d.type === 'written') {
         const pages = d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE)
@@ -471,6 +472,57 @@ export async function POST(request: Request) {
       return d.type
     }).join(', ')
 
+    // Build itemized deliverable list with individual prices for client receipt
+    const deliverableItems = orderData.deliverables.map((d, index) => {
+      const basePence = deliverableBasePricePence(d, false)
+      let description = ''
+
+      if (d.type === 'written') {
+        const pages = d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE)
+        description = `Written assignment (${pages} page${pages !== 1 ? 's' : ''})`
+      } else if (d.type === 'presentation') {
+        if (d.slideInputMode === 'exact') {
+          description = `Presentation (${d.slideCount} slide${d.slideCount !== 1 ? 's' : ''})`
+        } else {
+          description = `Presentation (${d.slideMin}–${d.slideMax} slides, charged at ${d.slideMax})`
+        }
+      } else if (d.type === 'practical') {
+        const practicalItem = PRACTICAL_ITEMS.find((p) => p.key === d.practicalKey)
+        description = `Practical work: ${practicalItem?.label ?? d.practicalKey}`
+      }
+
+      return {
+        description,
+        basePrice: basePence / 100, // Convert to pounds
+      }
+    })
+
+    // Calculate academic level adjustment and urgency premium
+    const baseTotalPence = orderData.deliverables.reduce((sum, d) => {
+      return sum + deliverableBasePricePence(d, false)
+    }, 0)
+
+    // Get multipliers to calculate adjustments
+    const academicMultPct = ACADEMIC_MULTIPLIERS[orderData.academicLevel as keyof typeof ACADEMIC_MULTIPLIERS] ?? 100
+    const academicMult = academicMultPct / 100
+    const academicAdjustmentPence = baseTotalPence * (academicMult - 1) // Can be negative for A-Level
+
+    // Apply academic multiplier first, then deadline multiplier
+    const afterAcademicPence = baseTotalPence * academicMult
+
+    // Calculate days until deadline
+    const deadlineDate = new Date(orderData.deadline)
+    const now = new Date()
+    const daysUntil = Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+    let deadlineMult = 1.0
+    if (daysUntil >= 14) deadlineMult = 1.0
+    else if (daysUntil >= 7) deadlineMult = 1.2
+    else if (daysUntil >= 4) deadlineMult = 1.5
+    else deadlineMult = 1.8
+
+    const urgencyPremiumPence = afterAcademicPence * (deadlineMult - 1)
+
     const clientEmail = profile?.email ?? user.email ?? ''
     const clientName  = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Customer'
 
@@ -483,7 +535,10 @@ export async function POST(request: Request) {
       academicLevel:      orderData.academicLevel,
       deadline:           orderData.deadline,
       totalAmount:        totalPence / 100,
-      deliverableSummary,
+      deliverableItems,
+      academicLevelAdjustment: academicAdjustmentPence !== 0 ? academicAdjustmentPence / 100 : null,
+      urgencyPremium: urgencyPremiumPence > 0 ? urgencyPremiumPence / 100 : null,
+      originalityReportPrice: orderData.includeOriginalityReport ? (ORIGINALITY_REPORT_PENCE / 100) : null,
       isOutsideStandardFields: orderData.isOutsideStandardFields || false,
     }).catch((e) => console.error('[email] client confirmation failed:', e))
 

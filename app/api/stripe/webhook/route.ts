@@ -7,8 +7,11 @@ import {
   calcWrittenPrice,
   calcPresentationPrice,
   getPracticalPrice,
+  getAcademicMultiplier,
+  getDeadlineMultiplier,
   WORDS_PER_PAGE,
   PRACTICAL_ITEMS,
+  ORIGINALITY_REPORT_PRICE,
 } from '@/lib/pricing'
 import type Stripe from 'stripe'
 import type { Deliverable } from '@/types/order-form'
@@ -190,6 +193,35 @@ export async function POST(request: Request) {
             return d.type
           }).join(', ')
 
+          // Build itemized deliverable list for client receipt
+          const deliverableItems = orderData.deliverables.map((d) => {
+            const basePrice = deliverableBasePrice(d)
+            let description = ''
+
+            if (d.type === 'written') {
+              const pages = d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE)
+              description = `Written assignment (${pages} page${pages !== 1 ? 's' : ''})`
+            } else if (d.type === 'presentation') {
+              if (d.slideInputMode === 'exact') {
+                description = `Presentation (${d.slideCount} slide${d.slideCount !== 1 ? 's' : ''})`
+              } else {
+                description = `Presentation (${d.slideMin}–${d.slideMax} slides, charged at ${d.slideMax})`
+              }
+            } else if (d.type === 'practical') {
+              const practicalItem = PRACTICAL_ITEMS.find((p) => p.key === d.practicalKey)
+              description = `Practical work: ${practicalItem?.label ?? d.practicalKey}`
+            }
+
+            return { description, basePrice }
+          })
+
+          // Calculate adjustments using the calcOrderTotal breakdown
+          const academicMult = getAcademicMultiplier(orderData.academicLevel)
+          const deadlineMult = getDeadlineMultiplier(orderData.deadline)
+
+          const academicAdjustment = subtotal * (academicMult - 1)
+          const urgencyPremium = subtotal * academicMult * (deadlineMult - 1)
+
           const clientEmail = profile?.email ?? ''
           const clientName  = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Customer'
 
@@ -197,11 +229,16 @@ export async function POST(request: Request) {
             to:                 clientEmail,
             firstName:          profile?.first_name ?? '',
             orderId:            order.id,
+            moduleName:         null,
             subjectField:       orderData.subjectField,
             academicLevel:      orderData.academicLevel,
             deadline:           orderData.deadline,
             totalAmount:        total,
-            deliverableSummary,
+            deliverableItems,
+            academicLevelAdjustment: academicAdjustment !== 0 ? academicAdjustment : null,
+            urgencyPremium: urgencyPremium > 0 ? urgencyPremium : null,
+            originalityReportPrice: orderData.includeOriginalityReport ? ORIGINALITY_REPORT_PRICE : null,
+            isOutsideStandardFields: false,
           }).catch((e) => console.error('[webhook] client confirmation email failed:', e))
 
           sendAdminNewOrderAlert({
