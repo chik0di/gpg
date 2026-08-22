@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendOrderConfirmation, sendAdminNewOrderAlert } from '@/lib/resend'
-import { completeReferral, markCreditAsUsed } from '@/lib/referral'
 import {
   calcOrderTotal,
   calcWrittenPrice,
@@ -54,7 +53,7 @@ export async function POST(request: Request) {
   switch (event.type) {
     case 'payment_intent.succeeded': {
       const pi = event.data.object as Stripe.PaymentIntent
-      const { orderId, userId, orderData: orderDataRaw, discountType, creditId, discountPercent } = pi.metadata
+      const { orderId, userId, orderData: orderDataRaw } = pi.metadata
 
       console.log('[webhook] payment_intent.succeeded:', pi.id, '| orderId:', orderId)
 
@@ -91,7 +90,6 @@ export async function POST(request: Request) {
 
         try {
           const orderData: OrderData = JSON.parse(orderDataRaw)
-          const parsedDiscountPercent = discountPercent ? parseFloat(discountPercent) : 0
 
           // Recalculate total server-side
           const subtotal = orderData.deliverables.reduce(
@@ -104,8 +102,6 @@ export async function POST(request: Request) {
             academicLevel: orderData.academicLevel,
             deadline: orderData.deadline,
             includeOriginalityReport: orderData.includeOriginalityReport,
-            applyFirstOrderDiscount: parsedDiscountPercent > 0,
-            discountPercent: parsedDiscountPercent,
           })
 
           // Create order
@@ -219,17 +215,6 @@ export async function POST(request: Request) {
             deliverableSummary,
             instructions:       orderData.instructions || null,
           }).catch((e) => console.error('[webhook] admin alert email failed:', e))
-
-          // Handle referral logic
-          if (discountType === 'referred-friend') {
-            completeReferral(supabaseAdmin, userId).catch((err) => {
-              console.error('[webhook] referral completion failed:', err)
-            })
-          } else if (discountType === 'referral-credit' && creditId) {
-            markCreditAsUsed(supabaseAdmin, creditId).catch((err) => {
-              console.error('[webhook] credit marking failed:', err)
-            })
-          }
 
           console.log('[webhook] Order creation complete:', order.id)
         } catch (err) {

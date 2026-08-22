@@ -1,8 +1,6 @@
 import type { Metadata } from 'next'
-import { Suspense } from 'react'
 import './globals.css'
 import WhatsAppButton from '@/components/shared/whatsapp-button'
-import ReferralTracker from '@/components/referral/referral-tracker'
 
 const siteUrl = 'https://getprimegrade.com'
 
@@ -93,9 +91,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en-GB">
       <body>
-        <Suspense fallback={null}>
-          <ReferralTracker />
-        </Suspense>
         {children}
         <WhatsAppButton />
       </body>

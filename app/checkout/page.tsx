@@ -151,17 +151,12 @@ function StripeForm({ grandTotalGBP }: { grandTotalGBP: number }) {
 
 // ── Order summary sidebar ──────────────────────────────────────────────────
 
-function OrderSummary({ data, discountType, discountLabel, discountPercent, discountGBP }: {
+function OrderSummary({ data }: {
   data: OrderFormState
-  discountType: string
-  discountLabel: string
-  discountPercent: number
-  discountGBP: number
 }) {
   const selectedCurrency = data.selectedCurrency ?? 'GBP'
   const exchangeRate     = data.exchangeRate ?? 1
   const fmt = (gbpAmt: number) => fmtInCurrency(gbpAmt, exchangeRate, selectedCurrency)
-  const hasDiscount = discountType !== 'none' && discountGBP > 0
 
   const subtotal     = data.deliverables.reduce((s, d) => s + deliverableBasePrice(d), 0)
   const levelMult    = getAcademicMultiplier(data.academicLevel)
@@ -232,21 +227,6 @@ function OrderSummary({ data, discountType, discountLabel, discountPercent, disc
         </div>
       )}
 
-      {/* Discount */}
-      {hasDiscount && discountGBP > 0 && (
-        <div className="border-t border-[#E8E2D9] px-5 py-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-[#16A34A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <p className="text-sm font-semibold text-[#16A34A]">
-              {discountLabel} −{discountPercent}%
-            </p>
-          </div>
-          <p className="text-sm font-bold text-[#16A34A] ml-3 shrink-0">−{fmt(discountGBP)}</p>
-        </div>
-      )}
-
       {/* Grand total */}
       <div className="border-t border-[#E8E2D9] px-5 py-4">
         <div className="flex items-center justify-between">
@@ -304,10 +284,6 @@ export default function CheckoutPage() {
   const [orderData, setOrderData]         = useState<OrderFormState | null>(null)
   const [clientSecret, setClientSecret]   = useState<string | null>(null)
   const [initError, setInitError]         = useState<string | null>(null)
-  const [discountType, setDiscountType]   = useState<string>('none')
-  const [discountPercent, setDiscountPercent] = useState(0)
-  const [discountLabel, setDiscountLabel] = useState('')
-  const [discountAmountGBP, setDiscountAmountGBP] = useState(0)
   // Decoded File held in memory — the actual upload happens after payment succeeds
   const [pendingFile, setPendingFile]     = useState<File | null>(null)
 
@@ -432,56 +408,44 @@ export default function CheckoutPage() {
         console.log('[checkout] No file data found')
       }
 
-      // Check discount eligibility first, then compute total and create payment intent
-      fetch('/api/discount/check-eligibility')
+      // Compute total and create payment intent
+      const subtotal = data.deliverables.reduce((s, d) => s + deliverableBasePrice(d), 0)
+      const { total } = calcOrderTotal({
+        deliverableSubtotal:      subtotal,
+        academicLevel:            data.academicLevel,
+        deadline:                 data.deadline,
+        includeOriginalityReport: data.includeOriginalityReport,
+      })
+
+      const amountPence = Math.round(total * 100)
+
+      // Pass orderData to payment intent metadata as safety net for webhook
+      fetch('/api/stripe/create-payment-intent', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          amountPence,
+          orderData: {
+            subjectField: data.subjectField,
+            academicLevel: data.academicLevel,
+            deadline: data.deadline,
+            deliverables: data.deliverables,
+            instructions: data.instructions || '',
+            includeOriginalityReport: data.includeOriginalityReport,
+            fileName: null, // File name not needed for webhook safety net
+          },
+        }),
+      })
         .then((r) => r.json())
-        .then((discount) => {
-        const { type, percent, label } = discount
-        const subtotal = data.deliverables.reduce((s, d) => s + deliverableBasePrice(d), 0)
-        const { total, discountAmount } = calcOrderTotal({
-          deliverableSubtotal:      subtotal,
-          academicLevel:            data.academicLevel,
-          deadline:                 data.deadline,
-          includeOriginalityReport: data.includeOriginalityReport,
-          applyFirstOrderDiscount:  percent > 0,
-          discountPercent:          percent,
+        .then((json) => {
+          if (!json) return
+          const { clientSecret, error } = json
+          if (error || !clientSecret) {
+            setInitError('Could not initialise payment. Please try again.')
+            return
+          }
+          setClientSecret(clientSecret)
         })
-
-        setDiscountType(type)
-        setDiscountPercent(percent)
-        setDiscountLabel(label)
-        setDiscountAmountGBP(discountAmount ?? 0)
-
-        const amountPence = Math.round(total * 100)
-
-        // Pass orderData to payment intent metadata as safety net for webhook
-        return fetch('/api/stripe/create-payment-intent', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
-            amountPence,
-            orderData: {
-              subjectField: data.subjectField,
-              academicLevel: data.academicLevel,
-              deadline: data.deadline,
-              deliverables: data.deliverables,
-              instructions: data.instructions || '',
-              includeOriginalityReport: data.includeOriginalityReport,
-              fileName: null, // File name not needed for webhook safety net
-            },
-          }),
-        })
-      })
-      .then((r) => r?.json())
-      .then((json) => {
-        if (!json) return
-        const { clientSecret, error } = json
-        if (error || !clientSecret) {
-          setInitError('Could not initialise payment. Please try again.')
-          return
-        }
-        setClientSecret(clientSecret)
-      })
         .catch(() => setInitError('Could not connect. Check your connection and try again.'))
     }
 
@@ -574,13 +538,7 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Order summary — shown first on mobile, second on desktop */}
           <div className="order-first lg:order-last lg:col-span-2">
-            <OrderSummary
-              data={orderData}
-              discountType={discountType}
-              discountLabel={discountLabel}
-              discountPercent={discountPercent}
-              discountGBP={discountAmountGBP}
-            />
+            <OrderSummary data={orderData} />
           </div>
 
           {/* Payment form */}

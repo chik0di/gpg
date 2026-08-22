@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
 import OrderCard from '@/components/dashboard/order-card'
 import StatsCards from '@/components/dashboard/stats-cards'
-import ReferralSection from '@/components/dashboard/referral-section'
 import PendingOrderBanner from '@/components/dashboard/pending-order-banner'
 import PendingOrderSaver from '@/components/auth/pending-order-saver'
 
@@ -55,9 +54,6 @@ export default async function DashboardPage() {
 
       {/* Stats */}
       <StatsCards orders={orders ?? []} />
-
-      {/* Referral Section */}
-      <ReferralSection />
 
       {/* Recent orders */}
       <div>

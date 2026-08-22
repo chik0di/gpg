@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createMiddlewareClient } from '@/lib/supabase/middleware'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { createReferralCodeForUser, createReferral, REFERRAL_COOKIE_NAME } from '@/lib/referral'
 import { rateLimit, getClientIp, RateLimitPresets } from '@/lib/rate-limit'
 
 function safeNext(raw: string | null): string {
@@ -82,19 +81,6 @@ export async function GET(request: NextRequest) {
   if (profileError) {
     // Log but don't block — the DB trigger is the safety net
     console.error('[auth/callback] profile upsert failed:', profileError.message)
-  }
-
-  // Generate referral code for new users (fire-and-forget)
-  createReferralCodeForUser(supabaseAdmin, user.id).catch((err) => {
-    console.error('[auth/callback] referral code generation failed:', err)
-  })
-
-  // Check for referral cookie and create referral relationship
-  const referralCode = request.cookies.get(REFERRAL_COOKIE_NAME)?.value
-  if (referralCode) {
-    createReferral(supabaseAdmin, referralCode, user.id).catch((err) => {
-      console.error('[auth/callback] referral creation failed:', err)
-    })
   }
 
   // Update any pending orders that match this user's email to set their user_id

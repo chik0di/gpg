@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe/server'
-import { getBestDiscount } from '@/lib/discount'
 import {
   calcWrittenPricePence,
   calcPresentationPricePence,
@@ -79,9 +78,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
     }
 
-    // Get best discount for webhook safety net
-    const discount = await getBestDiscount(supabase, user.id)
-
     // Check quote expiry (60 minutes)
     const quoteGeneratedAt = orderData.quoteGeneratedAt
       ? new Date(orderData.quoteGeneratedAt)
@@ -95,29 +91,18 @@ export async function POST(request: Request) {
 
       // Recalculate current total with current UTC server time
       const currentTotalPence = calculateTotalPence(orderData)
-
-      // Apply discount
-      let currentTotalWithDiscount = currentTotalPence
-      if (discount.percent > 0) {
-        const discountAmount = Math.round((currentTotalPence * discount.percent) / 100)
-        currentTotalWithDiscount = currentTotalPence - discountAmount
-      }
-
       const originalTotalPence = amountPence
 
-      if (currentTotalWithDiscount < originalTotalPence) {
+      if (currentTotalPence < originalTotalPence) {
         // Price decreased - silently apply lower price
-        console.log(`[stripe] Quote expired, price decreased from ${originalTotalPence} to ${currentTotalWithDiscount} pence`)
+        console.log(`[stripe] Quote expired, price decreased from ${originalTotalPence} to ${currentTotalPence} pence`)
 
         const paymentIntent = await stripe.paymentIntents.create({
-          amount: currentTotalWithDiscount,
+          amount: currentTotalPence,
           currency: 'gbp',
           metadata: {
             userId: user.id,
             orderData: JSON.stringify(orderData).slice(0, 4500),
-            discountType: discount.type,
-            discountPercent: String(discount.percent),
-            creditId: discount.creditId || '',
             quoteAdjusted: 'decreased',
           },
           payment_method_types: ['card'],
@@ -125,12 +110,11 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
           clientSecret: paymentIntent.client_secret,
-          firstOrderDiscount: discount.percent > 0,
-          adjustedAmount: currentTotalWithDiscount,
+          adjustedAmount: currentTotalPence,
         })
       }
 
-      if (currentTotalWithDiscount > originalTotalPence) {
+      if (currentTotalPence > originalTotalPence) {
         // Price increased - check tier jump
         const originalMultiplierPct = getDeadlineMultiplierPct(orderData.deadline)
         // For current multiplier, we need to recalculate based on current server time
@@ -154,8 +138,8 @@ export async function POST(request: Request) {
           return NextResponse.json({
             error: 'QUOTE_EXPIRED',
             originalAmountPence: originalTotalPence,
-            newAmountPence: currentTotalWithDiscount,
-            message: `Your quoted price was £${(originalTotalPence / 100).toFixed(2)}. Because your deadline is now closer, the price is £${(currentTotalWithDiscount / 100).toFixed(2)}. Please review before paying.`,
+            newAmountPence: currentTotalPence,
+            message: `Your quoted price was £${(originalTotalPence / 100).toFixed(2)}. Because your deadline is now closer, the price is £${(currentTotalPence / 100).toFixed(2)}. Please review before paying.`,
           }, { status: 409 })
         }
 
@@ -179,16 +163,12 @@ export async function POST(request: Request) {
       metadata: {
         userId: user.id,
         orderData: truncatedOrderData,
-        discountType: discount.type,
-        discountPercent: String(discount.percent),
-        creditId: discount.creditId || '',
       },
       payment_method_types: ['card'],
     })
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
-      firstOrderDiscount: discount.percent > 0,
     })
   } catch (err) {
     console.error('create-payment-intent:', err)

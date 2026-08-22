@@ -23,8 +23,6 @@ import {
   ORIGINALITY_REPORT_PENCE,
   ACADEMIC_MULTIPLIERS,
 } from '@/lib/pricing-pence'
-import { getBestDiscount } from '@/lib/discount'
-import { completeReferral, markCreditAsUsed } from '@/lib/referral'
 import { sendOrderConfirmation, sendAdminNewOrderAlert } from '@/lib/resend'
 import type { Deliverable } from '@/types/order-form'
 
@@ -178,6 +176,10 @@ export async function POST(request: Request) {
 
     const orderData: OrderData = JSON.parse(orderDataRaw)
 
+    // Debug: Log briefTempPath
+    console.log('[orders/create] orderData.usedAIExtraction:', orderData.usedAIExtraction)
+    console.log('[orders/create] orderData.briefTempPath:', orderData.briefTempPath)
+
     // 1. Verify the payment actually succeeded on Stripe's side
     const pi = await stripe.paymentIntents.retrieve(paymentIntentId)
 
@@ -209,18 +211,7 @@ export async function POST(request: Request) {
 
     const subtotalPence = deliverablesPence.reduce((sum, price) => sum + price, 0)
     const reportPence = orderData.includeOriginalityReport ? ORIGINALITY_REPORT_PENCE : 0
-
-    // Determine best discount to apply
-    const discount = await getBestDiscount(supabase, user.id)
-    const discountPercent = discount.percent
-
-    let totalPence = subtotalPence + reportPence
-
-    // Apply discount if applicable
-    if (discountPercent > 0) {
-      const discountAmount = Math.round((totalPence * discountPercent) / 100)
-      totalPence = totalPence - discountAmount
-    }
+    const totalPence = subtotalPence + reportPence
 
     // Verify the payment intent amount matches our server-side calculation
     if (pi.amount !== totalPence) {
@@ -378,10 +369,11 @@ export async function POST(request: Request) {
       }
     }
 
-    // 7b. If this order used AI extraction, move the brief file from temp storage
+    // 7b. If this order used AI extraction, move the brief file from temp storage to assignments/
     if (orderData.usedAIExtraction && orderData.briefTempPath) {
       try {
-        console.log('[orders/create] Moving brief from temp storage:', orderData.briefTempPath)
+        console.log('[orders/create] AI extraction order detected - moving brief to assignments/')
+        console.log('[orders/create] Brief temp path:', orderData.briefTempPath)
 
         // Download from temp location
         const { data: tempFile, error: downloadErr } = await supabaseAdmin.storage
@@ -401,7 +393,7 @@ export async function POST(request: Request) {
           // Get meaningful name parts
           const [firstName, lastName] = await getUserNameForFilename(user.id, user.email ?? '')
 
-          // Build brief filename: SubjectField_FirstName_LastName_OrderID_brief.ext
+          // Build brief filename: SubjectField_FirstName_LastName_OrderID.ext
           const nameParts = [
             seg(orderData.subjectField),
             seg(firstName),
@@ -409,7 +401,7 @@ export async function POST(request: Request) {
           if (lastName) {
             nameParts.push(seg(lastName))
           }
-          nameParts.push(order.id, 'brief')
+          nameParts.push(order.id)
 
           const briefFilename = nameParts.join('_') + ext
           const briefPath = `assignments/${briefFilename}`
@@ -432,7 +424,7 @@ export async function POST(request: Request) {
               .insert({
                 order_id: order.id,
                 file_url: briefPath,
-                file_type: 'brief',
+                file_type: 'assignment',
               })
 
             if (fileErr) {
@@ -447,7 +439,10 @@ export async function POST(request: Request) {
             if (deleteErr) {
               console.error('[orders/create] Failed to delete temp brief:', deleteErr)
             } else {
-              console.log('[orders/create] Successfully moved brief from temp to:', briefPath)
+              console.log('[orders/create] ✅ Successfully moved brief:')
+              console.log('[orders/create]    From:', orderData.briefTempPath)
+              console.log('[orders/create]    To:', briefPath)
+              console.log('[orders/create]    File type in order_files: assignment')
             }
           }
         }
@@ -505,20 +500,7 @@ export async function POST(request: Request) {
       instructions:       orderData.instructions || null,
     }).catch((e) => console.error('[email] admin alert failed:', e))
 
-    // 9. Handle referral logic (fire-and-forget)
-    if (discount.type === 'referred-friend') {
-      // Complete referral and issue credit to referrer
-      completeReferral(supabaseAdmin, user.id).catch((err) => {
-        console.error('[orders/create] referral completion failed:', err)
-      })
-    } else if (discount.type === 'referral-credit' && discount.creditId) {
-      // Mark referral credit as used
-      markCreditAsUsed(supabaseAdmin, discount.creditId).catch((err) => {
-        console.error('[orders/create] credit marking failed:', err)
-      })
-    }
-
-    // 10. Clean up pending orders for this user (fire-and-forget)
+    // 9. Clean up pending orders for this user (fire-and-forget)
     supabaseAdmin
       .from('pending_orders')
       .delete()
