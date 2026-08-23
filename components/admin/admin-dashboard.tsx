@@ -72,10 +72,10 @@ export default function AdminDashboard({ initialOrders }: Props) {
   // Calculate stats
   const stats = useMemo(() => {
     const totalOrders = orders.length
-    const pending = orders.filter(o => o.status?.toLowerCase() === 'pending').length
-    const inProgress = orders.filter(o => o.status?.toLowerCase() === 'in_progress').length
-    const completed = orders.filter(o => o.status?.toLowerCase() === 'completed').length
-    const urgent = orders.filter(o => isUrgent(o.deadline) && o.status?.toLowerCase() !== 'completed').length
+    const pending = orders.filter(o => o.status === 'pending').length
+    const inProgress = orders.filter(o => o.status === 'in_progress').length
+    const completed = orders.filter(o => o.status === 'completed').length
+    const urgent = orders.filter(o => isUrgent(o.deadline) && o.status !== 'completed').length
 
     return { totalOrders, pending, inProgress, completed, urgent }
   }, [orders])
@@ -92,16 +92,16 @@ export default function AdminDashboard({ initialOrders }: Props) {
 
     // Status
     if (filters.status === 'active') {
-      filtered = filtered.filter(o => o.status?.toLowerCase() === 'pending' || o.status?.toLowerCase() === 'in_progress')
+      filtered = filtered.filter(o => o.status === 'pending' || o.status === 'in_progress')
     } else if (filters.status !== 'all') {
-      filtered = filtered.filter(o => o.status?.toLowerCase() === filters.status.toLowerCase())
+      filtered = filtered.filter(o => o.status === filters.status)
     }
 
     // Urgency
     if (filters.urgency === 'urgent') {
-      filtered = filtered.filter(o => isUrgent(o.deadline) && o.status?.toLowerCase() !== 'completed')
+      filtered = filtered.filter(o => isUrgent(o.deadline) && o.status !== 'completed')
     } else if (filters.urgency === 'overdue') {
-      filtered = filtered.filter(o => isOverdue(o.deadline) && o.status?.toLowerCase() !== 'completed')
+      filtered = filtered.filter(o => isOverdue(o.deadline) && o.status !== 'completed')
     }
 
     // Academic level
@@ -152,7 +152,7 @@ export default function AdminDashboard({ initialOrders }: Props) {
   // Urgent panel orders (within 48 hours)
   const urgentPanelOrders = useMemo(() => {
     return orders
-      .filter(o => isWithin48Hours(o.deadline) && o.status?.toLowerCase() !== 'completed')
+      .filter(o => isWithin48Hours(o.deadline) && o.status !== 'completed')
       .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
   }, [orders])
 
