@@ -4,7 +4,7 @@ export default function Hero() {
   return (
     <section className="relative overflow-hidden bg-[#FDFAF6] pt-20 pb-24 md:pt-28 md:pb-32">
 
-      {/* Decorative warm blobs — CSS only, no images */}
+      {/* Decorative warm blobs (CSS only, no images) */}
       <div
         aria-hidden
         className="pointer-events-none absolute -top-24 -right-24 w-[480px] h-[480px] rounded-full opacity-25"
@@ -26,7 +26,7 @@ export default function Hero() {
           {/* Eyebrow pill */}
           <div className="inline-flex items-center gap-2 bg-[#FDF3DC] border border-[#E8A020]/30 text-[#C4861A] text-xs font-bold px-4 py-1.5 rounded-full mb-8 uppercase tracking-wide">
             <span className="w-1.5 h-1.5 rounded-full bg-[#E8A020] inline-block" />
-            Expert academic support — model answers &amp; study materials
+            Expert academic support: model answers &amp; study materials
           </div>
 
           {/* Headline */}
@@ -50,7 +50,7 @@ export default function Hero() {
 
           {/* Subheadline */}
           <p className="text-[#6B7280] text-lg md:text-xl leading-relaxed mb-10 max-w-2xl mx-auto">
-            Model answers, presentations and technical work — crafted to your exact brief
+            Model answers, presentations and technical work, crafted to your exact brief
             by subject experts. The reference you need to tackle your coursework with confidence.
           </p>
 

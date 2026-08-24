@@ -3,7 +3,7 @@ const STEPS = [
     number: '01',
     title: 'Place Your Order',
     description:
-      'Choose your subject, academic level and deadline. Tell us exactly what you need — takes under 3 minutes.',
+      'Choose your subject, academic level and deadline. Tell us exactly what you need (takes under 3 minutes).',
     icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
@@ -15,7 +15,7 @@ const STEPS = [
     number: '02',
     title: 'We Get to Work',
     description:
-      'A subject expert crafts your model answer or study material — built specifically around your brief and academic level.',
+      'A subject expert crafts your model answer or study material, built specifically around your brief and academic level.',
     icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
@@ -58,7 +58,7 @@ export default function HowItWorks() {
         {/* Steps */}
         <div className="relative grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-10">
 
-          {/* Connector line — desktop only */}
+          {/* Connector line (desktop only) */}
           <div
             aria-hidden
             className="hidden md:block absolute top-10 left-[calc(16.7%+2rem)] right-[calc(16.7%+2rem)] h-px border-t-2 border-dashed border-[#E8A020]/40 z-0"

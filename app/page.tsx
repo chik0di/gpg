@@ -9,7 +9,7 @@ import FAQPreview from '@/components/landing/faq-preview'
 import { OrganizationStructuredData, ServiceStructuredData } from '@/components/seo/structured-data'
 
 export const metadata: Metadata = {
-  title: 'GetPrimeGrade — Expert Model Answers & Study Materials for Students',
+  title: 'GetPrimeGrade: Expert Model Answers & Study Materials for Students',
   description:
     'Get custom model answers and study materials crafted by experts to your exact brief. Guaranteed delivery before your deadline. Trusted by UK university and college students.',
   keywords: [

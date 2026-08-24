@@ -21,14 +21,21 @@ interface AdminOrder {
 }
 
 export default async function AdminPage() {
-  const { data: orders } = await supabaseAdmin
+  const { data: orders, error: ordersError } = await supabaseAdmin
     .from('orders')
     .select(`
       id, status, total_amount, academic_level, module_name, subject_field, deadline, created_at, user_id, is_outside_standard_fields,
       profiles ( first_name, last_name, email ),
       deliverables ( id )
     `)
-    .order('created_at', { ascending: false }) as { data: AdminOrder[] | null }
+    .order('created_at', { ascending: false }) as { data: AdminOrder[] | null; error: any }
+
+  // Log any query errors
+  if (ordersError) {
+    console.error('[admin/page] Failed to fetch orders:', ordersError)
+  }
+
+  console.log('[admin/page] Fetched orders count:', orders?.length ?? 0)
 
   // Transform to simplified format for client component
   const transformedOrders = await Promise.all((orders ?? []).map(async order => {
@@ -51,6 +58,8 @@ export default async function AdminPage() {
       is_outside_standard_fields: order.is_outside_standard_fields || false,
     }
   }))
+
+  console.log('[admin/page] Transformed orders count:', transformedOrders.length)
 
   return (
     <div className="space-y-6">

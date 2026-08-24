@@ -2,7 +2,7 @@ const TRUST_SIGNALS = [
   {
     headline: 'Expert Work, Every Time',
     description:
-      "Your brief goes to someone who knows the subject. Not a generalist — a specialist who understands exactly what your assignment requires.",
+      "Your brief goes to someone who knows the subject. Not a generalist, but a specialist who understands exactly what your assignment requires.",
     icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
@@ -13,7 +13,7 @@ const TRUST_SIGNALS = [
   {
     headline: '3 Free Revisions',
     description:
-      "If the work doesn't match your brief, we'll fix it — three times, free, no questions asked. We're not done until you're satisfied.",
+      "If the work doesn't match your brief, we'll fix it three times, free, no questions asked. We're not done until you're satisfied.",
     icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
@@ -24,7 +24,7 @@ const TRUST_SIGNALS = [
   {
     headline: 'Money-Back Guarantee',
     description:
-      "Still not right after all revisions? We'll refund you. Your money is protected — simple as that. No hoops to jump through.",
+      "Still not right after all revisions? We'll refund you. Your money is protected, simple as that. No hoops to jump through.",
     icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
@@ -35,7 +35,7 @@ const TRUST_SIGNALS = [
   {
     headline: 'We Take Deadlines Seriously',
     description:
-      "Need it in 2 days? We'll deliver. Deadlines aren't suggestions here — they're commitments. Your work arrives on time, every time.",
+      "Need it in 2 days? We'll deliver. Deadlines aren't suggestions here, they're commitments. Your work arrives on time, every time.",
     icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}

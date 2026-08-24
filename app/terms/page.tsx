@@ -63,7 +63,15 @@ export default function TermsPage() {
               <div className="space-y-8 text-sm text-[#4B5563] leading-relaxed">
 
                 <div>
-                  <h3 className="text-base font-bold text-[#1B2E4B] mb-3">1. Service description</h3>
+                  <h3 className="text-base font-bold text-[#1B2E4B] mb-3">1. Eligibility</h3>
+                  <p>
+                    By using GetPrimeGrade, you confirm that you are at least 18 years of age. We do not
+                    knowingly provide services to anyone under 18.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-base font-bold text-[#1B2E4B] mb-3">2. Service description</h3>
                   <p>
                     GetPrimeGrade provides model answers, reference materials, and educational study content
                     for university and college students. All work produced by GetPrimeGrade is intended solely
@@ -73,7 +81,7 @@ export default function TermsPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-base font-bold text-[#1B2E4B] mb-3">2. Client responsibility</h3>
+                  <h3 className="text-base font-bold text-[#1B2E4B] mb-3">3. Client responsibility</h3>
                   <p>
                     By placing an order, you confirm that you understand and agree that any work delivered is
                     for reference and study purposes only. You must not submit any content provided by
@@ -84,7 +92,7 @@ export default function TermsPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-base font-bold text-[#1B2E4B] mb-3">3. Payment</h3>
+                  <h3 className="text-base font-bold text-[#1B2E4B] mb-3">4. Payment</h3>
                   <p>
                     Payment is required in full before work is commenced. All transactions are processed
                     securely by Stripe. Prices are quoted and charged in British Pounds (GBP). Approximate
@@ -94,7 +102,7 @@ export default function TermsPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-base font-bold text-[#1B2E4B] mb-3">4. Revision policy</h3>
+                  <h3 className="text-base font-bold text-[#1B2E4B] mb-3">5. Revision policy</h3>
                   <p>
                     Each order includes three free revisions. Revision requests must be consistent with the
                     original brief submitted at the time of order — requests that materially change the scope
@@ -104,7 +112,7 @@ export default function TermsPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-base font-bold text-[#1B2E4B] mb-3">5. Refund policy</h3>
+                  <h3 className="text-base font-bold text-[#1B2E4B] mb-3">6. Refund policy</h3>
                   <p>
                     If the delivered work does not meet the requirements of your original brief and all three
                     revision attempts have been exhausted, you may request a refund within 48 hours of the
@@ -115,7 +123,7 @@ export default function TermsPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-base font-bold text-[#1B2E4B] mb-3">6. Limitation of liability</h3>
+                  <h3 className="text-base font-bold text-[#1B2E4B] mb-3">7. Limitation of liability</h3>
                   <p>
                     GetPrimeGrade&apos;s total liability in connection with any order is limited to the amount
                     paid for that order. We are not liable for indirect, consequential, or incidental losses

@@ -99,6 +99,13 @@ export default function Footer() {
             All content provided is for educational reference purposes only. GetPrimeGrade does not condone academic misconduct.
           </p>
         </div>
+
+        {/* Age notice */}
+        <div className="mt-6 text-center">
+          <p className="text-xs text-white/40">
+            GetPrimeGrade is intended for users aged 18 and over.
+          </p>
+        </div>
       </div>
     </footer>
   )

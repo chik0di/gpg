@@ -3,7 +3,7 @@ const OFFERINGS = [
     label: 'Written Work',
     headline: 'Essays, Reports & Coursework',
     description:
-      'Clear, well-argued model answers for essays, literature reviews, reports, case studies and more — structured to your academic level and marking criteria.',
+      'Clear, well-argued model answers for essays, literature reviews, reports, case studies and more, structured to your academic level and marking criteria.',
     examples: ['Essays', 'Reports', 'Literature reviews', 'Case studies', 'Dissertations'],
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -16,7 +16,7 @@ const OFFERINGS = [
     label: 'Presentations',
     headline: 'Slide Decks & Speaker Notes',
     description:
-      'Professionally structured presentations with clear speaker notes — the reference you need for your upcoming seminar, pitch or graded presentation.',
+      'Professionally structured presentations with clear speaker notes: the reference you need for your upcoming seminar, pitch or graded presentation.',
     examples: ['PowerPoint / Google Slides', 'Speaker notes included', 'Up to 30+ slides'],
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -29,7 +29,7 @@ const OFFERINGS = [
     label: 'Practical & Technical',
     headline: 'Code, Data & Technical Work',
     description:
-      'Real, working technical outputs — from Python scripts to network diagrams — that you can study, understand and use as a model for your own submission.',
+      'Real, working technical outputs (from Python scripts to network diagrams) that you can study, understand and use as a model for your own submission.',
     examples: ['Python / Web dev', 'Network simulations', 'Data analysis', 'Security assessments', 'Power BI / Tableau'],
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">

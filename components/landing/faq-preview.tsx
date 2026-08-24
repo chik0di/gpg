@@ -6,15 +6,15 @@ import { useState } from 'react'
 const FAQS = [
   {
     q: 'Is using a model answer service allowed?',
-    a: "Yes. We provide educational reference material — model answers and study materials — in the same way a tutor, study guide or past paper does. How you use the material to guide and inform your own work is up to you. We never submit work on your behalf.",
+    a: "Yes. We provide educational reference material (model answers and study materials) in the same way a tutor, study guide or past paper does. How you use the material to guide and inform your own work is up to you. We never submit work on your behalf.",
   },
   {
     q: "Will my work be original?",
-    a: "Every piece is written from scratch to your specific brief. We don't recycle or reuse outputs. Your model answer is written for your subject, your brief and your academic level — no one else gets the same work.",
+    a: "Every piece is written from scratch to your specific brief. We don't recycle or reuse outputs. Your model answer is written for your subject, your brief and your academic level. No one else gets the same work.",
   },
   {
     q: "What if I'm not happy with what I receive?",
-    a: "Every order includes 3 free revisions. If the work doesn't match your brief after all three, we'll issue a full refund — no arguments, no hoops. Our guarantee is written into our Terms & Conditions.",
+    a: "Every order includes 3 free revisions. If the work doesn't match your brief after all three, we'll issue a full refund. No arguments, no hoops. Our guarantee is written into our Terms & Conditions.",
   },
 ]
 
@@ -26,7 +26,7 @@ export default function FAQPreview() {
       <div className="container-narrow">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-start">
 
-          {/* Left — heading */}
+          {/* Left heading */}
           <div className="lg:col-span-2">
             <p className="text-xs font-bold text-[#E8A020] uppercase tracking-widest mb-3">
               FAQ
@@ -53,7 +53,7 @@ export default function FAQPreview() {
             </div>
           </div>
 
-          {/* Right — accordion */}
+          {/* Right accordion */}
           <div className="lg:col-span-3 space-y-3">
             {FAQS.map((item, i) => {
               const isOpen = open === i
