@@ -15,27 +15,45 @@ interface AdminOrder {
   deadline: string
   created_at: string
   user_id: string
-  is_outside_standard_fields: boolean | null
   profiles: { first_name: string | null; last_name: string | null; email: string } | null
   deliverables: Array<{ id: string }>
 }
 
 export default async function AdminPage() {
+  console.log('[admin/page] ===== ADMIN DASHBOARD DATA FETCH START =====')
+  console.log('[admin/page] Using client:', 'supabaseAdmin')
+  console.log('[admin/page] Service role key exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
+  console.log('[admin/page] Service role key length:', process.env.SUPABASE_SERVICE_ROLE_KEY?.length)
+  console.log('[admin/page] Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+
   const { data: orders, error: ordersError } = await supabaseAdmin
     .from('orders')
     .select(`
-      id, status, total_amount, academic_level, module_name, subject_field, deadline, created_at, user_id, is_outside_standard_fields,
+      id, status, total_amount, academic_level, module_name, subject_field, deadline, created_at, user_id,
       profiles ( first_name, last_name, email ),
       deliverables ( id )
     `)
     .order('created_at', { ascending: false }) as { data: AdminOrder[] | null; error: any }
 
-  // Log any query errors
-  if (ordersError) {
-    console.error('[admin/page] Failed to fetch orders:', ordersError)
+  // Log query results
+  console.log('[admin/page] Query completed')
+  console.log('[admin/page] Error:', ordersError)
+  console.log('[admin/page] Data is null:', orders === null)
+  console.log('[admin/page] Data is array:', Array.isArray(orders))
+  console.log('[admin/page] Fetched orders count:', orders?.length ?? 0)
+
+  if (orders && orders.length > 0) {
+    console.log('[admin/page] First order sample:', {
+      id: orders[0].id,
+      status: orders[0].status,
+      created_at: orders[0].created_at
+    })
   }
 
-  console.log('[admin/page] Fetched orders count:', orders?.length ?? 0)
+  // Log any query errors
+  if (ordersError) {
+    console.error('[admin/page] ❌ FETCH ERROR:', JSON.stringify(ordersError, null, 2))
+  }
 
   // Transform to simplified format for client component
   const transformedOrders = await Promise.all((orders ?? []).map(async order => {
@@ -55,7 +73,6 @@ export default async function AdminPage() {
       client_name: clientName,
       client_email: client?.email || '',
       deliverables_count: order.deliverables?.length || 0,
-      is_outside_standard_fields: order.is_outside_standard_fields || false,
     }
   }))
 
