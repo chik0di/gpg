@@ -4,6 +4,18 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 
 export async function POST(request: Request) {
   try {
+    // Passive cleanup: delete all expired pending orders to prevent accumulation
+    const { error: cleanupError } = await supabaseAdmin
+      .from('pending_orders')
+      .delete()
+      .lt('expires_at', new Date().toISOString())
+
+    if (cleanupError) {
+      console.warn('[pending-orders/create] Cleanup warning (non-fatal):', cleanupError.message)
+    } else {
+      console.log('[pending-orders/create] Cleaned up expired pending orders')
+    }
+
     const { email, orderData, fileData } = await request.json()
 
     if (!email || !orderData) {

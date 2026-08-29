@@ -5,6 +5,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/types/order'
 import type { Deliverable, OrderFile } from '@/types/order'
+import ReviewTrigger from '@/components/reviews/review-trigger'
 
 export const metadata: Metadata = { title: 'Order Details' }
 
@@ -150,6 +151,13 @@ export default async function OrderDetailPage({ params }: Props) {
           </p>
         </div>
       )}
+
+      {/* Review trigger */}
+      <ReviewTrigger
+        orderId={order.id}
+        moduleName={order.module_name}
+        isCompleted={order.status === 'completed'}
+      />
     </div>
   )
 }

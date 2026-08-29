@@ -46,22 +46,25 @@ export async function GET(
     console.log('[pending-orders/get] Current user email:', user.email)
     console.log('[pending-orders/get] Email match:', data.user_email === user.email)
 
-    // Check if expired
+    // Check if expired - delete immediately and return 404 for clean checkout redirect
     const now = new Date()
     const expiresAt = new Date(data.expires_at)
 
     if (now > expiresAt) {
-      console.log('[pending-orders/get] Pending order expired:', id)
+      console.log('[pending-orders/get] Pending order expired:', id, '- deleting')
 
-      // Delete expired order
+      // Delete expired order immediately
       await supabase
         .from('pending_orders')
         .delete()
         .eq('id', id)
 
+      console.log('[pending-orders/get] Deleted expired pending order:', id)
+
+      // Return 404 so checkout redirects cleanly
       return NextResponse.json(
-        { error: 'Pending order expired' },
-        { status: 410 }
+        { error: 'Pending order not found' },
+        { status: 404 }
       )
     }
 

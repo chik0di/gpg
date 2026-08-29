@@ -35,6 +35,12 @@ export default async function AdminPage() {
     `)
     .order('created_at', { ascending: false }) as { data: AdminOrder[] | null; error: any }
 
+  // Fetch approved reviews count
+  const { count: approvedReviewsCount } = await supabaseAdmin
+    .from('reviews')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_approved', true)
+
   // Log query results
   console.log('[admin/page] Query completed')
   console.log('[admin/page] Error:', ordersError)
@@ -81,11 +87,19 @@ export default async function AdminPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold text-[#1B2E4B]">Work Management</h1>
-        <p className="text-sm text-[#6B7280] mt-1">
-          Manage all orders, track progress, and meet deadlines
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-extrabold text-[#1B2E4B]">Work Management</h1>
+          <p className="text-sm text-[#6B7280] mt-1">
+            Manage all orders, track progress, and meet deadlines
+          </p>
+        </div>
+        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-2">
+          <p className="text-xs font-semibold text-green-900">Approved reviews</p>
+          <p className="text-2xl font-extrabold text-green-600 mt-1">
+            {approvedReviewsCount ?? 0}
+          </p>
+        </div>
       </div>
 
       {/* Dashboard */}
