@@ -29,7 +29,7 @@ CREATE POLICY 'Users can read their own reviews'
 
 CREATE POLICY 'Anyone can read approved reviews'
   ON reviews FOR SELECT
-  TO anon
+  TO anon, authenticated
   USING (is_approved = true);
 
 -- Index for performance

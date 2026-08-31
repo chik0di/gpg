@@ -77,11 +77,17 @@ export default async function ReviewsPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  const { data: reviews } = await supabase
+  const { data: reviews, error } = await supabase
     .from('reviews')
     .select('id, rating, review_text, display_name, created_at')
     .eq('is_approved', true)
-    .order('created_at', { ascending: false }) as { data: Review[] | null }
+    .order('created_at', { ascending: false })
+
+  console.log('[Reviews Page] Query result:', {
+    reviewCount: reviews?.length ?? 0,
+    error: error?.message,
+    reviews: reviews
+  })
 
   const totalReviews = reviews?.length ?? 0
   const averageRating = totalReviews > 0

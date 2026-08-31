@@ -39,12 +39,18 @@ export default async function ReviewsPreview() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  const { data: reviews } = await supabase
+  const { data: reviews, error } = await supabase
     .from('reviews')
     .select('id, rating, review_text, display_name, created_at')
     .eq('is_approved', true)
     .order('created_at', { ascending: false })
-    .limit(4) as { data: Review[] | null }
+    .limit(4)
+
+  console.log('[Reviews Preview] Query result:', {
+    reviewCount: reviews?.length ?? 0,
+    error: error?.message,
+    reviews: reviews
+  })
 
   // If no reviews exist, don't render this section at all
   if (!reviews || reviews.length === 0) {
