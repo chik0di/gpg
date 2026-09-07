@@ -1,19 +1,21 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { supabaseAdmin } from '@/lib/supabase/admin'
+import { requireAdmin } from '@/lib/auth/admin'
 
 export async function POST(request: Request) {
-  const supabase = createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user || user.email !== 'admin@getprimegrade.com') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-
   try {
+    // Verify admin access
+    await requireAdmin()
+
     const { reviewId } = await request.json()
 
-    const { error } = await supabaseAdmin
+    if (!reviewId) {
+      return NextResponse.json({ error: 'Review ID is required' }, { status: 400 })
+    }
+
+    // Use regular client - RLS policy will enforce admin access
+    const supabase = createServerClient()
+    const { error } = await supabase
       .from('reviews')
       .delete()
       .eq('id', reviewId)
@@ -25,6 +27,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    // requireAdmin throws Response with 403
+    if (error instanceof Response) {
+      return error
+    }
     console.error('Reject review error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

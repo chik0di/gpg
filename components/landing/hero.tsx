@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import ShareButton from '@/components/shared/share-button'
 
 export default function Hero() {
   return (
@@ -55,22 +56,25 @@ export default function Hero() {
           </p>
 
           {/* CTA */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/order"
-              className="inline-flex items-center gap-2 bg-[#E8A020] hover:bg-[#C4861A] text-white font-bold text-base px-8 py-4 rounded-2xl transition-colors shadow-lg hover:shadow-xl"
-            >
-              Get Started
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </Link>
-            <Link
-              href="#how-it-works"
-              className="text-sm font-semibold text-[#1B2E4B] hover:text-[#E8A020] transition-colors underline underline-offset-4"
-            >
-              See how it works
-            </Link>
+          <div className="flex flex-col items-center justify-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link
+                href="/order"
+                className="inline-flex items-center gap-2 bg-[#E8A020] hover:bg-[#C4861A] text-white font-bold text-base px-8 py-4 rounded-2xl transition-colors shadow-lg hover:shadow-xl"
+              >
+                Get Started
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </Link>
+              <Link
+                href="#how-it-works"
+                className="text-sm font-semibold text-[#1B2E4B] hover:text-[#E8A020] transition-colors underline underline-offset-4"
+              >
+                See how it works
+              </Link>
+            </div>
+            <ShareButton variant="link" className="mt-2" />
           </div>
 
           {/* Social proof strip */}

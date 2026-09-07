@@ -17,6 +17,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid rating' }, { status: 400 })
     }
 
+    // Validate review text length
+    if (reviewText && reviewText.length > 2000) {
+      return NextResponse.json({ error: 'Review text must be 2000 characters or less' }, { status: 400 })
+    }
+
+    // Sanitize inputs - remove potential XSS
+    const sanitizedReviewText = reviewText ? reviewText.trim().slice(0, 2000) : null
+
     // Check if user owns this order and it's completed
     const { data: order, error: orderError } = await supabase
       .from('orders')
@@ -63,20 +71,22 @@ export async function POST(request: Request) {
         isAnonymous = true
         break
       case 'first_name':
-        displayName = profile?.first_name || 'Anonymous'
+        displayName = profile?.first_name ? profile.first_name.trim().slice(0, 100) : 'Anonymous'
         break
       case 'first_name_module':
         if (profile?.first_name && order.module_name) {
-          displayName = `${profile.first_name} — ${order.module_name}`
+          const firstName = profile.first_name.trim().slice(0, 50)
+          const moduleName = order.module_name.trim().slice(0, 100)
+          displayName = `${firstName} — ${moduleName}`
           showModule = true
         } else if (profile?.first_name) {
-          displayName = profile.first_name
+          displayName = profile.first_name.trim().slice(0, 100)
         } else {
           displayName = 'Anonymous'
         }
         break
       default:
-        displayName = profile?.first_name || 'Anonymous'
+        displayName = profile?.first_name ? profile.first_name.trim().slice(0, 100) : 'Anonymous'
     }
 
     // Insert review
@@ -86,11 +96,11 @@ export async function POST(request: Request) {
         user_id: user.id,
         order_id: orderId,
         rating,
-        review_text: reviewText || null,
+        review_text: sanitizedReviewText,
         display_name: displayName,
         is_anonymous: isAnonymous,
         show_module: showModule,
-        module_name: showModule ? order.module_name : null,
+        module_name: showModule ? order.module_name?.trim().slice(0, 200) : null,
         is_approved: false,
       })
 

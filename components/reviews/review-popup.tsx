@@ -20,6 +20,8 @@ export default function ReviewPopup({ orderId, moduleName, onClose, onSubmit }: 
   const [displayPreference, setDisplayPreference] = useState<'anonymous' | 'first_name' | 'first_name_module'>('first_name_module')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const MAX_REVIEW_LENGTH = 2000
+
   const handleSubmit = async () => {
     if (rating === 0) return
 
@@ -98,13 +100,21 @@ export default function ReviewPopup({ orderId, moduleName, onClose, onSubmit }: 
         </div>
 
         {/* Review text */}
-        <textarea
-          value={reviewText}
-          onChange={(e) => setReviewText(e.target.value)}
-          placeholder="Tell us more (optional)"
-          rows={4}
-          className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm text-[#1B2E4B] placeholder-[#9CA3AF] bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30 focus:border-[#E8A020] mb-6 resize-none"
-        />
+        <div className="mb-6">
+          <textarea
+            value={reviewText}
+            onChange={(e) => setReviewText(e.target.value.slice(0, MAX_REVIEW_LENGTH))}
+            placeholder="Tell us more (optional)"
+            rows={4}
+            maxLength={MAX_REVIEW_LENGTH}
+            className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm text-[#1B2E4B] placeholder-[#9CA3AF] bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30 focus:border-[#E8A020] resize-none"
+          />
+          <div className="flex justify-end mt-1">
+            <span className="text-xs text-[#9CA3AF]">
+              {reviewText.length}/{MAX_REVIEW_LENGTH}
+            </span>
+          </div>
+        </div>
 
         {/* Display preference */}
         <div className="mb-6">

@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import type { OrderFormState } from '@/types/order-form'
+import ShareButton from '@/components/shared/share-button'
 
 type State = 'loading' | 'success' | 'error'
 
@@ -146,7 +147,7 @@ function SuccessContent() {
 
       {/* What happens next */}
       <div
-        className="text-left rounded-2xl border border-[#E8E2D9] p-5 mb-8 space-y-3"
+        className="text-left rounded-2xl border border-[#E8E2D9] p-5 mb-6 space-y-3"
         style={{ background: '#F5F0E8' }}
       >
         <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide mb-3">What happens next</p>
@@ -165,6 +166,12 @@ function SuccessContent() {
             <p className="text-sm text-[#6B7280]">{text}</p>
           </div>
         ))}
+      </div>
+
+      {/* Share section */}
+      <div className="text-center mb-8">
+        <p className="text-sm text-[#6B7280] mb-3">Share GetPrimeGrade with a friend.</p>
+        <ShareButton variant="button" />
       </div>
 
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
