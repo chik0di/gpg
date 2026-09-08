@@ -1,11 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { SUBJECT_GROUPS, ACADEMIC_LEVELS, PRACTICAL_ITEMS, daysUntil, getUrgencyWarning } from '@/lib/pricing'
 import { mapAcademicLevel } from '@/lib/academic-level-mapping'
 import { isStandardSubject } from '@/lib/subject-validation'
 import { correctDeliverableType } from '@/lib/deliverable-type-detection'
 import type { Deliverable } from '@/types/order-form'
+
+interface ResearchSource {
+  title: string
+  authors: string
+  year: number | null
+  url: string
+  hasFreeAccess: boolean
+}
 
 const COUNTRIES = [
   'United Kingdom',
@@ -46,6 +54,7 @@ interface ExtractionResult {
   deadline: string | null
   deliverables: ExtractedDeliverable[]
   additional_notes: string | null
+  search_terms?: string[][]
 }
 
 interface Props {
@@ -178,6 +187,48 @@ export default function StepExtractionReview({
   const [instructions, setInstructions] = useState('')
   const [deliverables, setDeliverables] = useState<ExtractedDeliverable[]>(processedDeliverables)
   const [editingDeliverableId, setEditingDeliverableId] = useState<number | null>(null)
+
+  // Research materials state
+  const [researchSources, setResearchSources] = useState<ResearchSource[]>([])
+  const [researchLoading, setResearchLoading] = useState(false)
+  const [researchError, setResearchError] = useState(false)
+
+  // Fetch research materials when component mounts (if search terms exist)
+  useEffect(() => {
+    async function fetchResearch() {
+      if (!extraction.search_terms || extraction.search_terms.length === 0) {
+        console.log('[extraction-review] No search terms available')
+        return
+      }
+
+      setResearchLoading(true)
+      setResearchError(false)
+
+      try {
+        console.log('[extraction-review] Fetching research materials...')
+        const response = await fetch('/api/research-materials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ searchTerms: extraction.search_terms })
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch research materials')
+        }
+
+        const data = await response.json()
+        setResearchSources(data.sources || [])
+        console.log('[extraction-review] Received', data.sources?.length || 0, 'research sources')
+      } catch (error) {
+        console.error('[extraction-review] Error fetching research materials:', error)
+        setResearchError(true)
+      } finally {
+        setResearchLoading(false)
+      }
+    }
+
+    fetchResearch()
+  }, [extraction.search_terms])
 
   // Module name is NEVER editable (shown as plain text or "Not found in brief")
   // Domain field is NEVER editable (shown as plain text or "Not determined")
@@ -913,6 +964,80 @@ export default function StepExtractionReview({
           </div>
         )}
       </div>
+
+      {/* Research materials section */}
+      {(researchLoading || (!researchError && researchSources.length > 0)) && (
+        <>
+          {/* Divider */}
+          <div className="border-t border-[#E8E2D9]" />
+
+          <div className="space-y-4">
+            <h3 className="text-base font-semibold text-[#1B2E4B]">Research materials we found for you</h3>
+
+            {researchLoading ? (
+              /* Loading state */
+              <div className="space-y-3">
+                <p className="text-sm text-[#6B7280]">Finding relevant materials...</p>
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-12 bg-[#F5F0E8] rounded-lg animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : (
+              /* Research sources list */
+              <div className="space-y-2">
+                {researchSources.map((source, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-start justify-between gap-4 p-3 bg-[#FDFAF6] border border-[#E8E2D9] rounded-lg hover:border-[#E8A020]/30 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <a
+                        href={source.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-semibold text-[#1B2E4B] hover:text-[#E8A020] transition-colors line-clamp-2"
+                      >
+                        {source.title}
+                      </a>
+                      <p className="text-xs text-[#9CA3AF] mt-0.5">
+                        {source.authors}
+                        {source.year && ` • ${source.year}`}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0">
+                      {source.hasFreeAccess ? (
+                        <a
+                          href={source.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-[#E8A020] text-white text-xs font-bold rounded-lg hover:bg-[#C4861A] transition-colors"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Free PDF
+                        </a>
+                      ) : (
+                        <a
+                          href={source.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-semibold text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors"
+                        >
+                          View source →
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Additional instructions */}
       <div>

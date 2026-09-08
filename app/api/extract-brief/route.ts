@@ -117,6 +117,7 @@ interface ClaudeExtractionResult {
 
 interface ExtractionResult extends ClaudeExtractionResult {
   subject_field: string | null
+  search_terms?: string[][]
 }
 
 async function extractTextFromWord(buffer: Buffer): Promise<string> {
@@ -167,6 +168,62 @@ function cleanModuleName(moduleName: string | null): string | null {
   // Trim and return null if empty
   cleaned = cleaned.trim()
   return cleaned || null
+}
+
+/**
+ * Extract research search terms for each deliverable
+ */
+async function extractResearchTerms(
+  anthropic: Anthropic,
+  deliverables: ClaudeExtractionResult['deliverables'],
+  briefText: string | null
+): Promise<string[][]> {
+  try {
+    const prompt = `Based on these deliverables, identify 3-5 key research topics or concepts for each one. These should be specific enough to find relevant academic literature.
+
+Deliverables:
+${deliverables.map((d, i) => `${i + 1}. ${d.description}`).join('\n')}
+
+Return ONLY a JSON array of arrays, where each inner array contains 3-5 search terms for the corresponding deliverable:
+[
+  ["term 1 for deliverable 1", "term 2 for deliverable 1", "term 3 for deliverable 1"],
+  ["term 1 for deliverable 2", "term 2 for deliverable 2"]
+]
+
+Examples of good search terms:
+- "machine learning neural networks"
+- "GDPR data protection compliance"
+- "supply chain management disruption"
+- "agile software development methodology"
+
+Make terms specific to the academic field and deliverable requirements.`
+
+    const message = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      system: 'You are an academic research assistant. Extract research search terms as JSON.',
+      messages: [{ role: 'user', content: prompt }]
+    })
+
+    const textContent = message.content.find((block) => block.type === 'text')
+    if (!textContent || textContent.type !== 'text') {
+      console.warn('[extract-brief] No text content in research terms response')
+      return []
+    }
+
+    const jsonMatch = textContent.text.match(/\[[\s\S]*\]/)
+    if (!jsonMatch) {
+      console.warn('[extract-brief] No JSON found in research terms response')
+      return []
+    }
+
+    const searchTerms = JSON.parse(jsonMatch[0])
+    console.log('[extract-brief] Extracted research terms:', searchTerms)
+    return searchTerms
+  } catch (error) {
+    console.error('[extract-brief] Failed to extract research terms:', error)
+    return []
+  }
 }
 
 /**
@@ -496,6 +553,19 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       )
+    }
+
+    // Extract research search terms for each deliverable
+    console.log('[extract-brief] Extracting research terms...')
+    const searchTerms = await extractResearchTerms(
+      anthropic,
+      extractionResult.deliverables,
+      briefTextForInjectionCheck
+    )
+
+    // Add search terms to extraction result
+    if (searchTerms.length > 0) {
+      extractionResult.search_terms = searchTerms
     }
 
     // Store extraction in database with suspicious flag
