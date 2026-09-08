@@ -84,10 +84,8 @@ async function searchWithClaude(topic: string, anthropicApiKey: string): Promise
       max_tokens: 2048,
       tools: [
         {
-          type: 'web_search',
-          name: 'web_search',
-          display_name: 'Web Search',
-          description: 'Search the web for information'
+          type: 'web_search_20250305',
+          name: 'web_search'
         }
       ],
       messages: [
