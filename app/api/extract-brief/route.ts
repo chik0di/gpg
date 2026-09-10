@@ -179,24 +179,32 @@ async function extractResearchTerms(
   briefText: string | null
 ): Promise<string[][]> {
   try {
-    const prompt = `Based on these deliverables, identify 3-5 key research topics or concepts for each one. These should be specific enough to find relevant academic literature.
+    const prompt = `Based on these deliverables, identify 2-4 CORE ACADEMIC CONCEPTS for each one. Focus on the underlying theoretical frameworks, methodologies, or academic disciplines — NOT generic business terms or industry buzzwords.
 
 Deliverables:
 ${deliverables.map((d, i) => `${i + 1}. ${d.description}`).join('\n')}
 
-Return ONLY a JSON array of arrays, where each inner array contains 3-5 search terms for the corresponding deliverable:
+Return ONLY a JSON array of arrays, where each inner array contains 2-4 specific academic search terms:
 [
-  ["term 1 for deliverable 1", "term 2 for deliverable 1", "term 3 for deliverable 1"],
-  ["term 1 for deliverable 2", "term 2 for deliverable 2"]
+  ["core concept 1", "core concept 2", "methodology/framework"],
+  ["theory 1", "academic domain"]
 ]
 
-Examples of good search terms:
-- "machine learning neural networks"
-- "GDPR data protection compliance"
-- "supply chain management disruption"
-- "agile software development methodology"
+GOOD search terms (specific academic concepts):
+- "reinforcement learning policy gradient" (not just "machine learning")
+- "data protection impact assessment GDPR" (not just "data privacy")
+- "bullwhip effect supply chain" (not just "supply chain management")
+- "scrum agile empirical process control" (not just "agile methodology")
+- "CAPM capital asset pricing model" (not just "financial management")
 
-Make terms specific to the academic field and deliverable requirements.`
+BAD search terms (too generic or business-focused):
+- "business strategy" → TOO BROAD
+- "SWOT analysis" → MANAGEMENT TOOL, not an academic theory
+- "small medium enterprises" → INDUSTRY TERM
+- "competitive advantage" → TOO GENERIC
+- "market analysis" → TOO VAGUE
+
+Extract the ACADEMIC CORE of each deliverable — the theories, models, frameworks, or technical concepts that would appear in peer-reviewed research papers.`
 
     const message = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',

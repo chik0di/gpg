@@ -192,6 +192,7 @@ export default function StepExtractionReview({
   const [researchSources, setResearchSources] = useState<ResearchSource[]>([])
   const [researchLoading, setResearchLoading] = useState(false)
   const [researchError, setResearchError] = useState(false)
+  const [showAllResearch, setShowAllResearch] = useState(false)
 
   // Fetch research materials when component mounts (if search terms exist)
   useEffect(() => {
@@ -987,52 +988,73 @@ export default function StepExtractionReview({
               </div>
             ) : (
               /* Research sources list */
-              <div className="space-y-2">
-                {researchSources.map((source, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-start justify-between gap-4 p-3 bg-[#FDFAF6] border border-[#E8E2D9] rounded-lg hover:border-[#E8A020]/30 transition-colors"
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  {(showAllResearch ? researchSources : researchSources.slice(0, 3)).map((source, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-start justify-between gap-4 p-3 bg-[#FDFAF6] border border-[#E8E2D9] rounded-lg hover:border-[#E8A020]/30 transition-colors"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <a
+                          href={source.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-semibold text-[#1B2E4B] hover:text-[#E8A020] transition-colors line-clamp-2"
+                        >
+                          {source.title}
+                        </a>
+                        <p className="text-xs text-[#9CA3AF] mt-0.5">
+                          {source.authors}
+                          {source.year && ` • ${source.year}`}
+                        </p>
+                      </div>
+                      <div className="flex-shrink-0">
+                        {source.hasFreeAccess ? (
+                          <a
+                            href={source.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-[#E8A020] text-white text-xs font-bold rounded-lg hover:bg-[#C4861A] transition-colors"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Free PDF
+                          </a>
+                        ) : (
+                          <a
+                            href={source.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-semibold text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors"
+                          >
+                            View source →
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Show more/less toggle */}
+                {researchSources.length > 3 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllResearch(!showAllResearch)}
+                    className="flex items-center gap-1.5 text-sm font-semibold text-[#E8A020] hover:text-[#C4861A] transition-colors"
                   >
-                    <div className="flex-1 min-w-0">
-                      <a
-                        href={source.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm font-semibold text-[#1B2E4B] hover:text-[#E8A020] transition-colors line-clamp-2"
-                      >
-                        {source.title}
-                      </a>
-                      <p className="text-xs text-[#9CA3AF] mt-0.5">
-                        {source.authors}
-                        {source.year && ` • ${source.year}`}
-                      </p>
-                    </div>
-                    <div className="flex-shrink-0">
-                      {source.hasFreeAccess ? (
-                        <a
-                          href={source.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 px-2 py-1 bg-[#E8A020] text-white text-xs font-bold rounded-lg hover:bg-[#C4861A] transition-colors"
-                        >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          Free PDF
-                        </a>
-                      ) : (
-                        <a
-                          href={source.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs font-semibold text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors"
-                        >
-                          View source →
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                    <span>{showAllResearch ? 'Show less' : `Show ${researchSources.length - 3} more`}</span>
+                    <svg
+                      className={`w-4 h-4 transition-transform ${showAllResearch ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                )}
               </div>
             )}
           </div>
