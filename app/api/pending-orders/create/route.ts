@@ -1,9 +1,30 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { rateLimit, getClientIp, getRateLimitErrorMessage } from '@/lib/rate-limit'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // RATE LIMITING: 5 pending orders per user/IP per 24 hours
+    // This prevents spam order creation without payment
+    const clientIp = getClientIp(request)
+    const rateLimitResult = rateLimit(`pending-order:${clientIp}`, {
+      limit: 5,
+      windowSeconds: 86400 // 24 hours
+    })
+
+    if (!rateLimitResult.success) {
+      const message = getRateLimitErrorMessage(rateLimitResult.resetAt)
+      return NextResponse.json(
+        {
+          error: `You've reached the order creation limit. Please try again later, or contact us on WhatsApp if you need assistance.`,
+          code: 'RATE_LIMIT_EXCEEDED',
+          retryAfter: Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)
+        },
+        { status: 429 }
+      )
+    }
+
     // Passive cleanup: delete all expired pending orders to prevent accumulation
     const { error: cleanupError } = await supabaseAdmin
       .from('pending_orders')

@@ -4,6 +4,7 @@ import mammoth from 'mammoth'
 import { createClient } from '@supabase/supabase-js'
 import { validateClaudeExtraction, applySanityBounds, containsSuspiciousPhrases } from '@/lib/extraction-validation'
 import { matchSubjectField } from '@/lib/subject-matching'
+import { rateLimit, getClientIp, getRateLimitErrorMessage } from '@/lib/rate-limit'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -14,8 +15,16 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+/**
+ * System prompt for brief extraction - cached across requests
+ * Using cache_control to reduce token costs on repeated brief uploads
+ */
 const SYSTEM_PROMPT = `You are an academic assignment brief analyser. Extract structured information from the uploaded assignment brief. Return ONLY valid JSON with no other text. Be thorough — academic briefs often state requirements in different ways.`
 
+/**
+ * Extraction instruction template - cached across requests
+ * Only the document content changes between requests
+ */
 const USER_PROMPT_TEMPLATE = `Analyse this assignment brief and extract the following information as JSON:
 
 {
@@ -209,7 +218,13 @@ Extract the ACADEMIC CORE of each deliverable — the theories, models, framewor
     const message = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
-      system: 'You are an academic research assistant. Extract research search terms as JSON.',
+      system: [
+        {
+          type: 'text',
+          text: 'You are an academic research assistant. Extract research search terms as JSON.',
+          cache_control: { type: 'ephemeral' }
+        }
+      ],
       messages: [{ role: 'user', content: prompt }]
     })
 
@@ -244,7 +259,7 @@ async function extractWithRetry(
   params: {
     model: string
     max_tokens: number
-    system: string
+    system: string | Array<{ type: 'text'; text: string; cache_control?: { type: 'ephemeral' } }>
     messages: any[]
   }
 ): Promise<ExtractionResult> {
@@ -325,6 +340,26 @@ async function extractWithRetry(
 
 export async function POST(request: NextRequest) {
   try {
+    // RATE LIMITING: 3 brief uploads per user per hour
+    // Use IP address as identifier (user may not be authenticated yet)
+    const clientIp = getClientIp(request)
+    const rateLimitResult = rateLimit(`brief-upload:${clientIp}`, {
+      limit: 3,
+      windowSeconds: 3600 // 1 hour
+    })
+
+    if (!rateLimitResult.success) {
+      const message = getRateLimitErrorMessage(rateLimitResult.resetAt)
+      return NextResponse.json(
+        {
+          error: `You've reached the upload limit. Please try again in an hour, or contact us on WhatsApp if you need to submit multiple assignments.`,
+          code: 'RATE_LIMIT_EXCEEDED',
+          retryAfter: Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)
+        },
+        { status: 429 }
+      )
+    }
+
     const formData = await request.formData()
     const file = formData.get('file') as File | null
     const sessionId = formData.get('sessionId') as string | null
@@ -409,11 +444,22 @@ export async function POST(request: NextRequest) {
         extractionResult = await extractWithRetry(anthropic, {
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 4096,
-          system: SYSTEM_PROMPT,
+          system: [
+            {
+              type: 'text',
+              text: SYSTEM_PROMPT,
+              cache_control: { type: 'ephemeral' }
+            }
+          ],
           messages: [
             {
               role: 'user',
               content: [
+                {
+                  type: 'text',
+                  text: USER_PROMPT_TEMPLATE,
+                  cache_control: { type: 'ephemeral' }
+                },
                 {
                   type: 'document',
                   source: {
@@ -421,10 +467,6 @@ export async function POST(request: NextRequest) {
                     media_type: mediaType,
                     data: base64Data,
                   },
-                },
-                {
-                  type: 'text',
-                  text: USER_PROMPT_TEMPLATE,
                 },
               ],
             },
@@ -470,11 +512,22 @@ export async function POST(request: NextRequest) {
         extractionResult = await extractWithRetry(anthropic, {
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 4096,
-          system: SYSTEM_PROMPT,
+          system: [
+            {
+              type: 'text',
+              text: SYSTEM_PROMPT,
+              cache_control: { type: 'ephemeral' }
+            }
+          ],
           messages: [
             {
               role: 'user',
               content: [
+                {
+                  type: 'text',
+                  text: USER_PROMPT_TEMPLATE,
+                  cache_control: { type: 'ephemeral' }
+                },
                 {
                   type: 'image',
                   source: {
@@ -482,10 +535,6 @@ export async function POST(request: NextRequest) {
                     media_type: mediaType,
                     data: base64Data,
                   },
-                },
-                {
-                  type: 'text',
-                  text: USER_PROMPT_TEMPLATE,
                 },
               ],
             },
@@ -522,11 +571,27 @@ export async function POST(request: NextRequest) {
         extractionResult = await extractWithRetry(anthropic, {
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 4096,
-          system: SYSTEM_PROMPT,
+          system: [
+            {
+              type: 'text',
+              text: SYSTEM_PROMPT,
+              cache_control: { type: 'ephemeral' }
+            }
+          ],
           messages: [
             {
               role: 'user',
-              content: `${USER_PROMPT_TEMPLATE}\n\nDocument content:\n${text}`,
+              content: [
+                {
+                  type: 'text',
+                  text: USER_PROMPT_TEMPLATE,
+                  cache_control: { type: 'ephemeral' }
+                },
+                {
+                  type: 'text',
+                  text: `\n\nDocument content:\n${text}`
+                }
+              ],
             },
           ],
         })
