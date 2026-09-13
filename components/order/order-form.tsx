@@ -252,11 +252,22 @@ export default function OrderForm() {
   }
 
   async function handleProceed() {
+    console.log('[order-form] ===== CHECKOUT FLOW START =====')
+    console.log('[order-form] Form data:', {
+      subjectField: formData.subjectField,
+      academicLevel: formData.academicLevel,
+      deadline: formData.deadline,
+      deliverableCount: formData.deliverables.length,
+      hasFile: !!file,
+      fileName: file?.name
+    })
+
     setProceeding(true)
 
     // Check authentication status first
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    console.log('[order-form] Authentication status:', user ? `Authenticated (${user.email})` : 'Not authenticated')
 
     // Get academic_level_raw from sessionStorage if it was set
     const academicLevelRaw = sessionStorage.getItem('gpg_academic_level_raw')
@@ -271,15 +282,22 @@ export default function OrderForm() {
       briefTempPath: briefTempPath || null,
     }
 
+    console.log('[order-form] Prepared order data:', {
+      subjectField: orderData.subjectField,
+      academicLevel: orderData.academicLevel,
+      deadline: orderData.deadline,
+      deliverableCount: orderData.deliverables.length
+    })
+
     let fileDataBase64: string | null = null
 
     // Encode file as base64 if present
     if (file) {
       try {
         fileDataBase64 = await fileToBase64(file)
-        console.log('[order-form] Encoded file to base64:', file.name, file.size, 'bytes')
+        console.log('[order-form] ✅ Encoded file to base64:', file.name, file.size, 'bytes')
       } catch (err) {
-        console.error('[order-form] Failed to encode file:', err)
+        console.error('[order-form] ❌ Failed to encode file:', err)
       }
     }
 
@@ -293,11 +311,12 @@ export default function OrderForm() {
         size: file!.size,
       }))
     }
-    console.log('[order-form] Saved to sessionStorage as backup')
+    console.log('[order-form] ✅ Saved to sessionStorage as backup')
 
     if (user) {
       // User is authenticated - go straight to checkout
-      console.log('[order-form] User authenticated, redirecting to /checkout')
+      console.log('[order-form] ✅ User authenticated, redirecting to /checkout')
+      console.log('[order-form] sessionStorage will be used by checkout page')
       router.push('/checkout')
     } else {
       // User NOT authenticated - save to database BEFORE redirecting to login
@@ -317,11 +336,13 @@ export default function OrderForm() {
 
       // Let's redirect to login with pending data in sessionStorage for now
       // and enhance login page to save to DB
-      console.log('[order-form] User not authenticated, redirecting to /login?next=/checkout')
+      console.log('[order-form] ⚠️  User not authenticated, redirecting to /login?next=/checkout')
+      console.log('[order-form] Order data will be saved to database after login')
       router.push('/login?next=/checkout')
     }
 
     setProceeding(false)
+    console.log('[order-form] ===== CHECKOUT FLOW END =====')
   }
 
   // Determine which flow we're in and map steps accordingly

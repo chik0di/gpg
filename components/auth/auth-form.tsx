@@ -53,12 +53,20 @@ export default function AuthForm({ next, initialMode }: Props) {
 
   // ── Save pending order to database ─────────────────────────────────────
   async function savePendingOrderIfNeeded(userEmail: string): Promise<string | null> {
+    console.log('[auth-form] ===== SAVING PENDING ORDER =====')
     // Check if we have order data in sessionStorage that needs to be persisted
     const orderDataRaw = sessionStorage.getItem('gpg_pending_order')
     const fileDataRaw = sessionStorage.getItem('gpg_pending_file')
 
+    console.log('[auth-form] sessionStorage check:', {
+      hasOrderData: !!orderDataRaw,
+      hasFileData: !!fileDataRaw,
+      userEmail
+    })
+
     if (!orderDataRaw) {
       // No pending order to save
+      console.log('[auth-form] No pending order in sessionStorage - skipping save')
       return null
     }
 
@@ -66,12 +74,19 @@ export default function AuthForm({ next, initialMode }: Props) {
       const orderData = JSON.parse(orderDataRaw)
       let fileData: string | null = null
 
+      console.log('[auth-form] Parsed order data:', {
+        subjectField: orderData.subjectField,
+        academicLevel: orderData.academicLevel,
+        deliverableCount: orderData.deliverables?.length
+      })
+
       if (fileDataRaw) {
         const fileParsed = JSON.parse(fileDataRaw)
         fileData = fileParsed.data // Base64 string
+        console.log('[auth-form] Parsed file data:', fileParsed.name, fileParsed.size, 'bytes')
       }
 
-      console.log('[auth-form] Saving pending order to database for:', userEmail)
+      console.log('[auth-form] Calling /api/pending-orders/create with email:', userEmail)
 
       const res = await fetch('/api/pending-orders/create', {
         method: 'POST',
@@ -83,16 +98,22 @@ export default function AuthForm({ next, initialMode }: Props) {
         }),
       })
 
+      console.log('[auth-form] API response status:', res.status, res.statusText)
+
       if (!res.ok) {
-        console.error('[auth-form] Failed to save pending order:', await res.text())
+        const errorText = await res.text()
+        console.error('[auth-form] ❌ Failed to save pending order:', errorText)
         return null
       }
 
-      const { pendingOrderId } = await res.json()
-      console.log('[auth-form] Saved pending order:', pendingOrderId)
+      const responseData = await res.json()
+      console.log('[auth-form] API response data:', responseData)
+      const { pendingOrderId } = responseData
+
+      console.log('[auth-form] ✅ Successfully saved pending order with ID:', pendingOrderId)
       return pendingOrderId
     } catch (err) {
-      console.error('[auth-form] Error saving pending order:', err)
+      console.error('[auth-form] ❌ Exception while saving pending order:', err)
       return null
     }
   }
@@ -154,22 +175,33 @@ export default function AuthForm({ next, initialMode }: Props) {
 
   // ── Email sign-in ───────────────────────────────────────────────────────
   async function handleSignIn(e: React.FormEvent) {
+    console.log('[auth-form] ===== EMAIL SIGN-IN START =====')
+    console.log('[auth-form] Email:', email)
+    console.log('[auth-form] Next parameter:', next)
+
     e.preventDefault()
     setLoading(true)
     setError(null)
 
     // Save pending order BEFORE authentication (so we have email but before redirect)
+    console.log('[auth-form] Step 1: Attempting to save pending order...')
     const pendingOrderId = await savePendingOrderIfNeeded(email)
+    console.log('[auth-form] Pending order ID from save:', pendingOrderId || 'null (no order to save)')
 
+    console.log('[auth-form] Step 2: Authenticating with Supabase...')
     const { error, data } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
+      console.error('[auth-form] ❌ Authentication failed:', error.message)
       setError('Incorrect email or password. Please try again.')
       setLoading(false)
       return
     }
 
+    console.log('[auth-form] ✅ Authentication successful, user ID:', data.user?.id)
+
     // Link any pending orders to this user after successful authentication
+    console.log('[auth-form] Step 3: Linking pending orders to user...')
     await linkPendingOrdersToUser(email)
 
     // If "Remember Me" is unchecked, set session to expire when browser closes
@@ -188,20 +220,29 @@ export default function AuthForm({ next, initialMode }: Props) {
     const storedNext = sessionStorage.getItem('gpg_auth_next')
     let redirectTo = storedNext || next
 
+    console.log('[auth-form] Step 4: Building redirect URL...')
+    console.log('[auth-form] Base redirect:', redirectTo)
+    console.log('[auth-form] Has pending order ID:', !!pendingOrderId)
+    console.log('[auth-form] Is checkout redirect:', redirectTo.includes('/checkout'))
+
     // If we saved a pending order, add it to the redirect URL
     if (pendingOrderId && redirectTo.includes('/checkout')) {
       const url = new URL(redirectTo, window.location.origin)
       url.searchParams.set('pending', pendingOrderId)
       redirectTo = url.pathname + url.search
+      console.log('[auth-form] ✅ Added pending order ID to URL:', redirectTo)
     }
 
     // Clear stored next parameter after reading it
     if (storedNext) {
       sessionStorage.removeItem('gpg_auth_next')
-      console.log('[auth-form] Email sign-in - using stored next from email confirmation:', redirectTo)
+      console.log('[auth-form] Using stored next from email confirmation:', redirectTo)
     } else {
-      console.log('[auth-form] Email sign-in - redirecting to:', redirectTo)
+      console.log('[auth-form] Using next from URL parameter:', redirectTo)
     }
+
+    console.log('[auth-form] Step 5: Redirecting to:', redirectTo)
+    console.log('[auth-form] ===== EMAIL SIGN-IN END =====')
 
     router.push(redirectTo)
     router.refresh()

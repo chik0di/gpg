@@ -32,7 +32,7 @@ export default function ReviewTrigger({ orderId, moduleName, isCompleted }: Revi
     // Listen for download events
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement
-      const downloadLink = target.closest('a[download]')
+      const downloadLink = target.closest('a[download]') as HTMLAnchorElement | null
 
       console.log('[ReviewTrigger] Click detected:', {
         target: target.tagName,
@@ -49,8 +49,6 @@ export default function ReviewTrigger({ orderId, moduleName, isCompleted }: Revi
         })
 
         // Check if this is the completed work download link
-        // The href will be a signed Supabase URL, so we check if it contains 'order-files'
-        // and look for a data attribute or check the parent element
         const isCompletedDownload = downloadLink.textContent?.toLowerCase().includes('completed work')
 
         console.log('[ReviewTrigger] Download link analysis:', {
@@ -59,12 +57,32 @@ export default function ReviewTrigger({ orderId, moduleName, isCompleted }: Revi
         })
 
         if (isCompletedDownload) {
-          console.log('[ReviewTrigger] TRIGGERING REVIEW POPUP after 1s delay')
-          // Show review popup after a short delay to let download start
-          setTimeout(() => {
-            console.log('[ReviewTrigger] Setting showReviewPopup to true')
-            setShowReviewPopup(true)
-          }, 1000)
+          console.log('[ReviewTrigger] TRIGGERING REVIEW POPUP immediately (preventing default download)')
+
+          // Prevent the default download behavior
+          e.preventDefault()
+          e.stopPropagation()
+
+          // Store the download URL to trigger after popup is shown
+          const downloadUrl = href
+
+          // Show popup immediately
+          console.log('[ReviewTrigger] Setting showReviewPopup to true NOW')
+          setShowReviewPopup(true)
+
+          // Trigger the download after a small delay to ensure popup renders
+          if (downloadUrl) {
+            setTimeout(() => {
+              console.log('[ReviewTrigger] Starting download programmatically:', downloadUrl)
+              const a = document.createElement('a')
+              a.href = downloadUrl
+              a.download = ''
+              document.body.appendChild(a)
+              a.click()
+              document.body.removeChild(a)
+              console.log('[ReviewTrigger] Download initiated')
+            }, 500)
+          }
         } else {
           console.log('[ReviewTrigger] Not completed download link, ignoring')
         }
