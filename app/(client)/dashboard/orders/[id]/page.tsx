@@ -31,6 +31,21 @@ export default async function OrderDetailPage({ params }: Props) {
 
   if (!order) notFound()
 
+  // ========================================
+  // DEBUG: Log exact order status for review popup debugging
+  // ========================================
+  console.log('========================================')
+  console.log('[OrderDetailPage] 📋 ORDER STATUS DEBUG')
+  console.log('[OrderDetailPage] Order ID:', params.id)
+  console.log('[OrderDetailPage] Order status (raw):', JSON.stringify(order.status))
+  console.log('[OrderDetailPage] Order status length:', order.status?.length)
+  console.log('[OrderDetailPage] Order status (trimmed):', JSON.stringify(order.status?.trim()))
+  console.log('[OrderDetailPage] Order status bytes:', (order.status || '').split('').map((c: string) => c.charCodeAt(0)))
+  console.log('[OrderDetailPage] Status === "completed":', order.status === 'completed')
+  console.log('[OrderDetailPage] Status (lowercase) === "completed":', order.status?.toLowerCase() === 'completed')
+  console.log('[OrderDetailPage] Status (trimmed) === "completed":', order.status?.trim() === 'completed')
+  console.log('========================================')
+
   const label  = ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS] ?? order.status
   const color  = ORDER_STATUS_COLORS[order.status as keyof typeof ORDER_STATUS_COLORS] ?? 'bg-gray-100 text-gray-600'
   const total  = `£${order.total_amount % 1 === 0 ? order.total_amount : order.total_amount.toFixed(2)}`
@@ -42,6 +57,20 @@ export default async function OrderDetailPage({ params }: Props) {
   // Generate signed URLs server-side for secure file access
   const assignUrl    = assignFile    ? await getSignedUrl(assignFile.file_url)    : null
   const completedUrl = completedFile ? await getSignedUrl(completedFile.file_url) : null
+
+  // ========================================
+  // DEBUG: Log what will be passed to ReviewTrigger
+  // ========================================
+  const isCompletedForReview = order.status === 'completed'
+  console.log('========================================')
+  console.log('[OrderDetailPage] 🎯 REVIEW TRIGGER PROPS')
+  console.log('[OrderDetailPage] Will pass to ReviewTrigger:')
+  console.log('[OrderDetailPage]   - orderId:', order.id)
+  console.log('[OrderDetailPage]   - moduleName:', order.module_name)
+  console.log('[OrderDetailPage]   - isCompleted:', isCompletedForReview)
+  console.log('[OrderDetailPage] Raw status comparison:', order.status, '===', 'completed', '→', order.status === 'completed')
+  console.log('========================================')
+
 
   return (
     <div className="max-w-2xl space-y-6">

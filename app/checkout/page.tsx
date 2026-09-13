@@ -288,8 +288,12 @@ export default function CheckoutPage() {
   const [pendingFile, setPendingFile]     = useState<File | null>(null)
 
   useEffect(() => {
-    console.log('[checkout] Page loaded - checking for order data')
+    console.log('========================================')
+    console.log('[checkout] 🚀 CHECKOUT PAGE LOADED')
+    console.log('[checkout] Full URL:', window.location.href)
+    console.log('[checkout] Search params:', window.location.search)
     console.log('[checkout] Pending order ID from URL:', pendingOrderId)
+    console.log('========================================')
 
     async function loadOrderData() {
       let data: OrderFormState | null = null
@@ -297,60 +301,117 @@ export default function CheckoutPage() {
 
       // PRIORITY 1: Fetch from database if pending order ID is provided
       if (pendingOrderId) {
-        console.log('[checkout] Fetching pending order from database:', pendingOrderId)
-        console.log('[checkout] API URL:', `/api/pending-orders/${pendingOrderId}`)
+        console.log('----------------------------------------')
+        console.log('[checkout] 📡 FETCHING PENDING ORDER FROM DATABASE')
+        console.log('[checkout] Pending order ID:', pendingOrderId)
+        console.log('[checkout] Full API URL:', `/api/pending-orders/${pendingOrderId}`)
+        console.log('[checkout] Request timestamp:', new Date().toISOString())
+        console.log('----------------------------------------')
+
         try {
-          const res = await fetch(`/api/pending-orders/${pendingOrderId}`)
-          console.log('[checkout] API response status:', res.status, res.statusText)
+          const apiUrl = `/api/pending-orders/${pendingOrderId}`
+          const res = await fetch(apiUrl)
+
+          console.log('----------------------------------------')
+          console.log('[checkout] 📥 API RESPONSE RECEIVED')
+          console.log('[checkout] Status code:', res.status)
+          console.log('[checkout] Status text:', res.statusText)
+          console.log('[checkout] Response OK:', res.ok)
+          console.log('[checkout] Response headers:', Object.fromEntries(res.headers.entries()))
+          console.log('----------------------------------------')
 
           if (res.ok) {
             const responseData = await res.json()
-            console.log('[checkout] API response data:', responseData)
+            console.log('----------------------------------------')
+            console.log('[checkout] ✅ SUCCESS - Order data retrieved')
+            console.log('[checkout] Response data:', JSON.stringify(responseData, null, 2))
+            console.log('[checkout] Order data keys:', responseData.orderData ? Object.keys(responseData.orderData) : 'null')
+            console.log('[checkout] File data present:', !!responseData.fileData)
+            console.log('----------------------------------------')
+
             data = responseData.orderData
             fileData = responseData.fileData
-            console.log('[checkout] Successfully loaded order from database')
-            console.log('[checkout] Order data keys:', data ? Object.keys(data) : 'null')
-            console.log('[checkout] File data present:', !!fileData)
 
             // Save to sessionStorage as backup
             sessionStorage.setItem('gpg_pending_order', JSON.stringify(data))
             if (fileData) {
-              // fileData is already the full object with {data, name, type, size}
               sessionStorage.setItem('gpg_pending_file', fileData)
             }
           } else {
+            // Capture full error details
             const errorText = await res.text()
-            console.error('[checkout] Failed to fetch pending order from database')
-            console.error('[checkout] Status:', res.status)
-            console.error('[checkout] Error:', errorText)
-            console.error('[checkout] This will cause fallback to sessionStorage, then redirect to /order if that fails too')
+            let errorJson: any = null
+            try {
+              errorJson = JSON.parse(errorText)
+            } catch {
+              // Not JSON, just text
+            }
+
+            console.error('========================================')
+            console.error('[checkout] ❌ FAILED TO FETCH PENDING ORDER')
+            console.error('[checkout] Status code:', res.status)
+            console.error('[checkout] Status text:', res.statusText)
+            console.error('[checkout] Error response body (text):', errorText)
+            console.error('[checkout] Error response body (parsed JSON):', errorJson)
+            console.error('[checkout] Pending order ID that failed:', pendingOrderId)
+            console.error('[checkout] Full request URL:', apiUrl)
+            console.error('[checkout] Current user authentication status: checking...')
+            console.error('[checkout] Timestamp:', new Date().toISOString())
+            console.error('========================================')
+            console.error('[checkout] ⚠️  Will now fallback to sessionStorage...')
           }
         } catch (err) {
-          console.error('[checkout] Exception while fetching pending order:', err)
+          console.error('========================================')
+          console.error('[checkout] ❌ EXCEPTION WHILE FETCHING PENDING ORDER')
+          console.error('[checkout] Error type:', err instanceof Error ? err.constructor.name : typeof err)
+          console.error('[checkout] Error message:', err instanceof Error ? err.message : String(err))
+          console.error('[checkout] Error stack:', err instanceof Error ? err.stack : 'N/A')
+          console.error('[checkout] Pending order ID:', pendingOrderId)
+          console.error('[checkout] Timestamp:', new Date().toISOString())
+          console.error('========================================')
         }
       } else {
-        console.log('[checkout] No pending order ID in URL - skipping database fetch')
+        console.log('----------------------------------------')
+        console.log('[checkout] ⚠️  No pending order ID in URL - skipping database fetch')
+        console.log('[checkout] This means user is authenticated and went directly to /checkout')
+        console.log('[checkout] Will use sessionStorage data only')
+        console.log('----------------------------------------')
       }
 
       // FALLBACK: Try sessionStorage if database fetch failed
       if (!data) {
-        console.log('[checkout] No data from database - falling back to sessionStorage')
+        console.log('----------------------------------------')
+        console.log('[checkout] 🔄 FALLBACK TO SESSIONSTORAGE')
+        console.log('[checkout] No data from database - checking sessionStorage')
+        console.log('----------------------------------------')
+
         const raw = sessionStorage.getItem('gpg_pending_order')
-        console.log('[checkout] sessionStorage check:', raw ? 'found' : 'not found')
+        console.log('[checkout] sessionStorage gpg_pending_order:', raw ? `found (${raw.length} chars)` : 'NOT FOUND')
 
         if (!raw) {
-          console.error('[checkout] ❌ No order data found in database or sessionStorage')
-          console.error('[checkout] Pending order ID was:', pendingOrderId)
-          console.error('[checkout] Database fetch probably failed or returned empty')
+          console.error('========================================')
+          console.error('[checkout] ❌ CRITICAL ERROR - NO ORDER DATA ANYWHERE')
+          console.error('[checkout] Database fetch result: FAILED or EMPTY')
+          console.error('[checkout] sessionStorage result: EMPTY')
+          console.error('[checkout] Pending order ID from URL:', pendingOrderId || 'NONE')
+          console.error('[checkout] Full URL:', window.location.href)
+          console.error('[checkout] User flow breakdown:')
+          console.error('[checkout]   1. User came from order form → login → checkout')
+          console.error('[checkout]   2. Order should have been saved during login')
+          console.error('[checkout]   3. Pending ID should be in URL: /checkout?pending=XXX')
+          console.error('[checkout]   4. API should fetch from database with that ID')
+          console.error('[checkout]   5. THIS IS WHERE IT FAILED')
+          console.error('[checkout] Timestamp:', new Date().toISOString())
+          console.error('========================================')
 
-          // Instead of silently redirecting, show a clear error message
+          // Show detailed error to user
           if (pendingOrderId) {
             setInitError(
-              'We couldn\'t find your order details. Your order may have expired or there was an issue loading it. Please contact support or start a new order.'
+              `We couldn't find your order details. Your order may have expired or there was an issue loading it. Please contact support or start a new order.\n\nError details: Pending order ID ${pendingOrderId} not found in database. This error has been logged.`
             )
           } else {
             setInitError(
-              'No order data found. Please start a new order.'
+              'No order data found. Please start a new order.\n\nError details: No pending order ID in URL and no data in session storage.'
             )
           }
           return
