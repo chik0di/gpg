@@ -11,91 +11,91 @@ interface ReviewTriggerProps {
 
 export default function ReviewTrigger({ orderId, moduleName, isCompleted }: ReviewTriggerProps) {
   const [showReviewPopup, setShowReviewPopup] = useState(false)
+  const [hasExistingReview, setHasExistingReview] = useState(false)
+  const [checkingReview, setCheckingReview] = useState(true)
 
+  // Check if user has already submitted a review for this order (database check)
   useEffect(() => {
-    console.log('[ReviewTrigger] Component mounted:', { orderId, isCompleted })
+    async function checkForExistingReview() {
+      try {
+        console.log('[ReviewTrigger] Checking for existing review for order:', orderId)
 
+        const response = await fetch(`/api/reviews/check?orderId=${orderId}`)
+
+        if (response.ok) {
+          const { hasReview } = await response.json()
+          console.log('[ReviewTrigger] Database review check result:', { hasReview })
+          setHasExistingReview(hasReview)
+        } else {
+          console.warn('[ReviewTrigger] Failed to check for existing review, status:', response.status)
+          // On error, fall back to localStorage check only
+          const localCheck = localStorage.getItem(`reviewed_order_${orderId}`)
+          setHasExistingReview(!!localCheck)
+        }
+      } catch (error) {
+        console.error('[ReviewTrigger] Error checking for existing review:', error)
+        // On error, fall back to localStorage check only
+        const localCheck = localStorage.getItem(`reviewed_order_${orderId}`)
+        setHasExistingReview(!!localCheck)
+      } finally {
+        setCheckingReview(false)
+      }
+    }
+
+    if (isCompleted) {
+      checkForExistingReview()
+    } else {
+      setCheckingReview(false)
+    }
+  }, [orderId, isCompleted])
+
+  // Show review popup on page load after delay (if order is completed and no review exists)
+  useEffect(() => {
+    console.log('[ReviewTrigger] Component mounted:', {
+      orderId,
+      isCompleted,
+      checkingReview,
+      hasExistingReview
+    })
+
+    // Don't show popup if:
+    // - Order is not completed
+    // - Still checking for existing review
+    // - User already reviewed this order
     if (!isCompleted) {
-      console.log('[ReviewTrigger] Order not completed, skipping review trigger')
+      console.log('[ReviewTrigger] Order not completed, skipping review popup')
       return
     }
 
-    // Check if user has already been prompted for this order
-    const hasReviewed = localStorage.getItem(`reviewed_order_${orderId}`)
-    console.log('[ReviewTrigger] localStorage check:', { orderId, hasReviewed })
+    if (checkingReview) {
+      console.log('[ReviewTrigger] Still checking for existing review, waiting...')
+      return
+    }
 
-    if (hasReviewed) {
+    if (hasExistingReview) {
       console.log('[ReviewTrigger] User already reviewed this order, skipping popup')
       return
     }
 
-    // Listen for download events
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      const downloadLink = target.closest('a[download]') as HTMLAnchorElement | null
-
-      console.log('[ReviewTrigger] Click detected:', {
-        target: target.tagName,
-        downloadLink: downloadLink ? 'found' : 'not found',
-        href: downloadLink?.getAttribute('href')
-      })
-
-      if (downloadLink) {
-        const href = downloadLink.getAttribute('href')
-        console.log('[ReviewTrigger] Download link clicked, checking href:', {
-          href,
-          includesCompleted: href?.includes('completed'),
-          includesOrderFiles: href?.includes('order-files')
-        })
-
-        // Check if this is the completed work download link
-        const isCompletedDownload = downloadLink.textContent?.toLowerCase().includes('completed work')
-
-        console.log('[ReviewTrigger] Download link analysis:', {
-          textContent: downloadLink.textContent,
-          isCompletedDownload
-        })
-
-        if (isCompletedDownload) {
-          console.log('[ReviewTrigger] TRIGGERING REVIEW POPUP immediately (preventing default download)')
-
-          // Prevent the default download behavior
-          e.preventDefault()
-          e.stopPropagation()
-
-          // Store the download URL to trigger after popup is shown
-          const downloadUrl = href
-
-          // Show popup immediately
-          console.log('[ReviewTrigger] Setting showReviewPopup to true NOW')
-          setShowReviewPopup(true)
-
-          // Trigger the download after a small delay to ensure popup renders
-          if (downloadUrl) {
-            setTimeout(() => {
-              console.log('[ReviewTrigger] Starting download programmatically:', downloadUrl)
-              const a = document.createElement('a')
-              a.href = downloadUrl
-              a.download = ''
-              document.body.appendChild(a)
-              a.click()
-              document.body.removeChild(a)
-              console.log('[ReviewTrigger] Download initiated')
-            }, 500)
-          }
-        } else {
-          console.log('[ReviewTrigger] Not completed download link, ignoring')
-        }
-      }
+    // Check localStorage as additional safeguard
+    const localStorageCheck = localStorage.getItem(`reviewed_order_${orderId}`)
+    if (localStorageCheck) {
+      console.log('[ReviewTrigger] localStorage indicates review already submitted, skipping popup')
+      return
     }
 
-    console.log('[ReviewTrigger] Adding click event listener')
-    document.addEventListener('click', handleClick)
+    // Show popup after 2 second delay to let user see the page first
+    console.log('[ReviewTrigger] Order completed and no review found - will show popup in 2 seconds')
+    const timer = setTimeout(() => {
+      console.log('[ReviewTrigger] SHOWING REVIEW POPUP')
+      setShowReviewPopup(true)
+    }, 2000)
+
     return () => {
-      console.log('[ReviewTrigger] Removing click event listener')
-      document.removeEventListener('click', handleClick)
+      console.log('[ReviewTrigger] Cleaning up timer')
+      clearTimeout(timer)
     }
-  }, [orderId, isCompleted])
+  }, [orderId, isCompleted, checkingReview, hasExistingReview])
 
   const handleSubmitReview = async (data: {
     rating: number
