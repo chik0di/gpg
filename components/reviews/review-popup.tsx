@@ -22,6 +22,8 @@ export default function ReviewPopup({ orderId, moduleName, onClose, onSubmit }: 
 
   const MAX_REVIEW_LENGTH = 2000
 
+  console.log('[ReviewPopup] Component rendered:', { orderId, moduleName, rating, reviewText })
+
   const handleSubmit = async () => {
     if (rating === 0) return
 
