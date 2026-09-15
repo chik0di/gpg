@@ -117,9 +117,19 @@ export default function ReviewTrigger({ orderId, moduleName, isCompleted }: Revi
       return
     }
 
+    // Check if user dismissed popup in this session (temporary block - allows retry on next visit)
+    const dismissedThisSession = sessionStorage.getItem(`review_popup_dismissed_${orderId}`)
+    if (dismissedThisSession) {
+      console.log('❌ BLOCKING REASON: User dismissed popup in this session (temporary)')
+      console.log('[ReviewTrigger] sessionStorage flag:', dismissedThisSession)
+      console.log('[ReviewTrigger] Will show again on next visit/new tab')
+      return
+    }
+
     // All checks passed - show popup (database said no review exists)
     console.log('========================================')
     console.log('[ReviewTrigger] ✅ ALL CHECKS PASSED')
+    console.log('[ReviewTrigger] No database review, no session dismissal')
     console.log('[ReviewTrigger] Will show popup in 2 seconds')
     console.log('========================================')
 

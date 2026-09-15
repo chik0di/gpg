@@ -32,9 +32,10 @@ export default function ReviewPopup({ orderId, moduleName, onClose, onSubmit }: 
       console.log('[ReviewPopup] Submitting review to API...')
       await onSubmit({ rating, reviewText, displayPreference })
       console.log('[ReviewPopup] ✅ Review submitted successfully')
-      // Only mark as reviewed in localStorage AFTER successful API submission
+
+      // Mark as permanently reviewed in localStorage (never show again)
       localStorage.setItem(`reviewed_order_${orderId}`, 'true')
-      console.log('[ReviewPopup] localStorage flag set to true')
+      console.log('[ReviewPopup] ✅ Permanent localStorage flag set - will never show again')
       onClose()
     } catch (error) {
       console.error('[ReviewPopup] ❌ Failed to submit review:', error)
@@ -45,20 +46,29 @@ export default function ReviewPopup({ orderId, moduleName, onClose, onSubmit }: 
     }
   }
 
-  const handleSkip = () => {
-    localStorage.setItem(`reviewed_order_${orderId}`, 'true')
+  const handleDismiss = () => {
+    // User closed/dismissed without submitting
+    // Set temporary sessionStorage flag to prevent re-showing in THIS session only
+    // On next visit (new tab/session), they'll get another chance to review
+    console.log('[ReviewPopup] ⏭️  Dismissed without submitting')
+    console.log('[ReviewPopup] Setting sessionStorage flag (temporary - current session only)')
+    sessionStorage.setItem(`review_popup_dismissed_${orderId}`, 'true')
+    console.log('[ReviewPopup] Popup can show again on next visit/session')
     onClose()
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      onClick={handleDismiss}
+    >
       <div
         className="relative w-full max-w-md bg-[#FDFAF6] rounded-3xl border border-[#E8E2D9] p-8 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}
         <button
-          onClick={handleSkip}
+          onClick={handleDismiss}
           className="absolute top-4 right-4 text-[#6B7280] hover:text-[#1B2E4B] transition-colors"
           aria-label="Close"
         >
@@ -170,10 +180,10 @@ export default function ReviewPopup({ orderId, moduleName, onClose, onSubmit }: 
         {/* Actions */}
         <div className="flex items-center justify-between">
           <button
-            onClick={handleSkip}
+            onClick={handleDismiss}
             className="text-sm text-[#6B7280] hover:text-[#1B2E4B] transition-colors"
           >
-            Skip
+            Maybe later
           </button>
           <button
             onClick={handleSubmit}

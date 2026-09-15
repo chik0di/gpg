@@ -77,17 +77,32 @@ export default async function ReviewsPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
+  console.log('========================================')
+  console.log('[Reviews Page] 🔍 FETCHING APPROVED REVIEWS')
+  console.log('[Reviews Page] Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+  console.log('[Reviews Page] Anon key exists:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  console.log('[Reviews Page] Anon key length:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.length)
+  console.log('========================================')
+
   const { data: reviews, error } = await supabase
     .from('reviews')
-    .select('id, rating, review_text, display_name, created_at')
+    .select('id, rating, review_text, display_name, created_at, is_approved')
     .eq('is_approved', true)
     .order('created_at', { ascending: false })
 
-  console.log('[Reviews Page] Query result:', {
-    reviewCount: reviews?.length ?? 0,
-    error: error?.message,
-    reviews: reviews
-  })
+  console.log('========================================')
+  console.log('[Reviews Page] 📊 QUERY RESULT')
+  console.log('[Reviews Page] Error:', error)
+  console.log('[Reviews Page] Error message:', error?.message)
+  console.log('[Reviews Page] Error details:', error?.details)
+  console.log('[Reviews Page] Error hint:', error?.hint)
+  console.log('[Reviews Page] Error code:', error?.code)
+  console.log('[Reviews Page] Reviews count:', reviews?.length ?? 0)
+  console.log('[Reviews Page] Reviews data:', reviews)
+  if (reviews && reviews.length > 0) {
+    console.log('[Reviews Page] First review sample:', reviews[0])
+  }
+  console.log('========================================')
 
   const totalReviews = reviews?.length ?? 0
   const averageRating = totalReviews > 0

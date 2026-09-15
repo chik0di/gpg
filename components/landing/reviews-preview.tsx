@@ -33,6 +33,13 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 export default async function ReviewsPreview() {
+  console.log('========================================')
+  console.log('[Reviews Preview] 🔍 FETCHING APPROVED REVIEWS')
+  console.log('[Reviews Preview] Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+  console.log('[Reviews Preview] Anon key exists:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  console.log('[Reviews Preview] Anon key length:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.length)
+  console.log('========================================')
+
   // Create anon client for public access to approved reviews
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,16 +48,24 @@ export default async function ReviewsPreview() {
 
   const { data: reviews, error } = await supabase
     .from('reviews')
-    .select('id, rating, review_text, display_name, created_at')
+    .select('id, rating, review_text, display_name, created_at, is_approved')
     .eq('is_approved', true)
     .order('created_at', { ascending: false })
     .limit(4)
 
-  console.log('[Reviews Preview] Query result:', {
-    reviewCount: reviews?.length ?? 0,
-    error: error?.message,
-    reviews: reviews
-  })
+  console.log('========================================')
+  console.log('[Reviews Preview] 📊 QUERY RESULT')
+  console.log('[Reviews Preview] Error:', error)
+  console.log('[Reviews Preview] Error message:', error?.message)
+  console.log('[Reviews Preview] Error details:', error?.details)
+  console.log('[Reviews Preview] Error hint:', error?.hint)
+  console.log('[Reviews Preview] Error code:', error?.code)
+  console.log('[Reviews Preview] Reviews count:', reviews?.length ?? 0)
+  console.log('[Reviews Preview] Reviews data:', reviews)
+  if (reviews && reviews.length > 0) {
+    console.log('[Reviews Preview] First review sample:', reviews[0])
+  }
+  console.log('========================================')
 
   // If no reviews exist, don't render this section at all
   if (!reviews || reviews.length === 0) {
