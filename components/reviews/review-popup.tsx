@@ -29,12 +29,16 @@ export default function ReviewPopup({ orderId, moduleName, onClose, onSubmit }: 
 
     setIsSubmitting(true)
     try {
+      console.log('[ReviewPopup] Submitting review to API...')
       await onSubmit({ rating, reviewText, displayPreference })
-      // Mark as reviewed in localStorage
+      console.log('[ReviewPopup] ✅ Review submitted successfully')
+      // Only mark as reviewed in localStorage AFTER successful API submission
       localStorage.setItem(`reviewed_order_${orderId}`, 'true')
+      console.log('[ReviewPopup] localStorage flag set to true')
       onClose()
     } catch (error) {
-      console.error('Failed to submit review:', error)
+      console.error('[ReviewPopup] ❌ Failed to submit review:', error)
+      console.error('[ReviewPopup] localStorage flag NOT set (submission failed)')
       alert('Failed to submit review. Please try again.')
     } finally {
       setIsSubmitting(false)

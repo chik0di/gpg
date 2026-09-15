@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { signOut } from '@/lib/auth/signout'
 
@@ -43,12 +44,13 @@ export default function AdminSidebar() {
       >
         <div className="flex items-center justify-between px-4 h-14">
           <Link href="/" className="flex items-center gap-2">
-            <span
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white"
-              style={{ background: '#1B2E4B' }}
-            >
-              G
-            </span>
+            <Image
+              src="/gpg-logo-transparent.png"
+              alt="GetPrimeGrade"
+              width={28}
+              height={28}
+              className="w-7 h-7"
+            />
             <div>
               <p className="text-sm font-extrabold text-[#1B2E4B] leading-none">GetPrimeGrade</p>
               <p className="text-[0.6rem] font-bold text-[#E8A020] uppercase tracking-wide mt-0.5">Admin</p>
@@ -90,12 +92,13 @@ export default function AdminSidebar() {
       >
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 px-2 py-3 mb-6">
-          <span
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white"
-            style={{ background: '#1B2E4B' }}
-          >
-            G
-          </span>
+          <Image
+            src="/gpg-logo-transparent.png"
+            alt="GetPrimeGrade"
+            width={28}
+            height={28}
+            className="w-7 h-7"
+          />
           <div>
             <p className="text-sm font-extrabold text-[#1B2E4B] leading-none">GetPrimeGrade</p>
             <p className="text-[0.6rem] font-bold text-[#E8A020] uppercase tracking-wide mt-0.5">Admin</p>

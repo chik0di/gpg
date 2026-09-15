@@ -23,14 +23,28 @@ const ONE_TIER_THRESHOLD_PCT = 30 // Multiplier change > 30% = more than one tie
  * Calculate total in pence from order data
  */
 function calculateTotalPence(orderData: any): number {
-  const deliverablesPence = orderData.deliverables.map((d: any) => {
+  console.log('[calculateTotalPence] Starting calculation...')
+  console.log('[calculateTotalPence] orderData.deliverables:', orderData.deliverables)
+  console.log('[calculateTotalPence] orderData.academicLevel:', orderData.academicLevel)
+  console.log('[calculateTotalPence] orderData.deadline:', orderData.deadline)
+  console.log('[calculateTotalPence] orderData.includeOriginalityReport:', orderData.includeOriginalityReport)
+
+  if (!orderData.deliverables || !Array.isArray(orderData.deliverables)) {
+    console.error('[calculateTotalPence] ❌ ERROR: deliverables is not an array')
+    throw new Error('Invalid orderData: deliverables must be an array')
+  }
+
+  const deliverablesPence = orderData.deliverables.map((d: any, index: number) => {
+    console.log(`[calculateTotalPence] Processing deliverable ${index}:`, d)
     let basePence: number
 
     if (d.type === 'written') {
       const pages = d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE)
+      console.log(`[calculateTotalPence] Written work: ${pages} pages`)
       basePence = calcWrittenPricePence(pages, false)
     } else if (d.type === 'presentation') {
       const slideCount = d.slideInputMode === 'exact' ? d.slideCount : d.slideMax
+      console.log(`[calculateTotalPence] Presentation: ${slideCount} slides`)
       basePence = calcPresentationPricePence(slideCount, false)
     } else if (d.type === 'practical') {
       const priceMap: Record<string, number> = {
@@ -43,54 +57,92 @@ function calculateTotalPence(orderData: any): number {
         'security': TECHNICAL_EXPERT,
         'bi_dashboard': TECHNICAL_EXPERT,
       }
+      console.log(`[calculateTotalPence] Practical: ${d.practicalKey}`)
       basePence = validateTechnicalPricePence(priceMap[d.practicalKey] || TECHNICAL_MODERATE)
     } else {
+      console.log(`[calculateTotalPence] Unknown type: ${d.type}`)
       basePence = 0
     }
 
+    console.log(`[calculateTotalPence] Base price for deliverable ${index}:`, basePence, 'pence')
+
     let finalPence = basePence
     finalPence = applyAcademicMultiplier(finalPence, orderData.academicLevel)
+    console.log(`[calculateTotalPence] After academic multiplier (${orderData.academicLevel}):`, finalPence, 'pence')
+
     finalPence = applyDeadlineMultiplier(finalPence, orderData.deadline)
+    console.log(`[calculateTotalPence] After deadline multiplier (${orderData.deadline}):`, finalPence, 'pence')
+
     return finalPence
   })
 
+  console.log('[calculateTotalPence] All deliverable prices:', deliverablesPence)
+
   let totalPence = deliverablesPence.reduce((sum: number, price: number) => sum + price, 0)
+  console.log('[calculateTotalPence] Total before originality report:', totalPence, 'pence')
 
   if (orderData.includeOriginalityReport) {
+    console.log('[calculateTotalPence] Adding originality report:', ORIGINALITY_REPORT_PENCE, 'pence')
     totalPence += ORIGINALITY_REPORT_PENCE
   }
+
+  console.log('[calculateTotalPence] ✅ Final total:', totalPence, 'pence (£' + (totalPence / 100).toFixed(2) + ')')
 
   return totalPence
 }
 
 export async function POST(request: Request) {
   try {
+    console.log('========================================')
+    console.log('[stripe/create-payment-intent] 🚀 REQUEST START')
+    console.log('[stripe/create-payment-intent] Timestamp:', new Date().toISOString())
+    console.log('========================================')
+
     const supabase = createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
 
+    console.log('[stripe/create-payment-intent] Auth check:', user ? 'Authenticated' : 'Not authenticated')
+    console.log('[stripe/create-payment-intent] User ID:', user?.id)
+
     if (!user) {
+      console.log('[stripe/create-payment-intent] ❌ BLOCKED: Not authenticated')
       return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
     }
 
+    console.log('[stripe/create-payment-intent] Parsing request body...')
     const { amountPence, orderData } = await request.json()
+    console.log('[stripe/create-payment-intent] amountPence received:', amountPence)
+    console.log('[stripe/create-payment-intent] orderData received:', orderData ? 'Present' : 'Missing')
+    console.log('[stripe/create-payment-intent] orderData keys:', orderData ? Object.keys(orderData) : 'N/A')
 
     if (typeof amountPence !== 'number' || amountPence < 100) {
+      console.log('[stripe/create-payment-intent] ❌ BLOCKED: Invalid amount')
+      console.log('[stripe/create-payment-intent] Amount type:', typeof amountPence)
+      console.log('[stripe/create-payment-intent] Amount value:', amountPence)
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
     }
 
+    console.log('[stripe/create-payment-intent] ✅ Amount validation passed')
+
     // Check quote expiry (60 minutes)
+    console.log('[stripe/create-payment-intent] Checking quote expiry...')
     const quoteGeneratedAt = orderData.quoteGeneratedAt
       ? new Date(orderData.quoteGeneratedAt)
       : new Date()
+    console.log('[stripe/create-payment-intent] Quote generated at:', quoteGeneratedAt.toISOString())
 
     const now = new Date()
     const minutesElapsed = (now.getTime() - quoteGeneratedAt.getTime()) / (1000 * 60)
 
     if (minutesElapsed > QUOTE_EXPIRY_MINUTES && orderData.deadline) {
-      console.log(`[stripe] Quote expired (${minutesElapsed.toFixed(1)} minutes), checking for price changes`)
+      console.log(`[stripe/create-payment-intent] ⚠️ Quote expired (${minutesElapsed.toFixed(1)} minutes), checking for price changes`)
+      console.log('[stripe/create-payment-intent] Recalculating price with current deadline proximity...')
 
       // Recalculate current total with current UTC server time
-      const currentTotalPence = calculateTotalPence(orderData)
+      try {
+        console.log('[stripe/create-payment-intent] Calling calculateTotalPence...')
+        const currentTotalPence = calculateTotalPence(orderData)
+        console.log('[stripe/create-payment-intent] Recalculated price:', currentTotalPence, 'pence')
       const originalTotalPence = amountPence
 
       if (currentTotalPence < originalTotalPence) {
@@ -144,34 +196,87 @@ export async function POST(request: Request) {
         }
 
         // Within one tier - honour original quote
-        console.log(`[stripe] Quote expired, price increased by ${tierJump}% (≤ 1 tier), honouring original price`)
+        console.log(`[stripe/create-payment-intent] Quote expired, price increased by ${tierJump}% (≤ 1 tier), honouring original price`)
         // Continue with original amount below
+      }
+      } catch (calcError) {
+        console.error('========================================')
+        console.error('[stripe/create-payment-intent] ❌ ERROR during price recalculation')
+        console.error('[stripe/create-payment-intent] Error name:', (calcError as Error).name)
+        console.error('[stripe/create-payment-intent] Error message:', (calcError as Error).message)
+        console.error('[stripe/create-payment-intent] Error stack:', (calcError as Error).stack)
+        console.error('[stripe/create-payment-intent] orderData structure:', JSON.stringify(orderData, null, 2))
+        console.error('========================================')
+        throw calcError
       }
     }
 
     // Quote valid or within acceptable increase range
+    console.log('[stripe/create-payment-intent] Creating Stripe payment intent...')
+    console.log('[stripe/create-payment-intent] Amount:', amountPence, 'pence (£' + (amountPence / 100).toFixed(2) + ')')
+    console.log('[stripe/create-payment-intent] User ID:', user.id)
+
     // Stripe metadata has a 500-character limit per value, so we stringify orderData
     // and truncate if needed. The webhook will use this as a safety net.
     const orderDataStr = JSON.stringify(orderData || {})
+    console.log('[stripe/create-payment-intent] orderData JSON length:', orderDataStr.length, 'characters')
     const truncatedOrderData = orderDataStr.length > 4500
       ? orderDataStr.slice(0, 4500) + '...'  // Leave room for other metadata
       : orderDataStr
 
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amountPence,
-      currency: 'gbp',
-      metadata: {
-        userId: user.id,
-        orderData: truncatedOrderData,
-      },
-      payment_method_types: ['card'],
-    })
+    try {
+      console.log('[stripe/create-payment-intent] Calling stripe.paymentIntents.create...')
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amountPence,
+        currency: 'gbp',
+        metadata: {
+          userId: user.id,
+          orderData: truncatedOrderData,
+        },
+        payment_method_types: ['card'],
+      })
 
-    return NextResponse.json({
-      clientSecret: paymentIntent.client_secret,
-    })
+      console.log('[stripe/create-payment-intent] ✅ Payment intent created successfully')
+      console.log('[stripe/create-payment-intent] Payment intent ID:', paymentIntent.id)
+      console.log('[stripe/create-payment-intent] Client secret length:', paymentIntent.client_secret?.length)
+      console.log('========================================')
+      console.log('[stripe/create-payment-intent] 🎉 REQUEST COMPLETE - SUCCESS')
+      console.log('========================================')
+
+      return NextResponse.json({
+        clientSecret: paymentIntent.client_secret,
+      })
+    } catch (stripeError) {
+      console.error('========================================')
+      console.error('[stripe/create-payment-intent] ❌ STRIPE API ERROR')
+      console.error('[stripe/create-payment-intent] Error name:', (stripeError as Error).name)
+      console.error('[stripe/create-payment-intent] Error message:', (stripeError as Error).message)
+      console.error('[stripe/create-payment-intent] Error stack:', (stripeError as Error).stack)
+      console.error('[stripe/create-payment-intent] Stripe error object:', stripeError)
+      console.error('========================================')
+      throw stripeError
+    }
   } catch (err) {
-    console.error('create-payment-intent:', err)
+    console.error('========================================')
+    console.error('[stripe/create-payment-intent] ❌❌❌ UNHANDLED ERROR IN ROUTE ❌❌❌')
+    console.error('[stripe/create-payment-intent] Error caught at top level')
+    console.error('[stripe/create-payment-intent] Error type:', typeof err)
+    console.error('[stripe/create-payment-intent] Error name:', (err as Error).name)
+    console.error('[stripe/create-payment-intent] Error message:', (err as Error).message)
+    console.error('[stripe/create-payment-intent] Error stack:', (err as Error).stack)
+
+    // Log full error object for debugging
+    if (err && typeof err === 'object') {
+      console.error('[stripe/create-payment-intent] Full error object:')
+      console.error(JSON.stringify(err, Object.getOwnPropertyNames(err), 2))
+    } else {
+      console.error('[stripe/create-payment-intent] Error value:', err)
+    }
+
+    console.error('========================================')
+    console.error('[stripe/create-payment-intent] 💥 REQUEST FAILED')
+    console.error('========================================')
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

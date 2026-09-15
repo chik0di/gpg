@@ -6,6 +6,9 @@ export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
 export default async function Image() {
+  // Fetch logo from public URL for Edge runtime compatibility
+  const logoUrl = new URL('/gpg-logo-transparent.png', 'https://getprimegrade.com').toString()
+
   return new ImageResponse(
     (
       <div
@@ -29,22 +32,17 @@ export default async function Image() {
             marginBottom: '40px',
           }}
         >
-          <div
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={logoUrl}
+            alt="GetPrimeGrade Logo"
+            width="80"
+            height="80"
             style={{
               width: '80px',
               height: '80px',
-              borderRadius: '16px',
-              background: '#1B2E4B',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '48px',
-              fontWeight: 700,
-              color: 'white',
             }}
-          >
-            G
-          </div>
+          />
           <div
             style={{
               fontSize: '56px',

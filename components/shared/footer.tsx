@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 
 const FOOTER_LINKS = {
   Services: [
@@ -32,12 +33,13 @@ export default function Footer() {
           {/* Brand column */}
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="inline-flex items-center gap-2 mb-4">
-              <span
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white"
-                style={{ background: '#E8A020' }}
-              >
-                G
-              </span>
+              <Image
+                src="/gpg-logo-transparent.png"
+                alt="GetPrimeGrade"
+                width={32}
+                height={32}
+                className="w-8 h-8"
+              />
               <span className="font-extrabold text-white text-lg tracking-tight">GetPrimeGrade</span>
             </Link>
             <p className="text-sm leading-relaxed mb-6">

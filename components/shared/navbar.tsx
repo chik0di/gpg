@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
@@ -37,13 +38,15 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-18 py-4">
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <span
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white"
-              style={{ background: '#1B2E4B' }}
-            >
-              G
-            </span>
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <Image
+              src="/gpg-logo-transparent.png"
+              alt="GetPrimeGrade"
+              width={40}
+              height={40}
+              className="w-10 h-10"
+              priority
+            />
             <span className="font-extrabold text-lg tracking-tight text-[#1B2E4B]">
               GetPrimeGrade
             </span>

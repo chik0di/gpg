@@ -14,7 +14,7 @@ export default function ReviewTrigger({ orderId, moduleName, isCompleted }: Revi
   const [hasExistingReview, setHasExistingReview] = useState(false)
   const [checkingReview, setCheckingReview] = useState(true)
 
-  // Check if user has already submitted a review for this order (database check)
+  // Check if user has already submitted a review for this order (database is source of truth)
   useEffect(() => {
     async function checkForExistingReview() {
       try {
@@ -22,7 +22,7 @@ export default function ReviewTrigger({ orderId, moduleName, isCompleted }: Revi
         console.log('[ReviewTrigger] 🔍 REVIEW CHECK STARTING')
         console.log('[ReviewTrigger] Order ID:', orderId)
         console.log('[ReviewTrigger] Order ID length:', orderId.length)
-        console.log('[ReviewTrigger] Order ID (hex):', Array.from(orderId).map(c => c.charCodeAt(0).toString(16)).join(' '))
+        console.log('[ReviewTrigger] Order ID (hex):', Array.from(orderId).map((c: string) => c.charCodeAt(0).toString(16)).join(' '))
         console.log('[ReviewTrigger] isCompleted prop:', isCompleted)
         console.log('[ReviewTrigger] isCompleted type:', typeof isCompleted)
         console.log('========================================')
@@ -37,6 +37,16 @@ export default function ReviewTrigger({ orderId, moduleName, isCompleted }: Revi
           console.log('[ReviewTrigger] ✅ REVIEW CHECK COMPLETE')
           console.log('[ReviewTrigger] Has existing review in database:', hasReview)
           console.log('[ReviewTrigger] Will block popup:', hasReview ? 'YES' : 'NO')
+
+          // Database is source of truth - verify localStorage is in sync
+          const localCheck = localStorage.getItem(`reviewed_order_${orderId}`)
+          if (localCheck && !hasReview) {
+            console.log('[ReviewTrigger] ⚠️ MISMATCH DETECTED:')
+            console.log('[ReviewTrigger]   localStorage says: reviewed')
+            console.log('[ReviewTrigger]   Database says: NOT reviewed')
+            console.log('[ReviewTrigger]   Clearing incorrect localStorage flag')
+            localStorage.removeItem(`reviewed_order_${orderId}`)
+          }
           console.log('========================================')
           setHasExistingReview(hasReview)
         } else {
@@ -102,22 +112,12 @@ export default function ReviewTrigger({ orderId, moduleName, isCompleted }: Revi
     }
 
     if (hasExistingReview) {
-      console.log('❌ BLOCKING REASON: User already reviewed this order')
+      console.log('❌ BLOCKING REASON: Database confirms user already reviewed this order')
       console.log('[ReviewTrigger] hasExistingReview:', hasExistingReview)
       return
     }
 
-    // Check localStorage as additional safeguard
-    const localStorageCheck = localStorage.getItem(`reviewed_order_${orderId}`)
-    console.log('[ReviewTrigger] localStorage check for key:', `reviewed_order_${orderId}`)
-    console.log('[ReviewTrigger] localStorage value:', localStorageCheck)
-
-    if (localStorageCheck) {
-      console.log('❌ BLOCKING REASON: localStorage indicates review already submitted')
-      return
-    }
-
-    // All checks passed - show popup
+    // All checks passed - show popup (database said no review exists)
     console.log('========================================')
     console.log('[ReviewTrigger] ✅ ALL CHECKS PASSED')
     console.log('[ReviewTrigger] Will show popup in 2 seconds')
@@ -141,6 +141,10 @@ export default function ReviewTrigger({ orderId, moduleName, isCompleted }: Revi
     reviewText: string
     displayPreference: 'anonymous' | 'first_name' | 'first_name_module'
   }) => {
+    console.log('[ReviewTrigger] handleSubmitReview called')
+    console.log('[ReviewTrigger] Submitting review for order:', orderId)
+    console.log('[ReviewTrigger] Rating:', data.rating)
+
     const response = await fetch('/api/reviews/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -152,10 +156,15 @@ export default function ReviewTrigger({ orderId, moduleName, isCompleted }: Revi
       }),
     })
 
+    console.log('[ReviewTrigger] API response status:', response.status)
+
     if (!response.ok) {
       const error = await response.json()
+      console.error('[ReviewTrigger] ❌ API returned error:', error)
       throw new Error(error.error || 'Failed to submit review')
     }
+
+    console.log('[ReviewTrigger] ✅ Review submission successful')
   }
 
   console.log('[ReviewTrigger] Render check:', { showReviewPopup })

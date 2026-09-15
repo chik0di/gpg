@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export const metadata: Metadata = {
   robots: {
@@ -27,12 +28,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
       {/* Logo link */}
       <Link href="/" className="flex items-center gap-2 mb-8">
-        <span
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white"
-          style={{ background: '#1B2E4B' }}
-        >
-          G
-        </span>
+        <Image
+          src="/gpg-logo-transparent.png"
+          alt="GetPrimeGrade"
+          width={32}
+          height={32}
+          className="w-8 h-8"
+        />
         <span className="font-extrabold text-lg tracking-tight text-[#1B2E4B]">
           GetPrimeGrade
         </span>

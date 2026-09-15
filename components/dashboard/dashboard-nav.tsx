@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { signOut } from '@/lib/auth/signout'
@@ -32,12 +33,13 @@ export default function DashboardNav({ user, profile }: Props) {
 
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <span
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white"
-              style={{ background: '#1B2E4B' }}
-            >
-              G
-            </span>
+            <Image
+              src="/gpg-logo-transparent.png"
+              alt="GetPrimeGrade"
+              width={28}
+              height={28}
+              className="w-7 h-7"
+            />
             <span className="font-extrabold text-base tracking-tight text-[#1B2E4B]">
               GetPrimeGrade
             </span>
