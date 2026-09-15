@@ -110,10 +110,11 @@ export async function POST(request: Request) {
     }
 
     console.log('[stripe/create-payment-intent] Parsing request body...')
-    const { amountPence, orderData } = await request.json()
+    const { amountPence, orderData, fileData } = await request.json()
     console.log('[stripe/create-payment-intent] amountPence received:', amountPence)
     console.log('[stripe/create-payment-intent] orderData received:', orderData ? 'Present' : 'Missing')
     console.log('[stripe/create-payment-intent] orderData keys:', orderData ? Object.keys(orderData) : 'N/A')
+    console.log('[stripe/create-payment-intent] fileData received:', fileData ? 'Present' : 'Missing')
 
     if (typeof amountPence !== 'number' || amountPence < 100) {
       console.log('[stripe/create-payment-intent] ❌ BLOCKED: Invalid amount')
@@ -123,6 +124,28 @@ export async function POST(request: Request) {
     }
 
     console.log('[stripe/create-payment-intent] ✅ Amount validation passed')
+
+    // Save order data to pending_orders table to avoid Stripe metadata 500-char limit
+    console.log('[stripe/create-payment-intent] 💾 Saving order to pending_orders table...')
+    const { data: pendingOrder, error: pendingError } = await supabase
+      .from('pending_orders')
+      .insert({
+        user_email: user.email!,
+        order_data: orderData,
+        file_data: fileData || null,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+      })
+      .select('id')
+      .single()
+
+    if (pendingError || !pendingOrder) {
+      console.error('[stripe/create-payment-intent] ❌ Failed to save pending order')
+      console.error('[stripe/create-payment-intent] Error:', pendingError)
+      return NextResponse.json({ error: 'Failed to save order data' }, { status: 500 })
+    }
+
+    const pendingOrderId = pendingOrder.id
+    console.log('[stripe/create-payment-intent] ✅ Pending order saved with ID:', pendingOrderId)
 
     // Check quote expiry (60 minutes)
     console.log('[stripe/create-payment-intent] Checking quote expiry...')
@@ -154,7 +177,7 @@ export async function POST(request: Request) {
           currency: 'gbp',
           metadata: {
             userId: user.id,
-            orderData: JSON.stringify(orderData).slice(0, 4500),
+            pendingOrderId: pendingOrderId,
             quoteAdjusted: 'decreased',
           },
           payment_method_types: ['card'],
@@ -215,14 +238,7 @@ export async function POST(request: Request) {
     console.log('[stripe/create-payment-intent] Creating Stripe payment intent...')
     console.log('[stripe/create-payment-intent] Amount:', amountPence, 'pence (£' + (amountPence / 100).toFixed(2) + ')')
     console.log('[stripe/create-payment-intent] User ID:', user.id)
-
-    // Stripe metadata has a 500-character limit per value, so we stringify orderData
-    // and truncate if needed. The webhook will use this as a safety net.
-    const orderDataStr = JSON.stringify(orderData || {})
-    console.log('[stripe/create-payment-intent] orderData JSON length:', orderDataStr.length, 'characters')
-    const truncatedOrderData = orderDataStr.length > 4500
-      ? orderDataStr.slice(0, 4500) + '...'  // Leave room for other metadata
-      : orderDataStr
+    console.log('[stripe/create-payment-intent] Pending order ID to store in metadata:', pendingOrderId)
 
     try {
       console.log('[stripe/create-payment-intent] Calling stripe.paymentIntents.create...')
@@ -231,7 +247,7 @@ export async function POST(request: Request) {
         currency: 'gbp',
         metadata: {
           userId: user.id,
-          orderData: truncatedOrderData,
+          pendingOrderId: pendingOrderId,
         },
         payment_method_types: ['card'],
       })

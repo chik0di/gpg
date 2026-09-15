@@ -480,7 +480,9 @@ export default function CheckoutPage() {
 
       const amountPence = Math.round(total * 100)
 
-      // Pass orderData to payment intent metadata as safety net for webhook
+      // Pass orderData and fileData to create pending order and payment intent
+      // The API will save to pending_orders table and only store the pending_order_id
+      // in Stripe metadata (avoiding the 500-char limit per field)
       fetch('/api/stripe/create-payment-intent', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -493,8 +495,10 @@ export default function CheckoutPage() {
             deliverables: data.deliverables,
             instructions: data.instructions || '',
             includeOriginalityReport: data.includeOriginalityReport,
-            fileName: null, // File name not needed for webhook safety net
+            moduleName: data.moduleName || null,
+            quoteGeneratedAt: data.quoteGeneratedAt || new Date().toISOString(),
           },
+          fileData: fileSource, // Pass file data to be saved in pending_orders
         }),
       })
         .then((r) => r.json())

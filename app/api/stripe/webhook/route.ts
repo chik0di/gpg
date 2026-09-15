@@ -56,9 +56,10 @@ export async function POST(request: Request) {
   switch (event.type) {
     case 'payment_intent.succeeded': {
       const pi = event.data.object as Stripe.PaymentIntent
-      const { orderId, userId, orderData: orderDataRaw } = pi.metadata
+      const { orderId, userId, pendingOrderId } = pi.metadata
 
-      console.log('[webhook] payment_intent.succeeded:', pi.id, '| orderId:', orderId)
+      console.log('[webhook] payment_intent.succeeded:', pi.id)
+      console.log('[webhook] Metadata - orderId:', orderId, '| userId:', userId, '| pendingOrderId:', pendingOrderId)
 
       // Check if order already exists (created by client-side flow)
       const { data: existing } = await supabaseAdmin
@@ -82,17 +83,31 @@ export async function POST(request: Request) {
       } else {
         console.log('[webhook] No existing order found. Creating order as safety net...')
 
-        // Safety net: create the order from metadata if client failed to create it
-        // NOTE: The uploaded file won't be attached since it's in client sessionStorage.
-        // This is acceptable — the order is created with payment confirmed, and admin
-        // can request the file from the customer manually if needed.
-        if (!userId || !orderDataRaw) {
-          console.error('[webhook] Cannot create order: missing userId or orderData in metadata')
+        // Safety net: create the order from pending_orders table if client failed to create it
+        if (!userId || !pendingOrderId) {
+          console.error('[webhook] Cannot create order: missing userId or pendingOrderId in metadata')
+          console.error('[webhook] userId:', userId, '| pendingOrderId:', pendingOrderId)
           return NextResponse.json({ error: 'Missing metadata' }, { status: 400 })
         }
 
         try {
-          const orderData: OrderData = JSON.parse(orderDataRaw)
+          // Fetch order data from pending_orders table using the pendingOrderId
+          console.log('[webhook] Fetching order data from pending_orders:', pendingOrderId)
+          const { data: pendingOrder, error: fetchError } = await supabaseAdmin
+            .from('pending_orders')
+            .select('order_data, file_data')
+            .eq('id', pendingOrderId)
+            .maybeSingle()
+
+          if (fetchError || !pendingOrder) {
+            console.error('[webhook] Failed to fetch pending order:', fetchError)
+            console.error('[webhook] Pending order ID:', pendingOrderId)
+            return NextResponse.json({ error: 'Order data not found' }, { status: 404 })
+          }
+
+          console.log('[webhook] Successfully fetched pending order data')
+          const orderData: OrderData = pendingOrder.order_data
+          const fileDataBase64: string | null = pendingOrder.file_data
 
           // Recalculate total server-side
           const subtotal = orderData.deliverables.reduce(
@@ -120,6 +135,7 @@ export async function POST(request: Request) {
               additional_instructions:   orderData.instructions || null,
               originality_report:        orderData.includeOriginalityReport,
               stripe_payment_intent_id:  pi.id,
+              module_name:               (orderData as any).moduleName || null,
             })
             .select('id')
             .single()
@@ -130,6 +146,46 @@ export async function POST(request: Request) {
           }
 
           console.log('[webhook] Created order:', order.id)
+
+          // Upload file to Supabase storage if present
+          if (fileDataBase64) {
+            try {
+              console.log('[webhook] Uploading assignment file from pending order...')
+              const { data: fileDataParsed, name, type } = JSON.parse(fileDataBase64) as {
+                data: string
+                name: string
+                type: string
+              }
+
+              // Decode base64 to binary
+              const binary = Buffer.from(fileDataParsed, 'base64')
+
+              // Upload to Supabase storage
+              const filePath = `${order.id}/${name}`
+              const { error: uploadError } = await supabaseAdmin
+                .storage
+                .from('assignments')
+                .upload(filePath, binary, {
+                  contentType: type,
+                  upsert: false,
+                })
+
+              if (uploadError) {
+                console.error('[webhook] File upload failed:', uploadError)
+              } else {
+                console.log('[webhook] File uploaded successfully:', filePath)
+
+                // Update order with file path
+                await supabaseAdmin
+                  .from('orders')
+                  .update({ assignment_file_path: filePath })
+                  .eq('id', order.id)
+              }
+            } catch (fileError) {
+              console.error('[webhook] Error processing file:', fileError)
+              // Don't fail the whole order creation if file upload fails
+            }
+          }
 
           // Insert deliverables
           const deliverableRows = orderData.deliverables.map((d) => {
