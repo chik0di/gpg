@@ -314,28 +314,50 @@ export default function OrderForm() {
     console.log('[order-form] ✅ Saved to sessionStorage as backup')
 
     if (user) {
-      // User is authenticated - go straight to checkout
-      console.log('[order-form] ✅ User authenticated, redirecting to /checkout')
-      console.log('[order-form] sessionStorage will be used by checkout page')
-      router.push('/checkout')
+      // User is authenticated - save to database FIRST, then redirect with pending ID
+      console.log('[order-form] ✅ User authenticated - saving pending order to database')
+      console.log('[order-form] User email:', user.email)
+
+      try {
+        console.log('[order-form] Calling /api/pending-orders/create...')
+
+        const response = await fetch('/api/pending-orders/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: user.email,
+            orderData,
+            fileData: fileDataBase64,
+          }),
+        })
+
+        console.log('[order-form] API response status:', response.status)
+
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error('[order-form] ❌ Failed to save pending order:', errorText)
+          console.error('[order-form] Falling back to sessionStorage-only checkout')
+          // Fallback to sessionStorage if database save fails
+          router.push('/checkout')
+          setProceeding(false)
+          return
+        }
+
+        const { pendingOrderId } = await response.json()
+        console.log('[order-form] ✅ Pending order created with ID:', pendingOrderId)
+        console.log('[order-form] Redirecting to /checkout?pending=' + pendingOrderId)
+
+        // Redirect with pending ID parameter (database-backed)
+        router.push(`/checkout?pending=${pendingOrderId}`)
+      } catch (err) {
+        console.error('[order-form] ❌ Exception while saving pending order:', err)
+        console.error('[order-form] Falling back to sessionStorage-only checkout')
+        // Fallback to sessionStorage if exception occurs
+        router.push('/checkout')
+      }
     } else {
-      // User NOT authenticated - save to database BEFORE redirecting to login
-      // This ensures order data survives any auth redirect failures
-
-      // We need the user's email - get it from the order form if available,
-      // otherwise we'll need to ask for it
-      // For now, we'll extract from sessionStorage or require it in the form
-      // Let's get email from the current user session or form
-
-      // Since we don't have email in the order form, we'll save to DB after they enter it on login
-      // For now, redirect to login and handle DB save there
-      // Actually, let's add email to the order form or handle it differently
-
-      // SIMPLER: Save pending order with a placeholder and update after login
-      // OR: Just redirect and handle on login page
-
-      // Let's redirect to login with pending data in sessionStorage for now
-      // and enhance login page to save to DB
+      // User NOT authenticated - redirect to login
+      // The login flow will save to database after authentication
       console.log('[order-form] ⚠️  User not authenticated, redirecting to /login?next=/checkout')
       console.log('[order-form] Order data will be saved to database after login')
       router.push('/login?next=/checkout')
