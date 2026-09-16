@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
-import OrderCard from '@/components/dashboard/order-card'
+import OrderCardWithReview from '@/components/dashboard/order-card-with-review'
 
 export const metadata: Metadata = { title: 'My Orders' }
 
@@ -9,7 +9,7 @@ export default async function OrdersPage() {
   const supabase = createServerClient()
   const { data: orders } = await supabase
     .from('orders')
-    .select('id, subject_field, academic_level, deadline, status, total_amount, created_at')
+    .select('id, subject_field, academic_level, deadline, status, total_amount, created_at, module_name')
     .order('created_at', { ascending: false })
 
   return (
@@ -27,7 +27,11 @@ export default async function OrdersPage() {
       {orders && orders.length > 0 ? (
         <div className="space-y-3">
           {orders.map((order) => (
-            <OrderCard key={order.id} order={order} />
+            <OrderCardWithReview
+              key={order.id}
+              order={order}
+              moduleName={(order as any).module_name ?? null}
+            />
           ))}
         </div>
       ) : (

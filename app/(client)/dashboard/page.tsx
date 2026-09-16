@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
-import OrderCard from '@/components/dashboard/order-card'
+import OrderCardWithReview from '@/components/dashboard/order-card-with-review'
 import StatsCards from '@/components/dashboard/stats-cards'
 import PendingOrderBanner from '@/components/dashboard/pending-order-banner'
 import PendingOrderSaver from '@/components/auth/pending-order-saver'
@@ -16,7 +16,7 @@ export default async function DashboardPage() {
     supabase.from('profiles').select('first_name').single(),
     supabase
       .from('orders')
-      .select('id, subject_field, academic_level, deadline, status, total_amount, created_at')
+      .select('id, subject_field, academic_level, deadline, status, total_amount, created_at, module_name')
       .order('created_at', { ascending: false })
       .limit(5),
   ])
@@ -72,7 +72,11 @@ export default async function DashboardPage() {
         {orders && orders.length > 0 ? (
           <div className="space-y-3">
             {orders.map((order) => (
-              <OrderCard key={order.id} order={order} />
+              <OrderCardWithReview
+                key={order.id}
+                order={order}
+                moduleName={(order as any).module_name ?? null}
+              />
             ))}
           </div>
         ) : (

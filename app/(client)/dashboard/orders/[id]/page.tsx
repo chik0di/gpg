@@ -5,7 +5,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/types/order'
 import type { Deliverable, OrderFile } from '@/types/order'
-import ReviewTrigger from '@/components/reviews/review-trigger'
+import DownloadWithReview from '@/components/orders/download-with-review'
 
 export const metadata: Metadata = { title: 'Order Details' }
 
@@ -98,21 +98,13 @@ export default async function OrderDetailPage({ params }: Props) {
         <span className={`px-3 py-1.5 rounded-full text-xs font-bold shrink-0 ${color}`}>{label}</span>
       </div>
 
-      {/* Download completed work */}
+      {/* Download completed work - with review trigger on click */}
       {order.status === 'completed' && completedUrl && (
-        <a
-          href={completedUrl}
-          download
-          className="flex items-center gap-3 bg-[#F0FDF4] border border-[#86EFAC] rounded-2xl px-5 py-4 hover:bg-[#DCFCE7] transition-colors"
-        >
-          <svg className="w-5 h-5 text-[#16A34A] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          <div>
-            <p className="text-sm font-bold text-[#16A34A]">Download your completed work</p>
-            <p className="text-xs text-[#4ADE80] mt-0.5">Your model answer is ready</p>
-          </div>
-        </a>
+        <DownloadWithReview
+          orderId={order.id}
+          moduleName={order.module_name}
+          downloadUrl={completedUrl}
+        />
       )}
 
       {/* Download assignment brief */}
@@ -181,12 +173,7 @@ export default async function OrderDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* Review trigger */}
-      <ReviewTrigger
-        orderId={order.id}
-        moduleName={order.module_name}
-        isCompleted={order.status === 'completed'}
-      />
+      {/* Review trigger removed - now triggered by download button click only */}
     </div>
   )
 }
