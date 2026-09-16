@@ -7,15 +7,19 @@ import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV_LINKS = [
-  { href: '/#how-it-works', label: 'How it works' },
-  { href: '/#what-we-offer', label: 'What we offer' },
-  { href: '/faq', label: 'FAQ' },
   { href: '/reviews', label: 'Reviews' },
+  { href: '/faq', label: 'FAQ' },
   { href: '/contact', label: 'Contact' },
+]
+
+const RESOURCE_LINKS = [
+  { href: '/resources/reference-generator', label: 'Reference Generator', icon: '📝' },
+  { href: '/resources/research-finder', label: 'Research Finder', icon: '🔍' },
 ]
 
 export default function Navbar() {
   const [open, setOpen]   = useState(false)
+  const [resourcesOpen, setResourcesOpen] = useState(false)
   const [user, setUser]   = useState<User | null>(null)
 
   useEffect(() => {
@@ -54,6 +58,41 @@ export default function Navbar() {
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-7">
+            {/* Resources dropdown */}
+            <div className="relative">
+              <button
+                onMouseEnter={() => setResourcesOpen(true)}
+                onMouseLeave={() => setResourcesOpen(false)}
+                onClick={() => setResourcesOpen(!resourcesOpen)}
+                className="text-sm font-medium text-[#6B7280] hover:text-[#1B2E4B] transition-colors flex items-center gap-1"
+              >
+                Resources
+                <svg className={`w-4 h-4 transition-transform ${resourcesOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {resourcesOpen && (
+                <div
+                  onMouseEnter={() => setResourcesOpen(true)}
+                  onMouseLeave={() => setResourcesOpen(false)}
+                  className="absolute top-full left-0 mt-2 w-60 bg-white rounded-xl border border-[#E8E2D9] shadow-lg overflow-hidden z-50"
+                >
+                  {RESOURCE_LINKS.map(({ href, label, icon }) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setResourcesOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-[#F5F0E8] transition-colors"
+                    >
+                      <span className="text-xl">{icon}</span>
+                      <span className="text-sm font-medium text-[#1B2E4B]">{label}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {NAV_LINKS.map(({ href, label }) => (
               <Link
                 key={href}
@@ -110,6 +149,37 @@ export default function Navbar() {
       {/* Mobile menu — auth-aware */}
       {open && (
         <div className="md:hidden bg-[#FDFAF6] border-t border-[#E8E2D9] px-6 py-5 space-y-1">
+          {/* Resources section in mobile */}
+          <div className="mb-2">
+            <button
+              onClick={() => setResourcesOpen(!resourcesOpen)}
+              className="flex items-center justify-between w-full py-2.5 text-sm font-medium text-[#1A1A2E] hover:text-[#E8A020] transition-colors"
+            >
+              Resources
+              <svg className={`w-4 h-4 transition-transform ${resourcesOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {resourcesOpen && (
+              <div className="pl-4 space-y-1 mt-1">
+                {RESOURCE_LINKS.map(({ href, label, icon }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => {
+                      setOpen(false)
+                      setResourcesOpen(false)
+                    }}
+                    className="flex items-center gap-2 py-2 text-sm text-[#6B7280] hover:text-[#E8A020] transition-colors"
+                  >
+                    <span>{icon}</span>
+                    <span>{label}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
           {NAV_LINKS.map(({ href, label }) => (
             <Link
               key={href}

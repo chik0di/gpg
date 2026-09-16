@@ -68,7 +68,7 @@ function delay(ms: number): Promise<void> {
 /**
  * Search Semantic Scholar for academic papers with relevance filtering
  */
-async function searchSemanticScholar(query: string, limit: number = 5): Promise<ResearchSource[]> {
+export async function searchSemanticScholar(query: string, limit: number = 5): Promise<ResearchSource[]> {
   try {
     const encodedQuery = encodeURIComponent(query)
     // Request more results to account for filtering

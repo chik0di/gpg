@@ -1,40 +1,45 @@
+import Link from 'next/link'
+
 const OFFERINGS = [
   {
-    label: 'Written Work',
-    headline: 'Essays, Reports & Coursework',
+    label: 'Paid Service',
+    headline: 'Custom Model Answers',
     description:
-      'Clear, well-argued model answers for essays, literature reviews, reports, case studies and more, structured to your academic level and marking criteria.',
-    examples: ['Essays', 'Reports', 'Literature reviews', 'Case studies', 'Dissertations'],
+      'Written reports, presentations and technical work crafted to your exact brief by subject specialists.',
+    examples: ['Essays & reports', 'Presentations', 'Technical work', 'All academic levels'],
+    href: '/order',
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
     ),
   },
   {
-    label: 'Presentations',
-    headline: 'Slide Decks & Speaker Notes',
+    label: 'Free Tool',
+    headline: 'Research Material Finder',
     description:
-      'Professionally structured presentations with clear speaker notes: the reference you need for your upcoming seminar, pitch or graded presentation.',
-    examples: ['PowerPoint / Google Slides', 'Speaker notes included', 'Up to 30+ slides'],
+      'Find relevant academic sources for your topic instantly. Free, no account needed.',
+    examples: ['Academic papers', 'Free PDFs highlighted', 'Instant search', 'No signup required'],
+    href: '/resources/research-finder',
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-          d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
       </svg>
     ),
   },
   {
-    label: 'Practical & Technical',
-    headline: 'Code, Data & Technical Work',
+    label: 'Free Tool',
+    headline: 'Reference Generator',
     description:
-      'Real, working technical outputs (from Python scripts to network diagrams) that you can study, understand and use as a model for your own submission.',
-    examples: ['Python / Web dev', 'Network simulations', 'Data analysis', 'Security assessments', 'Power BI / Tableau'],
+      'Generate correctly formatted citations in APA, Harvard, Vancouver, MLA and Chicago styles. Free.',
+    examples: ['5 citation styles', 'Books, websites, journals', 'Bibliography builder', 'Copy to clipboard'],
+    href: '/resources/reference-generator',
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-          d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
     ),
   },
@@ -51,19 +56,20 @@ export default function WhatWeOffer() {
             What we offer
           </p>
           <h2 className="font-extrabold text-[#1B2E4B] text-3xl md:text-4xl leading-tight mb-4">
-            Three types of study material
+            Tools to help you succeed
           </h2>
           <p className="text-[#6B7280] text-base leading-relaxed">
-            All produced by subject specialists, built around your brief.
+            Custom academic work and free research tools for students.
           </p>
         </div>
 
         {/* Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {OFFERINGS.map((item, i) => (
-            <div
-              key={item.label}
-              className="group relative bg-white border border-[#E8E2D9] rounded-3xl p-7 hover:border-[#E8A020]/50 hover:shadow-[0_12px_40px_-4px_rgba(26,26,46,0.12)] transition-all duration-300"
+          {OFFERINGS.map((item) => (
+            <Link
+              key={item.headline}
+              href={item.href}
+              className="group relative bg-white border border-[#E8E2D9] rounded-3xl p-7 hover:border-[#E8A020]/50 hover:shadow-[0_12px_40px_-4px_rgba(26,26,46,0.12)] transition-all duration-300 block"
             >
               {/* Amber accent line */}
               <div className="absolute top-0 left-8 right-8 h-0.5 rounded-b-full bg-[#E8A020] opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -92,7 +98,14 @@ export default function WhatWeOffer() {
                   </li>
                 ))}
               </ul>
-            </div>
+
+              {/* Arrow indicator */}
+              <div className="absolute bottom-7 right-7 w-8 h-8 rounded-lg bg-[#F5F0E8] group-hover:bg-[#E8A020] flex items-center justify-center transition-colors">
+                <svg className="w-4 h-4 text-[#6B7280] group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </Link>
           ))}
         </div>
       </div>
