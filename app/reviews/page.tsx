@@ -104,10 +104,16 @@ export default async function ReviewsPage() {
   }
   console.log('========================================')
 
+  // Aggregate stats include ALL approved reviews (with or without text)
   const totalReviews = reviews?.length ?? 0
   const averageRating = totalReviews > 0
     ? (reviews!.reduce((sum, r) => sum + r.rating, 0) / totalReviews)
     : 0
+
+  // Filter for card display: only reviews with actual text content (not null, not empty, not whitespace)
+  const reviewsWithText = reviews?.filter(review =>
+    review.review_text && review.review_text.trim().length > 0
+  ) ?? []
 
   return (
     <>
@@ -143,10 +149,10 @@ export default async function ReviewsPage() {
 
         {/* Reviews */}
         <section className="container-narrow py-16">
-          {totalReviews === 0 ? (
+          {reviewsWithText.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-[#6B7280] mb-6">
-                No reviews yet. Be the first to share your experience!
+                No written reviews yet. Be the first to share your experience!
               </p>
               <Link
                 href="/order"
@@ -157,7 +163,7 @@ export default async function ReviewsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-              {reviews!.map((review) => (
+              {reviewsWithText.map((review) => (
                 <div
                   key={review.id}
                   className="bg-white border border-[#E8E2D9] rounded-2xl p-6"
@@ -170,11 +176,9 @@ export default async function ReviewsPage() {
                     </span>
                   </div>
 
-                  {review.review_text && (
-                    <p className="text-sm text-[#6B7280] leading-relaxed mb-4">
-                      "{review.review_text}"
-                    </p>
-                  )}
+                  <p className="text-sm text-[#6B7280] leading-relaxed mb-4">
+                    "{review.review_text}"
+                  </p>
 
                   <p className="text-sm font-semibold text-[#1B2E4B]">
                     {review.display_name || 'Anonymous'}

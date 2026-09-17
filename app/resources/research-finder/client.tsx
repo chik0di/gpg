@@ -28,23 +28,52 @@ export default function ResearchFinderClient() {
     setError(null)
     setSearched(true)
 
+    console.log('========================================')
+    console.log('[Research Finder Client] 🔍 INITIATING SEARCH')
+    console.log('[Research Finder Client] Topic (raw):', topic)
+    console.log('[Research Finder Client] Topic (trimmed):', topic.trim())
+    console.log('[Research Finder Client] Calling API: /api/resources/research')
+    console.log('========================================')
+
     try {
+      const requestBody = { topic: topic.trim() }
+      console.log('[Research Finder Client] Request body:', requestBody)
+
       const response = await fetch('/api/resources/research', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ topic: topic.trim() }),
+        body: JSON.stringify(requestBody),
       })
 
+      console.log('========================================')
+      console.log('[Research Finder Client] 📡 API RESPONSE')
+      console.log('[Research Finder Client] Status:', response.status)
+      console.log('[Research Finder Client] OK:', response.ok)
+      console.log('[Research Finder Client] Headers:', Object.fromEntries(response.headers.entries()))
+      console.log('========================================')
+
       const data = await response.json()
+
+      console.log('========================================')
+      console.log('[Research Finder Client] 📊 RESPONSE DATA')
+      console.log('[Research Finder Client] Data:', data)
+      console.log('[Research Finder Client] Results:', data.results)
+      console.log('[Research Finder Client] Results length:', data.results?.length ?? 0)
+      console.log('========================================')
 
       if (!response.ok) {
         throw new Error(data.error || 'Search failed')
       }
 
       setResults(data.results || [])
+      console.log('[Research Finder Client] ✅ Results set in state:', data.results?.length ?? 0)
     } catch (err) {
+      console.error('========================================')
+      console.error('[Research Finder Client] ❌ ERROR')
+      console.error('[Research Finder Client] Error:', err)
+      console.error('========================================')
       setError(err instanceof Error ? err.message : 'Failed to search. Please try again.')
       setResults([])
     } finally {
@@ -62,14 +91,11 @@ export default function ResearchFinderClient() {
     <main className="min-h-screen" style={{ background: '#F5F0E8' }}>
       <section className="border-b border-[#E8E2D9]" style={{ background: '#FDFAF6' }}>
         <div className="container-narrow py-16 text-center">
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[#E8A020] mb-4">
-            Free Tool
-          </span>
           <h1 className="text-4xl sm:text-5xl font-extrabold text-[#1B2E4B] mb-4">
             Research Material Finder
           </h1>
           <p className="text-lg text-[#6B7280] max-w-2xl mx-auto">
-            Find relevant academic sources for your topic instantly. Free, no account required.
+            Find relevant academic sources for your topic instantly.
           </p>
         </div>
       </section>
@@ -99,7 +125,7 @@ export default function ResearchFinderClient() {
             </button>
           </div>
           <p className="text-xs text-[#9CA3AF] mt-2">
-            Limited to 10 searches per hour. No account required.
+            Limited to 10 searches per hour.
           </p>
         </div>
 

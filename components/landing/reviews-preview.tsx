@@ -72,8 +72,22 @@ export default async function ReviewsPreview() {
     return null
   }
 
+  // Aggregate stats include ALL approved reviews (with or without text)
   const totalReviews = reviews.length
   const averageRating = reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
+
+  // Filter for card display: only reviews with actual text content (not null, not empty, not whitespace)
+  const reviewsWithText = reviews.filter(review =>
+    review.review_text && review.review_text.trim().length > 0
+  )
+
+  // If no reviews with text, don't render this section
+  if (reviewsWithText.length === 0) {
+    return null
+  }
+
+  // Limit to 4 reviews with text for preview
+  const previewReviews = reviewsWithText.slice(0, 4)
 
   return (
     <section className="py-20 md:py-28 bg-[#FDFAF6]">
@@ -115,7 +129,7 @@ export default async function ReviewsPreview() {
 
         {/* Reviews grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {reviews.map((review) => (
+          {previewReviews.map((review) => (
             <div
               key={review.id}
               className="bg-white border border-[#E8E2D9] rounded-2xl p-6 hover:border-[#E8A020]/30 transition-colors"
@@ -125,11 +139,9 @@ export default async function ReviewsPreview() {
                 <StarRating rating={review.rating} />
               </div>
 
-              {review.review_text && (
-                <p className="text-sm text-[#6B7280] leading-relaxed mb-4">
-                  "{review.review_text}"
-                </p>
-              )}
+              <p className="text-sm text-[#6B7280] leading-relaxed mb-4">
+                "{review.review_text}"
+              </p>
 
               <p className="text-sm font-semibold text-[#1B2E4B]">
                 {review.display_name || 'Anonymous'}

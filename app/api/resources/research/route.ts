@@ -66,9 +66,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`[Research Finder API] Searching for: "${trimmedTopic}"`)
+    console.log('========================================')
+    console.log('[Research Finder API] 🔍 SEARCH REQUEST')
+    console.log('[Research Finder API] Topic:', trimmedTopic)
+    console.log('[Research Finder API] Topic length:', trimmedTopic.length)
+    console.log('[Research Finder API] Topic type:', typeof trimmedTopic)
+    console.log('[Research Finder API] Calling searchSemanticScholar with limit 10')
+    console.log('========================================')
 
     const papers = await searchSemanticScholar(trimmedTopic, 10)
+
+    console.log('========================================')
+    console.log('[Research Finder API] 📊 SEARCH RESULTS FROM SEMANTIC SCHOLAR')
+    console.log('[Research Finder API] Papers returned:', papers.length)
+    console.log('[Research Finder API] Papers array:', JSON.stringify(papers, null, 2))
+    console.log('========================================')
 
     const results = papers.map(paper => ({
       title: paper.title,
@@ -79,7 +91,11 @@ export async function POST(request: NextRequest) {
       url: paper.url,
     }))
 
-    console.log(`[Research Finder API] Found ${results.length} results`)
+    console.log('========================================')
+    console.log('[Research Finder API] 📤 FINAL RESPONSE')
+    console.log('[Research Finder API] Results count:', results.length)
+    console.log('[Research Finder API] Results:', JSON.stringify(results, null, 2))
+    console.log('========================================')
 
     return NextResponse.json(
       { results },

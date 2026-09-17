@@ -33,9 +33,9 @@ export default function Hero() {
           {/* Headline */}
           <h1 className="font-extrabold text-[#1B2E4B] leading-[1.1] mb-6"
             style={{ fontSize: 'clamp(2.4rem, 6vw, 4rem)' }}>
-            Expert Study Materials.{' '}
+            Everything You Need to{' '}
             <span className="relative inline-block">
-              <span className="relative z-10">Delivered</span>
+              <span className="relative z-10">Tackle</span>
               <svg
                 aria-hidden
                 className="absolute -bottom-1 left-0 w-full"
@@ -46,13 +46,12 @@ export default function Hero() {
                 <path d="M2 6 Q100 1 198 6" stroke="#E8A020" strokeWidth="3.5" strokeLinecap="round" />
               </svg>
             </span>
-            {' '}Before Your Deadline.
+            {' '}Your Coursework.
           </h1>
 
           {/* Subheadline */}
           <p className="text-[#6B7280] text-lg md:text-xl leading-relaxed mb-10 max-w-2xl mx-auto">
-            Model answers, presentations and technical work, crafted to your exact brief
-            by subject experts. The reference you need to tackle your coursework with confidence.
+            Custom model answers, presentations and technical work, crafted to your exact brief by subject experts — plus free research tools and citation generators to help you along the way.
           </p>
 
           {/* CTA */}
@@ -81,7 +80,7 @@ export default function Hero() {
           <div className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-sm text-[#6B7280]">
             {[
               { icon: '✓', text: '3 free revisions included' },
-              { icon: '✓', text: 'Money-back guarantee' },
+              { icon: '✓', text: 'Free research & citation tools' },
               { icon: '✓', text: 'Delivered before your deadline' },
             ].map(({ icon, text }) => (
               <div key={text} className="flex items-center gap-1.5 font-medium">

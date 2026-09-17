@@ -34,6 +34,8 @@ export default function ReferenceGeneratorClient() {
   const [generatedCitation, setGeneratedCitation] = useState<FormattedCitation | null>(null)
   const [bibliography, setBibliography] = useState<FormattedCitation[]>([])
   const [copySuccess, setCopySuccess] = useState(false)
+  const [copiedInText, setCopiedInText] = useState(false)
+  const [copiedFullRef, setCopiedFullRef] = useState(false)
 
   // Book form state
   const [bookAuthors, setBookAuthors] = useState('')
@@ -174,18 +176,49 @@ export default function ReferenceGeneratorClient() {
     setBibliography(prev => prev.filter((_, i) => i !== index))
   }
 
+  const stripMarkdown = (text: string): string => {
+    // Remove markdown asterisks for italics
+    return text.replace(/\*/g, '')
+  }
+
   const handleCopyBibliography = async () => {
     if (bibliography.length === 0) {
       alert('Bibliography is empty')
       return
     }
 
-    const text = bibliography.map(c => c.fullReference).join('\n\n')
+    const text = bibliography.map(c => stripMarkdown(c.fullReference)).join('\n\n')
 
     try {
       await navigator.clipboard.writeText(text)
       setCopySuccess(true)
       setTimeout(() => setCopySuccess(false), 2000)
+    } catch (err) {
+      console.error('Copy failed:', err)
+      alert('Failed to copy to clipboard')
+    }
+  }
+
+  const handleCopyInText = async () => {
+    if (!generatedCitation) return
+
+    try {
+      await navigator.clipboard.writeText(stripMarkdown(generatedCitation.inText))
+      setCopiedInText(true)
+      setTimeout(() => setCopiedInText(false), 2000)
+    } catch (err) {
+      console.error('Copy failed:', err)
+      alert('Failed to copy to clipboard')
+    }
+  }
+
+  const handleCopyFullRef = async () => {
+    if (!generatedCitation) return
+
+    try {
+      await navigator.clipboard.writeText(stripMarkdown(generatedCitation.fullReference))
+      setCopiedFullRef(true)
+      setTimeout(() => setCopiedFullRef(false), 2000)
     } catch (err) {
       console.error('Copy failed:', err)
       alert('Failed to copy to clipboard')
@@ -219,14 +252,11 @@ export default function ReferenceGeneratorClient() {
     <main className="min-h-screen" style={{ background: '#F5F0E8' }}>
       <section className="border-b border-[#E8E2D9]" style={{ background: '#FDFAF6' }}>
         <div className="container-narrow py-16 text-center">
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[#E8A020] mb-4">
-            Free Tool
-          </span>
           <h1 className="text-4xl sm:text-5xl font-extrabold text-[#1B2E4B] mb-4">
             Reference Generator
           </h1>
           <p className="text-lg text-[#6B7280] max-w-2xl mx-auto">
-            Generate correctly formatted citations in APA, Harvard, Vancouver, MLA and Chicago styles. Free, no account required.
+            Generate correctly formatted citations in APA, Harvard, Vancouver, MLA and Chicago styles.
           </p>
         </div>
       </section>
@@ -278,7 +308,18 @@ export default function ReferenceGeneratorClient() {
 
         {/* Input Form */}
         <div className="bg-white rounded-2xl border border-[#E8E2D9] p-6" style={{ boxShadow: '0 2px 8px -2px rgba(26,26,46,0.07)' }}>
-          <h2 className="text-lg font-bold text-[#1B2E4B] mb-4">Enter Source Details</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-[#1B2E4B]">Enter Source Details</h2>
+            <button
+              onClick={clearForm}
+              className="flex items-center gap-1.5 text-sm font-semibold text-[#6B7280] hover:text-[#E8A020] transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Clear Form
+            </button>
+          </div>
 
           {sourceType === 'book' && (
             <div className="space-y-4">
@@ -538,18 +579,56 @@ export default function ReferenceGeneratorClient() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-[#9CA3AF] uppercase tracking-wide mb-2">
-                  In-text Citation
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide">
+                    In-text Citation
+                  </label>
+                  <button
+                    onClick={handleCopyInText}
+                    className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition-colors ${
+                      copiedInText
+                        ? 'bg-[#16A34A] text-white'
+                        : 'text-[#6B7280] hover:text-[#E8A020]'
+                    }`}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {copiedInText ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      )}
+                    </svg>
+                    {copiedInText ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
                 <div className="bg-[#F5F0E8] rounded-xl p-4">
                   <p className="text-sm text-[#1B2E4B] font-mono">{generatedCitation.inText}</p>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#9CA3AF] uppercase tracking-wide mb-2">
-                  Full Reference
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide">
+                    Full Reference
+                  </label>
+                  <button
+                    onClick={handleCopyFullRef}
+                    className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition-colors ${
+                      copiedFullRef
+                        ? 'bg-[#16A34A] text-white'
+                        : 'text-[#6B7280] hover:text-[#E8A020]'
+                    }`}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {copiedFullRef ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      )}
+                    </svg>
+                    {copiedFullRef ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
                 <div className="bg-[#F5F0E8] rounded-xl p-4">
                   <p className="text-sm text-[#1B2E4B]" dangerouslySetInnerHTML={{ __html: generatedCitation.fullReference.replace(/\*/g, '') }} />
                 </div>

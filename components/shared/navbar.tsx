@@ -59,10 +59,12 @@ export default function Navbar() {
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-7">
             {/* Resources dropdown */}
-            <div className="relative">
+            <div
+              className="relative"
+              onMouseEnter={() => setResourcesOpen(true)}
+              onMouseLeave={() => setResourcesOpen(false)}
+            >
               <button
-                onMouseEnter={() => setResourcesOpen(true)}
-                onMouseLeave={() => setResourcesOpen(false)}
                 onClick={() => setResourcesOpen(!resourcesOpen)}
                 className="text-sm font-medium text-[#6B7280] hover:text-[#1B2E4B] transition-colors flex items-center gap-1"
               >
@@ -73,22 +75,20 @@ export default function Navbar() {
               </button>
 
               {resourcesOpen && (
-                <div
-                  onMouseEnter={() => setResourcesOpen(true)}
-                  onMouseLeave={() => setResourcesOpen(false)}
-                  className="absolute top-full left-0 mt-2 w-60 bg-white rounded-xl border border-[#E8E2D9] shadow-lg overflow-hidden z-50"
-                >
-                  {RESOURCE_LINKS.map(({ href, label, icon }) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      onClick={() => setResourcesOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 hover:bg-[#F5F0E8] transition-colors"
-                    >
-                      <span className="text-xl">{icon}</span>
-                      <span className="text-sm font-medium text-[#1B2E4B]">{label}</span>
-                    </Link>
-                  ))}
+                <div className="absolute top-full left-0 pt-2 w-60 z-50">
+                  <div className="bg-white rounded-xl border border-[#E8E2D9] shadow-lg overflow-hidden">
+                    {RESOURCE_LINKS.map(({ href, label, icon }) => (
+                      <Link
+                        key={href}
+                        href={href}
+                        onClick={() => setResourcesOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 hover:bg-[#F5F0E8] transition-colors"
+                      >
+                        <span className="text-xl">{icon}</span>
+                        <span className="text-sm font-medium text-[#1B2E4B]">{label}</span>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
