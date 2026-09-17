@@ -83,12 +83,78 @@ export default function ReferenceGeneratorClient() {
     }
   }, [bibliography])
 
+  const parseAuthor = (input: string): { surname: string; firstName: string; formatted: string } | null => {
+    const trimmed = input.trim()
+    if (!trimmed) return null
+
+    let surname = ''
+    let firstName = ''
+
+    // Check if comma is present
+    if (trimmed.includes(',')) {
+      // Format: "Surname, First Name"
+      const parts = trimmed.split(',').map(p => p.trim())
+      surname = parts[0]
+      firstName = parts[1] || ''
+    } else {
+      // Format: "First Name Surname" (space-separated)
+      const words = trimmed.split(/\s+/).filter(w => w)
+      if (words.length === 1) {
+        // Single name - treat as surname only
+        surname = words[0]
+        firstName = ''
+      } else {
+        // Last word is surname, everything before is first name
+        surname = words[words.length - 1]
+        firstName = words.slice(0, -1).join(' ')
+      }
+    }
+
+    // Format for internal use: "Surname, FirstInitial."
+    const initial = firstName ? firstName.charAt(0).toUpperCase() + '.' : ''
+    const formatted = initial ? `${surname}, ${initial}` : surname
+
+    return { surname, firstName, formatted }
+  }
+
+  const parseAuthors = (input: string): string[] => {
+    if (!input.trim()) return []
+
+    // Split by semicolon for multiple authors
+    return input.split(';')
+      .map(author => parseAuthor(author))
+      .filter((parsed): parsed is NonNullable<typeof parsed> => parsed !== null)
+      .map(parsed => parsed.formatted)
+  }
+
+  const getAuthorPreview = (input: string): string => {
+    if (!input.trim()) return ''
+
+    const parsed = input.split(';')
+      .map(author => parseAuthor(author))
+      .filter((parsed): parsed is NonNullable<typeof parsed> => parsed !== null)
+
+    if (parsed.length === 0) return ''
+
+    // Show how it will appear in citation (APA/Harvard style with "and" or "et al.")
+    if (parsed.length === 1) {
+      return parsed[0].surname + (parsed[0].firstName ? `, ${parsed[0].firstName.charAt(0).toUpperCase()}.` : '')
+    } else if (parsed.length === 2) {
+      const first = parsed[0].surname + (parsed[0].firstName ? `, ${parsed[0].firstName.charAt(0).toUpperCase()}.` : '')
+      const second = parsed[1].surname + (parsed[1].firstName ? `, ${parsed[1].firstName.charAt(0).toUpperCase()}.` : '')
+      return `${first} and ${second}`
+    } else {
+      const first = parsed[0].surname + (parsed[0].firstName ? `, ${parsed[0].firstName.charAt(0).toUpperCase()}.` : '')
+      return `${first} et al.`
+    }
+  }
+
   const handleGenerate = () => {
     try {
       let source: CitationSource
 
       if (sourceType === 'book') {
-        const authors = bookAuthors.split(',').map(a => a.trim()).filter(a => a)
+        const authors = parseAuthors(bookAuthors)
         if (authors.length === 0 || !bookTitle || !bookYear) {
           alert('Please fill in at least authors, title, and year')
           return
@@ -103,7 +169,7 @@ export default function ReferenceGeneratorClient() {
           place: bookPlace || 'Unknown',
         } as BookSource
       } else if (sourceType === 'website') {
-        const authors = webAuthors ? webAuthors.split(',').map(a => a.trim()).filter(a => a) : undefined
+        const authors = webAuthors ? parseAuthors(webAuthors) : undefined
         if ((!authors || authors.length === 0) && !webOrganisation) {
           alert('Please provide either authors or organisation name')
           return
@@ -123,7 +189,7 @@ export default function ReferenceGeneratorClient() {
           dateAccessed: webDateAccessed || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
         } as WebsiteSource
       } else {
-        const authors = journalAuthors.split(',').map(a => a.trim()).filter(a => a)
+        const authors = parseAuthors(journalAuthors)
         if (authors.length === 0 || !journalTitle || !journalName || !journalYear || !journalVolume || !journalPageRange) {
           alert('Please fill in authors, article title, journal name, year, volume, and page range')
           return
@@ -331,10 +397,18 @@ export default function ReferenceGeneratorClient() {
                   type="text"
                   value={bookAuthors}
                   onChange={(e) => setBookAuthors(e.target.value)}
-                  placeholder="Smith, J., Jones, A."
+                  placeholder="Smith, John; Jones, Amara"
                   className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
                 />
-                <p className="text-xs text-[#9CA3AF] mt-1">Comma-separated, format: Surname, First Initial.</p>
+                <p className="text-xs text-[#9CA3AF] mt-1">
+                  Recommended: Surname, Full First Name — separate multiple authors with semicolons (;)
+                </p>
+                {bookAuthors.trim() && (
+                  <div className="mt-2 px-3 py-2 bg-[#F5F0E8] rounded-lg border border-[#E8E2D9]">
+                    <p className="text-xs font-semibold text-[#1B2E4B] mb-1">Preview:</p>
+                    <p className="text-sm text-[#6B7280]">{getAuthorPreview(bookAuthors)}</p>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-semibold text-[#1B2E4B] mb-2">
@@ -395,9 +469,18 @@ export default function ReferenceGeneratorClient() {
                   type="text"
                   value={webAuthors}
                   onChange={(e) => setWebAuthors(e.target.value)}
-                  placeholder="Brown, T., Smith, J."
+                  placeholder="Brown, Thomas; Smith, Jane"
                   className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
                 />
+                <p className="text-xs text-[#9CA3AF] mt-1">
+                  Recommended: Surname, Full First Name — separate multiple authors with semicolons (;)
+                </p>
+                {webAuthors.trim() && (
+                  <div className="mt-2 px-3 py-2 bg-[#F5F0E8] rounded-lg border border-[#E8E2D9]">
+                    <p className="text-xs font-semibold text-[#1B2E4B] mb-1">Preview:</p>
+                    <p className="text-sm text-[#6B7280]">{getAuthorPreview(webAuthors)}</p>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-semibold text-[#1B2E4B] mb-2">
@@ -473,9 +556,18 @@ export default function ReferenceGeneratorClient() {
                   type="text"
                   value={journalAuthors}
                   onChange={(e) => setJournalAuthors(e.target.value)}
-                  placeholder="Wilson, K., Davis, M."
+                  placeholder="Wilson, Karen; Davis, Michael; Taylor, Rebecca"
                   className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
                 />
+                <p className="text-xs text-[#9CA3AF] mt-1">
+                  Recommended: Surname, Full First Name — separate multiple authors with semicolons (;)
+                </p>
+                {journalAuthors.trim() && (
+                  <div className="mt-2 px-3 py-2 bg-[#F5F0E8] rounded-lg border border-[#E8E2D9]">
+                    <p className="text-xs font-semibold text-[#1B2E4B] mb-1">Preview:</p>
+                    <p className="text-sm text-[#6B7280]">{getAuthorPreview(journalAuthors)}</p>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-semibold text-[#1B2E4B] mb-2">

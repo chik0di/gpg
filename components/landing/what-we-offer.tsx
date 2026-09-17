@@ -51,7 +51,7 @@ export default function WhatWeOffer() {
       <div className="container-narrow">
 
         {/* Header */}
-        <div className="text-center max-w-xl mx-auto mb-16">
+        <div className="text-center max-w-2xl mx-auto mb-16">
           <p className="text-xs font-bold text-[#E8A020] uppercase tracking-widest mb-3">
             What we offer
           </p>
@@ -59,7 +59,7 @@ export default function WhatWeOffer() {
             Tools to help you succeed
           </h2>
           <p className="text-[#6B7280] text-base leading-relaxed">
-            Custom academic work and free research tools for students.
+            A complete academic support ecosystem — custom work, free research tools, and citation help, all in one place.
           </p>
         </div>
 
