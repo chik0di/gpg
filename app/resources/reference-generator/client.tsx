@@ -83,6 +83,22 @@ export default function ReferenceGeneratorClient() {
     }
   }, [bibliography])
 
+  const capitalizeNamePart = (name: string): string => {
+    if (!name) return name
+
+    // Handle hyphenated names (Smith-Jones), apostrophes (O'Brien), and spaces
+    return name
+      .split(/([-' ])/) // Split on hyphens, apostrophes, and spaces, keeping delimiters
+      .map(part => {
+        if (part === '-' || part === "'" || part === ' ') return part
+        if (!part) return part
+
+        // Capitalize first letter, lowercase rest
+        return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+      })
+      .join('')
+  }
+
   const parseAuthor = (input: string): { surname: string; firstName: string; formatted: string } | null => {
     const trimmed = input.trim()
     if (!trimmed) return null
@@ -94,19 +110,19 @@ export default function ReferenceGeneratorClient() {
     if (trimmed.includes(',')) {
       // Format: "Surname, First Name"
       const parts = trimmed.split(',').map(p => p.trim())
-      surname = parts[0]
-      firstName = parts[1] || ''
+      surname = capitalizeNamePart(parts[0])
+      firstName = parts[1] ? capitalizeNamePart(parts[1]) : ''
     } else {
       // Format: "First Name Surname" (space-separated)
       const words = trimmed.split(/\s+/).filter(w => w)
       if (words.length === 1) {
         // Single name - treat as surname only
-        surname = words[0]
+        surname = capitalizeNamePart(words[0])
         firstName = ''
       } else {
         // Last word is surname, everything before is first name
-        surname = words[words.length - 1]
-        firstName = words.slice(0, -1).join(' ')
+        surname = capitalizeNamePart(words[words.length - 1])
+        firstName = words.slice(0, -1).map(w => capitalizeNamePart(w)).join(' ')
       }
     }
 
@@ -124,7 +140,10 @@ export default function ReferenceGeneratorClient() {
     return input.split(';')
       .map(author => parseAuthor(author))
       .filter((parsed): parsed is NonNullable<typeof parsed> => parsed !== null)
-      .map(parsed => parsed.formatted)
+      .map(parsed => {
+        // Return full capitalized name in "Surname, FirstName" format for citation formatter
+        return parsed.firstName ? `${parsed.surname}, ${parsed.firstName}` : parsed.surname
+      })
   }
 
   const getAuthorPreview = (input: string): string => {

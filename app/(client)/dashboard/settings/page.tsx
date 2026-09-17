@@ -44,6 +44,34 @@ export default function SettingsPage() {
     // Check for email_updated query parameter
     if (searchParams.get('email_updated') === 'true') {
       setShowEmailUpdatedBanner(true)
+
+      // Email change was just confirmed - send security notification
+      const oldEmail = localStorage.getItem('gpg_email_change_old')
+      const newEmail = localStorage.getItem('gpg_email_change_new')
+
+      if (oldEmail && newEmail && oldEmail !== newEmail) {
+        console.log('[Settings] Email change confirmed, sending security notification')
+
+        // Send notification to old email
+        fetch('/api/auth/email-change-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ oldEmail, newEmail }),
+        })
+          .then(res => {
+            if (res.ok) {
+              console.log('[Settings] Security notification sent successfully')
+            } else {
+              console.error('[Settings] Failed to send security notification')
+            }
+          })
+          .catch(err => console.error('[Settings] Error sending notification:', err))
+
+        // Clear the stored emails
+        localStorage.removeItem('gpg_email_change_old')
+        localStorage.removeItem('gpg_email_change_new')
+      }
+
       // Clear the query parameter from URL without reloading
       const url = new URL(window.location.href)
       url.searchParams.delete('email_updated')
@@ -132,6 +160,11 @@ export default function SettingsPage() {
     }
 
     const supabase = createClient()
+
+    // Store old and new emails in localStorage for security notification later
+    localStorage.setItem('gpg_email_change_old', currentEmail)
+    localStorage.setItem('gpg_email_change_new', newEmail)
+
     const { error } = await supabase.auth.updateUser(
       { email: newEmail },
       {
@@ -140,6 +173,10 @@ export default function SettingsPage() {
     )
 
     if (error) {
+      // Clear stored emails if the update failed
+      localStorage.removeItem('gpg_email_change_old')
+      localStorage.removeItem('gpg_email_change_new')
+
       setEmailMsg({ type: 'err', text: error.message })
       setEmailLoading(false)
     } else {

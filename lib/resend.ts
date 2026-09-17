@@ -315,3 +315,52 @@ export async function sendOrderCompletedEmail(params: {
     html,
   })
 }
+
+// ── Email: security notification for email change ────────────────────────────
+
+function maskEmail(email: string): string {
+  const [local, domain] = email.split('@')
+  if (!local || !domain) return email
+
+  // Show first character + asterisks + last character (if long enough)
+  if (local.length <= 2) {
+    return `${local[0]}**@${domain}`
+  }
+
+  const firstChar = local[0]
+  const lastChar = local[local.length - 1]
+  const maskedLength = Math.min(local.length - 2, 3) // Max 3 asterisks
+  const asterisks = '*'.repeat(maskedLength)
+
+  return `${firstChar}${asterisks}${lastChar}@${domain}`
+}
+
+export async function sendEmailChangeSecurityNotification(params: {
+  to: string // OLD email address
+  newEmail: string // NEW email address (will be masked in email)
+  firstName?: string | null
+}) {
+  const { to, newEmail, firstName } = params
+  const maskedNewEmail = maskEmail(newEmail)
+
+  const html = base(`
+    ${h1('Your account email was changed')}
+    ${p(`Hello${firstName ? ` ${firstName}` : ''},`)}
+    ${p(`This is a security notification to inform you that the email address associated with your GetPrimeGrade account was recently changed to <strong>${maskedNewEmail}</strong>.`)}
+    ${divider()}
+    <div style="background:#FEF3C7;border-left:4px solid #F59E0B;padding:16px;margin:16px 0;border-radius:8px;">
+      <p style="margin:0 0 8px;font-size:14px;font-weight:700;color:#92400E;">If you did not make this change</p>
+      <p style="margin:0;font-size:13px;color:#92400E;">Please contact us immediately at <a href="mailto:admin@getprimegrade.com" style="color:#92400E;font-weight:600;">admin@getprimegrade.com</a> so we can secure your account.</p>
+    </div>
+    ${divider()}
+    ${p('<span style="font-size:13px;color:#9CA3AF;">If you made this change, you can safely ignore this email. All future communications will be sent to your new email address.</span>')}
+    ${p('<span style="font-size:13px;color:#9CA3AF;"><strong>Security tip:</strong> Always use a strong, unique password and never share your account credentials with anyone.</span>')}
+  `)
+
+  return resend.emails.send({
+    from: FROM,
+    to, // OLD email
+    subject: 'Your GetPrimeGrade account email was changed',
+    html,
+  })
+}
