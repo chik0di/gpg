@@ -32,3 +32,6 @@ next-env.d.ts
 
 # documentations
 *.md
+
+# sql debugging scripts (root level only, not migrations)
+/*.sql
