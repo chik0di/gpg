@@ -186,38 +186,19 @@ function OrderSummary({ data }: {
         </div>
       </div>
 
-      {/* Deliverables at base price */}
+      {/* Deliverables at final price (all adjustments included) */}
       <div className="divide-y divide-[#F5F0E8] px-5">
-        {data.deliverables.map((d) => (
-          <div key={d.id} className="flex items-center justify-between gap-2 py-2.5 min-w-0">
-            <p className="text-sm text-[#1A1A2E] min-w-0 flex-1 truncate">{deliverableLabel(d)}</p>
-            <p className="text-sm font-bold text-[#1B2E4B] shrink-0">{fmt(deliverableBasePrice(d))}</p>
-          </div>
-        ))}
+        {data.deliverables.map((d) => {
+          const base = deliverableBasePrice(d)
+          const finalPrice = base * levelMult * deadlineMult
+          return (
+            <div key={d.id} className="flex items-center justify-between gap-2 py-2.5 min-w-0">
+              <p className="text-sm text-[#1A1A2E] min-w-0 flex-1 truncate">{deliverableLabel(d)}</p>
+              <p className="text-sm font-bold text-[#1B2E4B] shrink-0">{fmt(finalPrice)}</p>
+            </div>
+          )
+        })}
       </div>
-
-      {/* Adjustment lines */}
-      {(levelMult !== 1 || deadlineMult !== 1) && (
-        <div className="border-t border-[#E8E2D9] px-5 py-2 space-y-1.5">
-          {levelMult !== 1 && levelLabel && (
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-[#9CA3AF]">{levelLabel}</p>
-              <p
-                className="text-xs font-semibold ml-3 shrink-0"
-                style={{ color: levelMult > 1 ? '#C4861A' : '#16A34A' }}
-              >
-                {levelMult > 1 ? '+' : '−'}{fmt(Math.abs(levelAdjTotal))}
-              </p>
-            </div>
-          )}
-          {deadlineMult !== 1 && urgencyLabel && (
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-[#9CA3AF]">{urgencyLabel}</p>
-              <p className="text-xs font-semibold text-[#C4861A] ml-3 shrink-0">+{fmt(urgencyAdjTotal)}</p>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Originality report */}
       {data.includeOriginalityReport && (

@@ -32,9 +32,8 @@ export const VALID_TECHNICAL_PRICES_PENCE = [
   TECHNICAL_EXPERT,
 ] as const
 
-// ── Academic level multipliers (stored as integers: 80 = 0.8x, 100 = 1.0x, 130 = 1.3x) ─
+// ── Academic level multipliers (stored as integers: 100 = 1.0x, 130 = 1.3x) ─
 export const ACADEMIC_MULTIPLIERS = {
-  'College': 80,        // 0.8x
   'Undergraduate': 100, // 1.0x
   'Masters': 130,       // 1.3x
 } as const

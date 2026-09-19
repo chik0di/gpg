@@ -52,7 +52,7 @@ export function containsSuspiciousPhrases(text: string): boolean {
 export const ClaudeExtractionSchema = z.object({
   module_name: z.string().nullable(),
   subject_area: z.string().nullable(),
-  academic_level: z.enum(['College', 'Undergraduate', 'Masters']).nullable(),
+  academic_level: z.enum(['Undergraduate', 'Masters']).nullable(),
   deadline: z.string().nullable(),
   deliverables: z.array(
     z.object({

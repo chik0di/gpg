@@ -135,53 +135,15 @@ export default function StepSummary({ data, file, proceeding = false, onToggleRe
           {data.deliverables.map((d) => {
             const base       = deliverableBasePrice(d)
             const afterLevel = base * levelMult
-            const levelAdj   = base * (levelMult - 1)         // negative for A-Level
-            const urgencyAdj = afterLevel * (deadlineMult - 1) // always ≥ 0
             const dTotal     = afterLevel * deadlineMult
 
             return (
               <div key={d.id} className="px-5 py-4">
-                {/* Deliverable label + (price if no adjustments) */}
+                {/* Deliverable label + final total (no breakdown) */}
                 <div className="flex items-start justify-between gap-3 min-w-0">
                   <p className="text-sm font-medium text-[#1A1A2E] min-w-0 flex-1">{deliverableLabel(d)}</p>
-                  {!hasAdj && (
-                    <span className="text-sm font-bold text-[#1B2E4B] shrink-0">{fmt(base)}</span>
-                  )}
+                  <span className="text-sm font-bold text-[#1B2E4B] shrink-0">{fmt(dTotal)}</span>
                 </div>
-
-                {/* Expanded breakdown when adjustments apply */}
-                {hasAdj && (
-                  <div className="mt-2.5 space-y-1.5">
-                    <div className="flex justify-between gap-3 text-xs">
-                      <span className="text-[#9CA3AF]">Base price</span>
-                      <span className="text-[#6B7280] font-medium shrink-0">{fmt(base)}</span>
-                    </div>
-
-                    {levelMult !== 1 && levelLabel && (
-                      <div className="flex justify-between gap-3 text-xs">
-                        <span className="text-[#9CA3AF] min-w-0">{levelLabel}</span>
-                        <span
-                          className="font-semibold shrink-0"
-                          style={{ color: levelMult > 1 ? '#C4861A' : '#16A34A' }}
-                        >
-                          {levelMult > 1 ? '+' : '−'}{fmt(Math.abs(levelAdj))}
-                        </span>
-                      </div>
-                    )}
-
-                    {deadlineMult !== 1 && urgencyLabel && (
-                      <div className="flex justify-between gap-3 text-xs">
-                        <span className="text-[#9CA3AF] min-w-0">{urgencyLabel}</span>
-                        <span className="font-semibold text-[#C4861A] shrink-0">+{fmt(urgencyAdj)}</span>
-                      </div>
-                    )}
-
-                    <div className="flex justify-between gap-3 text-sm pt-2 border-t border-[#F0EBE0]">
-                      <span className="font-semibold text-[#1B2E4B]">Deliverable total</span>
-                      <span className="font-bold text-[#1B2E4B] shrink-0">{fmt(dTotal)}</span>
-                    </div>
-                  </div>
-                )}
               </div>
             )
           })}

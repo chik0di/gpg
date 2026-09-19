@@ -30,7 +30,7 @@ const USER_PROMPT_TEMPLATE = `Analyse this assignment brief and extract the foll
 {
   "module_name": string or null (the EXACT module or unit name as written in the brief — e.g. "Strategic Financial Management", "Unit 1: Programming", "Advanced Database Systems", "COMP101", "Business Finance 201". Extract it verbatim including any course codes or unit numbers. If no module name is found, return null),
   "subject_area": string or null (a SHORT 2-4 word description of the broad ACADEMIC DISCIPLINE or field of study that this module belongs to — NOT the deliverable type or task being performed. Examples: "astrophysics", "computer science", "financial management", "network security", "business strategy", "nursing care", "mechanical engineering". Focus on the MODULE's academic field, not on technical keywords that appear in the brief content like "analysis", "code", or "presentation". Return null only if you cannot determine any subject area),
-  "academic_level": "College" or "Undergraduate" or "Masters" or null (if stated or clearly implied),
+  "academic_level": "Undergraduate" or "Masters" or null (if stated or clearly implied),
   "deadline": string or null (any deadline or submission date mentioned, in ISO format if possible),
   "deliverables": [
     {
@@ -110,7 +110,7 @@ DEFAULT RULE: If the brief says "report", "essay", "written", "document", "analy
 interface ClaudeExtractionResult {
   module_name: string | null
   subject_area: string | null
-  academic_level: 'College' | 'Undergraduate' | 'Masters' | null
+  academic_level: 'Undergraduate' | 'Masters' | null
   deadline: string | null
   deliverables: Array<{
     type: 'written' | 'presentation' | 'technical'

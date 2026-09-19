@@ -27,7 +27,6 @@ export const SUBJECT_GROUPS = [
 
 // ── Academic level multipliers ────────────────────────────────────────────
 export const ACADEMIC_LEVELS = [
-  { label: 'College', multiplier: 0.8 },
   { label: 'Undergraduate', multiplier: 1 },
   { label: 'Masters', multiplier: 1.3 },
 ] as const
@@ -106,12 +105,12 @@ export function getPracticalPrice(key: string): number {
 
 // ── Adjustment labels ─────────────────────────────────────────────────────
 
-// Returns e.g. "Masters level +30%" or "College −20%", null for Undergraduate
+// Returns e.g. "Masters level +30%", null for Undergraduate
 export function getAcademicLevelAdjLabel(academicLevel: string): string | null {
   const mult = getAcademicMultiplier(academicLevel)
   if (mult === 1) return null
   const pct = Math.round(Math.abs(mult - 1) * 100)
-  return mult > 1 ? `${academicLevel} level +${pct}%` : `${academicLevel} −${pct}%`
+  return mult > 1 ? `${academicLevel} level +${pct}%` : null
 }
 
 // Returns e.g. "Urgency premium +50%", null when no premium
@@ -127,8 +126,8 @@ export function getDeadlinePremiumLabel(dateStr: string): string | null {
 export function getUrgencyWarning(dateStr: string | null): string | null {
   if (!dateStr) return null
   const days = daysUntil(dateStr)
-  if (days <= 3) return 'This deadline attracts an urgency premium — your final price will include a +80% adjustment, shown in the order summary.'
-  if (days <= 6) return 'This deadline attracts an urgency premium — your final price will include a +50% adjustment, shown in the order summary.'
+  if (days <= 3) return 'This deadline attracts an urgency premium.'
+  if (days <= 6) return 'This deadline attracts an urgency premium.'
   return null
 }
 

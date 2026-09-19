@@ -22,7 +22,7 @@ interface ExtractionResult {
   module_name: string | null
   subject_area: string | null
   subject_field: string | null
-  academic_level: 'College' | 'Undergraduate' | 'Masters' | null
+  academic_level: 'Undergraduate' | 'Masters' | null
   deadline: string | null
   deliverables: Array<{
     type: 'written' | 'presentation' | 'technical'

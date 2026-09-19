@@ -50,7 +50,7 @@ interface ExtractedDeliverable {
 interface ExtractionResult {
   module_name: string | null
   subject_field: string | null
-  academic_level: 'College' | 'Undergraduate' | 'Masters' | null
+  academic_level: 'Undergraduate' | 'Masters' | null
   deadline: string | null
   deliverables: ExtractedDeliverable[]
   additional_notes: string | null

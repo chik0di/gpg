@@ -1,15 +1,8 @@
 /**
- * Maps various academic level terms found in briefs to our three pricing tiers
+ * Maps various academic level terms found in briefs to our two pricing tiers
  */
 
-export type PricingTier = 'College' | 'Undergraduate' | 'Masters'
-
-// A-Level/College tier (0.8× multiplier)
-const COLLEGE_TIER_TERMS = [
-  'hnd', 'hnc', 'ond', 'btec level 3', 'btec level 4', 'btec level 5',
-  'foundation degree', 'a-level', 'a level', 'access to he', 'access course',
-  'college', 'further education', 'level 3', 'level 4', 'level 5',
-]
+export type PricingTier = 'Undergraduate' | 'Masters'
 
 // Undergraduate tier (1× multiplier)
 const UNDERGRADUATE_TIER_TERMS = [
@@ -43,12 +36,7 @@ export function mapAcademicLevel(rawTerm: string | null): {
     return { tier: 'Masters', rawTerm }
   }
 
-  // Check college tier
-  if (COLLEGE_TIER_TERMS.some(term => normalized.includes(term))) {
-    return { tier: 'College', rawTerm }
-  }
-
-  // Check undergraduate tier
+  // Check undergraduate tier (includes former college tier terms - all now treated as undergraduate)
   if (UNDERGRADUATE_TIER_TERMS.some(term => normalized.includes(term))) {
     return { tier: 'Undergraduate', rawTerm }
   }
@@ -71,9 +59,10 @@ export function getAcademicLevelDisplayLabel(
   const displayTerm = rawTerm || tier
   const pct = Math.round(Math.abs(multiplier - 1) * 100)
 
+  // Only show if multiplier > 1 (Masters level)
   return multiplier > 1
     ? `${displayTerm} +${pct}%`
-    : `${displayTerm} −${pct}%`
+    : null
 }
 
 /**
