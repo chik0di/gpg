@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { searchSemanticScholar } from '@/lib/research-materials'
+import { searchAcademicPapers } from '@/lib/research-materials'
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 
@@ -71,25 +71,35 @@ export async function POST(request: NextRequest) {
     console.log('[Research Finder API] Topic:', trimmedTopic)
     console.log('[Research Finder API] Topic length:', trimmedTopic.length)
     console.log('[Research Finder API] Topic type:', typeof trimmedTopic)
-    console.log('[Research Finder API] Calling searchSemanticScholar with limit 10')
+    console.log('[Research Finder API] Calling searchAcademicPapers (Semantic Scholar + OpenAlex) with limit 10')
     console.log('========================================')
 
-    const papers = await searchSemanticScholar(trimmedTopic, 10)
+    const papers = await searchAcademicPapers(trimmedTopic, 10)
 
     console.log('========================================')
-    console.log('[Research Finder API] 📊 SEARCH RESULTS FROM SEMANTIC SCHOLAR')
+    console.log('[Research Finder API] 📊 SEARCH RESULTS FROM ACADEMIC SOURCES')
     console.log('[Research Finder API] Papers returned:', papers.length)
     console.log('[Research Finder API] Papers array:', JSON.stringify(papers, null, 2))
     console.log('========================================')
 
-    const results = papers.map(paper => ({
-      title: paper.title,
-      authors: paper.authors,
-      year: paper.year,
-      source: 'Semantic Scholar',
-      hasFreeAccess: paper.hasFreeAccess,
-      url: paper.url,
-    }))
+    const results = papers.map(paper => {
+      // Determine source based on URL
+      let source = 'Academic Database'
+      if (paper.url.includes('semanticscholar.org')) {
+        source = 'Semantic Scholar'
+      } else if (paper.url.includes('openalex.org')) {
+        source = 'OpenAlex'
+      }
+
+      return {
+        title: paper.title,
+        authors: paper.authors,
+        year: paper.year,
+        source,
+        hasFreeAccess: paper.hasFreeAccess,
+        url: paper.url,
+      }
+    })
 
     console.log('========================================')
     console.log('[Research Finder API] 📤 FINAL RESPONSE')
