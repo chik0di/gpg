@@ -4,7 +4,16 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 
 const FROM    = 'Get Prime Grade <admin@getprimegrade.com>'
 const ADMIN   = 'admin@getprimegrade.com'
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://getprimegrade.com'
+
+/**
+ * Get the base URL for email links.
+ * Prefers the passed origin (from request), falls back to env var, then production URL.
+ *
+ * @param origin - Optional origin from the current request (e.g., from getOriginFromRequest)
+ */
+function getAppUrl(origin?: string): string {
+  return origin || process.env.NEXT_PUBLIC_SITE_URL || 'https://getprimegrade.com'
+}
 
 // ── HTML base template ────────────────────────────────────────────────────────
 
@@ -72,6 +81,7 @@ export async function sendOrderConfirmation(params: {
   urgencyPremium?: number | null  // Urgency premium amount (always positive or zero)
   originalityReportPrice?: number | null  // Originality report addon price
   isOutsideStandardFields?: boolean
+  origin?: string  // Request origin for dynamic link generation
 }) {
   const {
     to, firstName, orderId, moduleName, subjectField,
@@ -79,7 +89,10 @@ export async function sendOrderConfirmation(params: {
     academicLevelAdjustment = null, urgencyPremium = null,
     originalityReportPrice = null,
     isOutsideStandardFields = false,
+    origin,
   } = params
+
+  const APP_URL = getAppUrl(origin)
 
   const now = new Date()
   const dateFormatted = now.toLocaleDateString('en-GB', { dateStyle: 'long' })
@@ -187,11 +200,15 @@ export async function sendAdminNewOrderAlert(params: {
   totalAmount: number
   deliverableSummary: string
   instructions?: string | null
+  origin?: string  // Request origin for dynamic link generation
 }) {
   const {
     orderId, clientName, clientEmail, moduleName, subjectField,
     academicLevel, deadline, totalAmount, deliverableSummary, instructions,
+    origin,
   } = params
+
+  const APP_URL = getAppUrl(origin)
 
   const deadlineFormatted = new Date(deadline).toLocaleDateString('en-GB', { dateStyle: 'long' })
   const totalFormatted    = `£${totalAmount % 1 === 0 ? totalAmount : totalAmount.toFixed(2)}`
@@ -266,8 +283,10 @@ export async function sendOrderInProgressEmail(params: {
   orderId: string
   subjectField: string
   deadline: string
+  origin?: string  // Request origin for dynamic link generation
 }) {
-  const { to, firstName, orderId, subjectField, deadline } = params
+  const { to, firstName, orderId, subjectField, deadline, origin } = params
+  const APP_URL = getAppUrl(origin)
   const shortId = orderId.slice(0, 8).toUpperCase()
   const deadlineFormatted = new Date(deadline).toLocaleDateString('en-GB', { dateStyle: 'long' })
 
@@ -295,8 +314,10 @@ export async function sendOrderCompletedEmail(params: {
   firstName: string
   orderId: string
   subjectField: string
+  origin?: string  // Request origin for dynamic link generation
 }) {
-  const { to, firstName, orderId, subjectField } = params
+  const { to, firstName, orderId, subjectField, origin } = params
+  const APP_URL = getAppUrl(origin)
   const shortId = orderId.slice(0, 8).toUpperCase()
 
   const html = base(`

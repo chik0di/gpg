@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { stripe } from '@/lib/stripe/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendOrderConfirmation, sendAdminNewOrderAlert } from '@/lib/resend'
+import { getOriginFromRequest } from '@/lib/utils/request-origin'
 import {
   calcOrderTotal,
   calcWrittenPrice,
@@ -39,7 +40,7 @@ function deliverableBasePrice(d: Deliverable): number {
   return 0
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const body = await request.text()
   const sig = request.headers.get('stripe-signature')!
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
@@ -280,8 +281,10 @@ export async function POST(request: Request) {
 
           const clientEmail = profile?.email ?? ''
           const clientName  = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Customer'
+          const origin = getOriginFromRequest(request)
 
           sendOrderConfirmation({
+            origin,
             to:                 clientEmail,
             firstName:          profile?.first_name ?? '',
             orderId:            order.id,
@@ -298,6 +301,7 @@ export async function POST(request: Request) {
           }).catch((e) => console.error('[webhook] client confirmation email failed:', e))
 
           sendAdminNewOrderAlert({
+            origin,
             orderId:            order.id,
             clientName,
             clientEmail,

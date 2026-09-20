@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe/server'
 import { rateLimit, getClientIp, RateLimitPresets, getRateLimitErrorMessage } from '@/lib/rate-limit'
+import { getOriginFromRequest } from '@/lib/utils/request-origin'
 import {
   calcOrderTotal,
   WORDS_PER_PAGE,
@@ -137,7 +138,7 @@ async function getUserNameForFilename(userId: string, userEmail: string): Promis
   return [firstName, lastName]
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     // Rate limiting - 5 orders per 15 minutes per IP
     const clientIp = getClientIp(request)
@@ -525,8 +526,10 @@ export async function POST(request: Request) {
 
     const clientEmail = profile?.email ?? user.email ?? ''
     const clientName  = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Customer'
+    const origin = getOriginFromRequest(request)
 
     sendOrderConfirmation({
+      origin,
       to:                 clientEmail,
       firstName:          profile?.first_name ?? '',
       orderId:            order.id,
@@ -543,6 +546,7 @@ export async function POST(request: Request) {
     }).catch((e) => console.error('[email] client confirmation failed:', e))
 
     sendAdminNewOrderAlert({
+      origin,
       orderId:            order.id,
       clientName,
       clientEmail,

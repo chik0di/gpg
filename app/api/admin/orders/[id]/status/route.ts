@@ -1,15 +1,17 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendOrderCompletedEmail, sendOrderInProgressEmail } from '@/lib/resend'
 import { rateLimit, getClientIp, RateLimitPresets, getRateLimitErrorMessage } from '@/lib/rate-limit'
+import { getOriginFromRequest } from '@/lib/utils/request-origin'
 
 const VALID_STATUSES = ['pending', 'in_progress', 'completed']
 
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const origin = getOriginFromRequest(request)
   try {
     // Rate limiting - 30 requests per minute for admin operations
     const clientIp = getClientIp(request)
@@ -71,6 +73,7 @@ export async function PATCH(
         if (profile?.email) {
           if (status === 'in_progress') {
             const { error: emailErr } = await sendOrderInProgressEmail({
+              origin,
               to:           profile.email,
               firstName:    profile.first_name ?? '',
               orderId,
@@ -82,6 +85,7 @@ export async function PATCH(
             }
           } else if (status === 'completed') {
             const { error: emailErr } = await sendOrderCompletedEmail({
+              origin,
               to:           profile.email,
               firstName:    profile.first_name ?? '',
               orderId,
