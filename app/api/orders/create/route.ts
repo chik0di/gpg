@@ -631,6 +631,15 @@ export async function POST(request: NextRequest) {
     const clientName  = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Customer'
     const origin = getOriginFromRequest(request)
 
+    // Send emails (fire-and-forget with comprehensive error logging)
+    console.log('========================================')
+    console.log('[orders/create] 📧 SENDING CONFIRMATION EMAILS')
+    console.log('[orders/create] Client email:', clientEmail)
+    console.log('[orders/create] Admin email:', 'admin@getprimegrade.com')
+    console.log('[orders/create] RESEND_API_KEY present:', !!process.env.RESEND_API_KEY)
+    console.log('[orders/create] RESEND_API_KEY prefix:', process.env.RESEND_API_KEY?.substring(0, 10) + '...')
+    console.log('========================================')
+
     sendOrderConfirmation({
       origin,
       to:                 clientEmail,
@@ -646,7 +655,26 @@ export async function POST(request: NextRequest) {
       urgencyPremium: urgencyPremiumPence > 0 ? urgencyPremiumPence / 100 : null,
       originalityReportPrice: orderData.includeOriginalityReport ? (ORIGINALITY_REPORT_PENCE / 100) : null,
       isOutsideStandardFields: orderData.isOutsideStandardFields || false,
-    }).catch((e) => console.error('[email] client confirmation failed:', e))
+    })
+      .then((result) => {
+        console.log('========================================')
+        console.log('[orders/create] ✅ CLIENT CONFIRMATION EMAIL SENT')
+        console.log('[orders/create] Resend response:', result)
+        console.log('[orders/create] Email ID:', result?.data?.id)
+        console.log('========================================')
+      })
+      .catch((emailError) => {
+        console.error('========================================')
+        console.error('[orders/create] ❌ CLIENT CONFIRMATION EMAIL FAILED')
+        console.error('[orders/create] Error type:', emailError?.constructor?.name)
+        console.error('[orders/create] Error message:', emailError?.message)
+        console.error('[orders/create] Error stack:', emailError?.stack)
+        console.error('[orders/create] Resend error response:', emailError?.response)
+        console.error('[orders/create] Resend error data:', emailError?.response?.data)
+        console.error('[orders/create] Resend status code:', emailError?.statusCode || emailError?.response?.status)
+        console.error('[orders/create] Full error object:', JSON.stringify(emailError, null, 2))
+        console.error('========================================')
+      })
 
     sendAdminNewOrderAlert({
       origin,
@@ -660,7 +688,26 @@ export async function POST(request: NextRequest) {
       totalAmount:        totalPence / 100,
       deliverableSummary,
       instructions:       orderData.instructions || null,
-    }).catch((e) => console.error('[email] admin alert failed:', e))
+    })
+      .then((result) => {
+        console.log('========================================')
+        console.log('[orders/create] ✅ ADMIN NOTIFICATION EMAIL SENT')
+        console.log('[orders/create] Resend response:', result)
+        console.log('[orders/create] Email ID:', result?.data?.id)
+        console.log('========================================')
+      })
+      .catch((emailError) => {
+        console.error('========================================')
+        console.error('[orders/create] ❌ ADMIN NOTIFICATION EMAIL FAILED')
+        console.error('[orders/create] Error type:', emailError?.constructor?.name)
+        console.error('[orders/create] Error message:', emailError?.message)
+        console.error('[orders/create] Error stack:', emailError?.stack)
+        console.error('[orders/create] Resend error response:', emailError?.response)
+        console.error('[orders/create] Resend error data:', emailError?.response?.data)
+        console.error('[orders/create] Resend status code:', emailError?.statusCode || emailError?.response?.status)
+        console.error('[orders/create] Full error object:', JSON.stringify(emailError, null, 2))
+        console.error('========================================')
+      })
 
     // 9. Clean up pending orders for this user (fire-and-forget)
     supabaseAdmin

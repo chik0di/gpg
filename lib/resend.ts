@@ -1,6 +1,17 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Initialize Resend with API key
+const RESEND_API_KEY = process.env.RESEND_API_KEY
+
+// Log initialization for debugging
+if (!RESEND_API_KEY) {
+  console.error('[resend] ❌ RESEND_API_KEY is not set in environment variables!')
+  console.error('[resend] Email sending will fail. Check Vercel environment variables.')
+} else {
+  console.log('[resend] ✅ RESEND_API_KEY is set:', RESEND_API_KEY.substring(0, 10) + '...')
+}
+
+const resend = new Resend(RESEND_API_KEY)
 
 const FROM    = 'Get Prime Grade <admin@getprimegrade.com>'
 const ADMIN   = 'admin@getprimegrade.com'
