@@ -171,42 +171,134 @@ export async function POST(request: NextRequest) {
     const orderDataRaw    = form.get('orderData')       as string | null
     const uploadedFile    = form.get('file')            as File   | null
 
+    console.log('========================================')
+    console.log('[orders/create] 📥 INCOMING REQUEST')
+    console.log('[orders/create] Payment Intent ID:', paymentIntentId)
+    console.log('[orders/create] Has orderData:', !!orderDataRaw)
+    console.log('[orders/create] Has file:', !!uploadedFile)
+    if (uploadedFile) {
+      console.log('[orders/create] File name:', uploadedFile.name)
+      console.log('[orders/create] File size:', uploadedFile.size)
+    }
+    console.log('========================================')
+
     if (!paymentIntentId || !orderDataRaw) {
+      console.error('[orders/create] ❌ Missing required fields')
+      console.error('[orders/create] paymentIntentId present:', !!paymentIntentId)
+      console.error('[orders/create] orderDataRaw present:', !!orderDataRaw)
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const orderData: OrderData = JSON.parse(orderDataRaw)
-
-    // Debug: Log briefTempPath
-    console.log('[orders/create] orderData.usedAIExtraction:', orderData.usedAIExtraction)
-    console.log('[orders/create] orderData.briefTempPath:', orderData.briefTempPath)
+    let orderData: OrderData
+    try {
+      orderData = JSON.parse(orderDataRaw)
+      console.log('========================================')
+      console.log('[orders/create] 📋 PARSED ORDER DATA')
+      console.log('[orders/create] Full orderData:', JSON.stringify(orderData, null, 2))
+      console.log('[orders/create] subjectField:', orderData.subjectField)
+      console.log('[orders/create] academicLevel:', orderData.academicLevel)
+      console.log('[orders/create] academicLevelRaw:', orderData.academicLevelRaw)
+      console.log('[orders/create] deadline:', orderData.deadline)
+      console.log('[orders/create] country:', orderData.country)
+      console.log('[orders/create] deliverables count:', orderData.deliverables?.length)
+      console.log('[orders/create] includeOriginalityReport:', orderData.includeOriginalityReport)
+      console.log('[orders/create] moduleName:', orderData.moduleName)
+      console.log('[orders/create] usedAIExtraction:', orderData.usedAIExtraction)
+      console.log('[orders/create] briefTempPath:', orderData.briefTempPath)
+      console.log('[orders/create] isOutsideStandardFields:', orderData.isOutsideStandardFields)
+      console.log('========================================')
+    } catch (parseError) {
+      console.error('========================================')
+      console.error('[orders/create] ❌ JSON PARSE ERROR')
+      console.error('[orders/create] Parse error:', parseError)
+      console.error('[orders/create] Raw orderData string:', orderDataRaw)
+      console.error('========================================')
+      return NextResponse.json({ error: 'Invalid order data format' }, { status: 400 })
+    }
 
     // 1. Verify the payment actually succeeded on Stripe's side
-    const pi = await stripe.paymentIntents.retrieve(paymentIntentId)
+    console.log('[orders/create] 💳 Verifying payment intent:', paymentIntentId)
+    let pi
+    try {
+      pi = await stripe.paymentIntents.retrieve(paymentIntentId)
+      console.log('[orders/create] Payment Intent retrieved successfully')
+      console.log('[orders/create] PI status:', pi.status)
+      console.log('[orders/create] PI amount:', pi.amount, 'pence')
+      console.log('[orders/create] PI currency:', pi.currency)
+    } catch (stripeError) {
+      console.error('========================================')
+      console.error('[orders/create] ❌ STRIPE API ERROR')
+      console.error('[orders/create] Error retrieving payment intent:', stripeError)
+      console.error('========================================')
+      return NextResponse.json({ error: 'Failed to verify payment' }, { status: 500 })
+    }
 
     if (pi.status !== 'succeeded') {
+      console.error('========================================')
+      console.error('[orders/create] ❌ PAYMENT NOT CONFIRMED')
+      console.error('[orders/create] Expected status: succeeded')
+      console.error('[orders/create] Actual status:', pi.status)
+      console.error('========================================')
       return NextResponse.json({ error: 'Payment not confirmed' }, { status: 402 })
     }
 
     // 2. Idempotency: don't create a duplicate order for the same payment
-    const { data: existing } = await supabase
+    console.log('[orders/create] 🔍 Checking for existing order with this payment intent')
+    const { data: existing, error: existingError } = await supabase
       .from('orders')
       .select('id')
       .eq('stripe_payment_intent_id', paymentIntentId)
       .maybeSingle()
 
+    if (existingError) {
+      console.error('========================================')
+      console.error('[orders/create] ❌ DATABASE ERROR - existing order check')
+      console.error('[orders/create] Error:', existingError)
+      console.error('========================================')
+      return NextResponse.json({ error: 'Database error checking existing order' }, { status: 500 })
+    }
+
     if (existing) {
+      console.log('[orders/create] ✅ Order already exists for this payment, returning existing ID:', existing.id)
       return NextResponse.json({ orderId: existing.id })
     }
 
+    console.log('[orders/create] No existing order found, proceeding to create new order')
+
     // 3. Recalculate total server-side in PENCE (prevents client tampering)
+    console.log('========================================')
+    console.log('[orders/create] 💰 CALCULATING PRICE SERVER-SIDE')
+    console.log('[orders/create] Deliverables to price:', orderData.deliverables.length)
+
     // Calculate base prices for all deliverables
-    const deliverablesPence = orderData.deliverables.map(d => {
-      const basePence = deliverableBasePricePence(d, false) // AI path always non-manual
+    const deliverablesPence = orderData.deliverables.map((d, idx) => {
+      console.log(`[orders/create] Deliverable ${idx + 1}:`, {
+        type: d.type,
+        sizeMode: d.sizeMode,
+        quantity: d.quantity,
+        slideCount: d.slideCount,
+        practicalKey: d.practicalKey
+      })
+
+      let basePence
+      try {
+        basePence = deliverableBasePricePence(d, false) // AI path always non-manual
+        console.log(`[orders/create] Base price for deliverable ${idx + 1}:`, basePence, 'pence')
+      } catch (calcError) {
+        console.error(`[orders/create] ❌ Error calculating base price for deliverable ${idx + 1}:`, calcError)
+        throw calcError
+      }
+
       // Apply multipliers
       let finalPence = basePence
+      const beforeAcademic = finalPence
       finalPence = applyAcademicMultiplier(finalPence, orderData.academicLevel)
+      console.log(`[orders/create] After academic multiplier (${orderData.academicLevel}):`, finalPence, 'pence (was', beforeAcademic, ')')
+
+      const beforeDeadline = finalPence
       finalPence = applyDeadlineMultiplier(finalPence, orderData.deadline)
+      console.log(`[orders/create] After deadline multiplier (${orderData.deadline}):`, finalPence, 'pence (was', beforeDeadline, ')')
+
       return finalPence
     })
 
@@ -214,9 +306,20 @@ export async function POST(request: NextRequest) {
     const reportPence = orderData.includeOriginalityReport ? ORIGINALITY_REPORT_PENCE : 0
     const totalPence = subtotalPence + reportPence
 
+    console.log('[orders/create] Subtotal:', subtotalPence, 'pence (£' + (subtotalPence / 100).toFixed(2) + ')')
+    console.log('[orders/create] Originality report:', reportPence, 'pence')
+    console.log('[orders/create] Total calculated:', totalPence, 'pence (£' + (totalPence / 100).toFixed(2) + ')')
+    console.log('[orders/create] Payment Intent amount:', pi.amount, 'pence (£' + (pi.amount / 100).toFixed(2) + ')')
+    console.log('========================================')
+
     // Verify the payment intent amount matches our server-side calculation
     if (pi.amount !== totalPence) {
-      console.error(`[orders/create] amount mismatch: PI=${pi.amount} pence, expected=${totalPence} pence`)
+      console.error('========================================')
+      console.error('[orders/create] ❌ PRICE MISMATCH')
+      console.error(`[orders/create] Payment Intent amount: ${pi.amount} pence (£${(pi.amount / 100).toFixed(2)})`)
+      console.error(`[orders/create] Server calculated: ${totalPence} pence (£${(totalPence / 100).toFixed(2)})`)
+      console.error(`[orders/create] Difference: ${pi.amount - totalPence} pence`)
+      console.error('========================================')
       // Allow a 1 pence tolerance for rounding differences
       if (Math.abs(pi.amount - totalPence) > 1) {
         return NextResponse.json({ error: 'Payment amount mismatch' }, { status: 400 })
@@ -572,9 +675,23 @@ export async function POST(request: NextRequest) {
         }
       })
 
+    console.log('========================================')
+    console.log('[orders/create] ✅ ORDER CREATED SUCCESSFULLY')
+    console.log('[orders/create] Order ID:', order.id)
+    console.log('[orders/create] User ID:', user.id)
+    console.log('[orders/create] Total amount:', totalPence / 100, 'GBP')
+    console.log('[orders/create] Returning success response')
+    console.log('========================================')
+
     return NextResponse.json({ orderId: order.id }, { status: 201 })
   } catch (err) {
-    console.error('POST /api/orders/create:', err)
+    console.error('========================================')
+    console.error('[orders/create] ❌ UNHANDLED ERROR IN ORDER CREATION')
+    console.error('[orders/create] Error type:', err instanceof Error ? err.constructor.name : typeof err)
+    console.error('[orders/create] Error message:', err instanceof Error ? err.message : String(err))
+    console.error('[orders/create] Error stack:', err instanceof Error ? err.stack : 'N/A')
+    console.error('[orders/create] Full error object:', err)
+    console.error('========================================')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

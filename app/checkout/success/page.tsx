@@ -67,20 +67,87 @@ function SuccessContent() {
       }
     }
 
+    console.log('========================================')
+    console.log('[checkout/success] 🚀 CREATING ORDER AFTER SUCCESSFUL PAYMENT')
+    console.log('[checkout/success] Payment Intent ID:', paymentIntent)
+    console.log('[checkout/success] Order Data:', orderData)
+    console.log('[checkout/success] Has file attachment:', !!rawFile)
+    console.log('[checkout/success] Calling /api/orders/create with FormData')
+    console.log('========================================')
+
     fetch('/api/orders/create', { method: 'POST', body: form })
-      .then((r) => r.json())
-      .then(({ orderId, error }) => {
+      .then(async (r) => {
+        console.log('========================================')
+        console.log('[checkout/success] 📡 API RESPONSE RECEIVED')
+        console.log('[checkout/success] Status:', r.status)
+        console.log('[checkout/success] Status Text:', r.statusText)
+        console.log('[checkout/success] OK:', r.ok)
+        console.log('[checkout/success] Headers:', Object.fromEntries(r.headers.entries()))
+        console.log('========================================')
+
+        // Read response body as text first to see raw response
+        const responseText = await r.text()
+        console.log('[checkout/success] Raw response body:', responseText)
+
+        let responseData
+        try {
+          responseData = JSON.parse(responseText)
+          console.log('[checkout/success] Parsed response data:', responseData)
+        } catch (parseErr) {
+          console.error('========================================')
+          console.error('[checkout/success] ❌ JSON PARSE ERROR')
+          console.error('[checkout/success] Parse error:', parseErr)
+          console.error('[checkout/success] Response was not valid JSON')
+          console.error('========================================')
+          throw new Error('Invalid JSON response from server')
+        }
+
+        return { response: r, data: responseData }
+      })
+      .then(({ response, data }) => {
+        const { orderId, error } = data
+
+        console.log('========================================')
+        console.log('[checkout/success] 📊 PROCESSING RESPONSE')
+        console.log('[checkout/success] Order ID:', orderId)
+        console.log('[checkout/success] Error:', error)
+        console.log('[checkout/success] Response status:', response.status)
+        console.log('========================================')
+
         if (error || !orderId) {
+          console.error('========================================')
+          console.error('[checkout/success] ❌ ORDER CREATION FAILED')
+          console.error('[checkout/success] Error message:', error)
+          console.error('[checkout/success] Order ID present:', !!orderId)
+          console.error('[checkout/success] HTTP status:', response.status)
+          console.error('[checkout/success] Full response data:', data)
+          console.error('========================================')
+
           setState('error')
           setErrMsg('Your payment was successful but we couldn\'t record your order. Please contact admin@getprimegrade.com with your payment reference.')
           return
         }
+
+        console.log('========================================')
+        console.log('[checkout/success] ✅ ORDER CREATED SUCCESSFULLY')
+        console.log('[checkout/success] Order ID:', orderId)
+        console.log('[checkout/success] Clearing session storage')
+        console.log('========================================')
+
         sessionStorage.removeItem('gpg_pending_order')
         sessionStorage.removeItem('gpg_pending_file')
         setOrderId(orderId)
         setState('success')
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('========================================')
+        console.error('[checkout/success] ❌ NETWORK OR PROCESSING ERROR')
+        console.error('[checkout/success] Error type:', err.constructor.name)
+        console.error('[checkout/success] Error message:', err.message)
+        console.error('[checkout/success] Error stack:', err.stack)
+        console.error('[checkout/success] Full error object:', err)
+        console.error('========================================')
+
         setState('error')
         setErrMsg('Network error. Your payment may have gone through — please contact support before trying again.')
       })
