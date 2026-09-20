@@ -1,47 +1,254 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { searchAcademicPapers } from '@/lib/research-materials'
+import { createServerClient } from '@/lib/supabase/server'
 
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
-
-const RATE_LIMIT = 10
+const RATE_LIMIT_COUNT = 20 // Maximum requests per hour
 const RATE_LIMIT_WINDOW = 60 * 60 * 1000 // 1 hour in milliseconds
+const MIN_REQUEST_SPACING = 3000 // 3 seconds between requests
 
-function getRateLimitKey(request: NextRequest): string {
-  const forwarded = request.headers.get('x-forwarded-for')
-  const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown'
-  return ip
+interface RateLimitResult {
+  allowed: boolean
+  remaining: number
+  resetAt?: number
+  error?: string
 }
 
-function checkRateLimit(key: string): { allowed: boolean; remaining: number } {
+function getClientIP(request: NextRequest): string {
+  // Extract real IP from Vercel's proxy headers
+  // x-forwarded-for can contain multiple IPs: "client, proxy1, proxy2"
+  // We want the leftmost (original client) IP
+  const forwarded = request.headers.get('x-forwarded-for')
+  const realIP = request.headers.get('x-real-ip')
+
+  if (forwarded) {
+    const ip = forwarded.split(',')[0].trim()
+    console.log('[Rate Limit] IP from x-forwarded-for:', ip)
+    return ip
+  }
+
+  if (realIP) {
+    console.log('[Rate Limit] IP from x-real-ip:', realIP)
+    return realIP
+  }
+
+  // Fallback - should rarely happen on Vercel
+  const fallback = 'unknown'
+  console.log('[Rate Limit] No IP headers found, using fallback:', fallback)
+  return fallback
+}
+
+async function checkRateLimit(ip: string): Promise<RateLimitResult> {
   const now = Date.now()
-  const record = rateLimitMap.get(key)
+  const supabase = createServerClient()
 
-  if (!record || now > record.resetAt) {
-    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW })
-    return { allowed: true, remaining: RATE_LIMIT - 1 }
+  try {
+    console.log('[Rate Limit] Checking rate limit for IP:', ip)
+
+    // Get or create rate limit record for this IP
+    const { data: existing, error: fetchError } = await supabase
+      .from('research_rate_limits')
+      .select('*')
+      .eq('ip_address', ip)
+      .single()
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      // PGRST116 = no rows found, which is fine
+      console.error('[Rate Limit] Database fetch error:', fetchError)
+      // Fail open - allow request if database is down
+      return { allowed: true, remaining: RATE_LIMIT_COUNT - 1 }
+    }
+
+    const windowStart = now - RATE_LIMIT_WINDOW
+
+    // No existing record - create first one
+    if (!existing) {
+      console.log('[Rate Limit] No existing record, creating new one')
+      const { error: insertError } = await supabase
+        .from('research_rate_limits')
+        .insert({
+          ip_address: ip,
+          request_count: 1,
+          last_request_at: new Date(now).toISOString(),
+          window_start: new Date(now).toISOString()
+        })
+
+      if (insertError) {
+        console.error('[Rate Limit] Insert error:', insertError)
+        return { allowed: true, remaining: RATE_LIMIT_COUNT - 1 }
+      }
+
+      return {
+        allowed: true,
+        remaining: RATE_LIMIT_COUNT - 1,
+        resetAt: now + RATE_LIMIT_WINDOW
+      }
+    }
+
+    const lastRequestTime = new Date(existing.last_request_at).getTime()
+    const timeSinceLastRequest = now - lastRequestTime
+    const recordWindowStart = new Date(existing.window_start).getTime()
+
+    console.log('[Rate Limit] Existing record:', {
+      count: existing.request_count,
+      lastRequest: new Date(lastRequestTime).toISOString(),
+      timeSinceLastRequest,
+      windowStart: new Date(recordWindowStart).toISOString()
+    })
+
+    // CHECK 1: Minimum spacing between requests (3 seconds)
+    if (timeSinceLastRequest < MIN_REQUEST_SPACING) {
+      const waitTime = Math.ceil((MIN_REQUEST_SPACING - timeSinceLastRequest) / 1000)
+      console.log('[Rate Limit] ❌ SPACING LIMIT HIT - wait', waitTime, 'seconds')
+      return {
+        allowed: false,
+        remaining: 0,
+        error: `Please wait ${waitTime} second${waitTime > 1 ? 's' : ''} before searching again.`
+      }
+    }
+
+    // Reset window if it's expired
+    if (recordWindowStart < windowStart) {
+      console.log('[Rate Limit] Window expired, resetting counter')
+      const { error: updateError } = await supabase
+        .from('research_rate_limits')
+        .update({
+          request_count: 1,
+          last_request_at: new Date(now).toISOString(),
+          window_start: new Date(now).toISOString(),
+          updated_at: new Date(now).toISOString()
+        })
+        .eq('ip_address', ip)
+
+      if (updateError) {
+        console.error('[Rate Limit] Reset update error:', updateError)
+        return { allowed: true, remaining: RATE_LIMIT_COUNT - 1 }
+      }
+
+      return {
+        allowed: true,
+        remaining: RATE_LIMIT_COUNT - 1,
+        resetAt: now + RATE_LIMIT_WINDOW
+      }
+    }
+
+    // CHECK 2: Total count limit (20 per hour)
+    if (existing.request_count >= RATE_LIMIT_COUNT) {
+      const resetIn = Math.ceil((recordWindowStart + RATE_LIMIT_WINDOW - now) / 1000 / 60)
+      console.log('[Rate Limit] ❌ COUNT LIMIT HIT - reset in', resetIn, 'minutes')
+      return {
+        allowed: false,
+        remaining: 0,
+        resetAt: recordWindowStart + RATE_LIMIT_WINDOW,
+        error: `Search limit reached. You can search again in ${resetIn} minute${resetIn > 1 ? 's' : ''}.`
+      }
+    }
+
+    // Increment counter
+    const newCount = existing.request_count + 1
+    console.log('[Rate Limit] ✅ ALLOWED - incrementing count to', newCount)
+
+    const { error: updateError } = await supabase
+      .from('research_rate_limits')
+      .update({
+        request_count: newCount,
+        last_request_at: new Date(now).toISOString(),
+        updated_at: new Date(now).toISOString()
+      })
+      .eq('ip_address', ip)
+
+    if (updateError) {
+      console.error('[Rate Limit] Increment update error:', updateError)
+      // Still allow the request even if update fails
+    }
+
+    return {
+      allowed: true,
+      remaining: RATE_LIMIT_COUNT - newCount,
+      resetAt: recordWindowStart + RATE_LIMIT_WINDOW
+    }
+
+  } catch (error) {
+    console.error('[Rate Limit] Unexpected error:', error)
+    // Fail open - allow request if something goes wrong
+    return { allowed: true, remaining: RATE_LIMIT_COUNT - 1 }
   }
+}
 
-  if (record.count >= RATE_LIMIT) {
-    return { allowed: false, remaining: 0 }
+// GET endpoint to check current quota without consuming it
+export async function GET(request: NextRequest) {
+  try {
+    const clientIP = getClientIP(request)
+    const supabase = createServerClient()
+
+    const { data: existing } = await supabase
+      .from('research_rate_limits')
+      .select('*')
+      .eq('ip_address', clientIP)
+      .single()
+
+    if (!existing) {
+      return NextResponse.json({
+        used: 0,
+        remaining: RATE_LIMIT_COUNT,
+        limit: RATE_LIMIT_COUNT,
+        resetAt: null
+      })
+    }
+
+    const now = Date.now()
+    const windowStart = new Date(existing.window_start).getTime()
+    const windowEnd = windowStart + RATE_LIMIT_WINDOW
+
+    // Check if window has expired
+    if (now > windowEnd) {
+      return NextResponse.json({
+        used: 0,
+        remaining: RATE_LIMIT_COUNT,
+        limit: RATE_LIMIT_COUNT,
+        resetAt: null
+      })
+    }
+
+    const used = existing.request_count
+    const remaining = Math.max(0, RATE_LIMIT_COUNT - used)
+
+    return NextResponse.json({
+      used,
+      remaining,
+      limit: RATE_LIMIT_COUNT,
+      resetAt: windowEnd
+    })
+  } catch (error) {
+    console.error('[Research Finder API] Error fetching quota:', error)
+    return NextResponse.json({
+      used: 0,
+      remaining: RATE_LIMIT_COUNT,
+      limit: RATE_LIMIT_COUNT,
+      resetAt: null
+    })
   }
-
-  record.count++
-  return { allowed: true, remaining: RATE_LIMIT - record.count }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const rateLimitKey = getRateLimitKey(request)
-    const { allowed, remaining } = checkRateLimit(rateLimitKey)
+    const clientIP = getClientIP(request)
+    const rateLimit = await checkRateLimit(clientIP)
 
-    if (!allowed) {
+    console.log('[Research Finder API] Rate limit check result:', {
+      ip: clientIP,
+      allowed: rateLimit.allowed,
+      remaining: rateLimit.remaining
+    })
+
+    if (!rateLimit.allowed) {
       return NextResponse.json(
-        { error: 'Rate limit exceeded. Please try again in an hour.' },
+        { error: rateLimit.error || 'Rate limit exceeded.' },
         {
           status: 429,
           headers: {
-            'X-RateLimit-Limit': RATE_LIMIT.toString(),
+            'X-RateLimit-Limit': RATE_LIMIT_COUNT.toString(),
             'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimit.resetAt?.toString() || '',
           }
         }
       )
@@ -111,8 +318,9 @@ export async function POST(request: NextRequest) {
       { results },
       {
         headers: {
-          'X-RateLimit-Limit': RATE_LIMIT.toString(),
-          'X-RateLimit-Remaining': remaining.toString(),
+          'X-RateLimit-Limit': RATE_LIMIT_COUNT.toString(),
+          'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+          'X-RateLimit-Reset': rateLimit.resetAt?.toString() || '',
         }
       }
     )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface ResearchResult {
   title: string
@@ -11,12 +11,40 @@ interface ResearchResult {
   url: string | null
 }
 
+interface QuotaInfo {
+  used: number
+  remaining: number
+  limit: number
+  resetAt: number | null
+}
+
 export default function ResearchFinderClient() {
   const [topic, setTopic] = useState('')
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<ResearchResult[]>([])
   const [error, setError] = useState<string | null>(null)
   const [searched, setSearched] = useState(false)
+  const [quota, setQuota] = useState<QuotaInfo>({ used: 0, remaining: 20, limit: 20, resetAt: null })
+  const [loadingQuota, setLoadingQuota] = useState(true)
+
+  // Fetch quota on mount and after each search
+  const fetchQuota = async () => {
+    try {
+      const response = await fetch('/api/resources/research')
+      if (response.ok) {
+        const data = await response.json()
+        setQuota(data)
+      }
+    } catch (err) {
+      console.error('[Research Finder Client] Failed to fetch quota:', err)
+    } finally {
+      setLoadingQuota(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchQuota()
+  }, [])
 
   const handleSearch = async () => {
     if (!topic.trim()) {
@@ -69,6 +97,9 @@ export default function ResearchFinderClient() {
 
       setResults(data.results || [])
       console.log('[Research Finder Client] ✅ Results set in state:', data.results?.length ?? 0)
+
+      // Update quota after successful search
+      await fetchQuota()
     } catch (err) {
       console.error('========================================')
       console.error('[Research Finder Client] ❌ ERROR')
@@ -76,6 +107,9 @@ export default function ResearchFinderClient() {
       console.error('========================================')
       setError(err instanceof Error ? err.message : 'Failed to search. Please try again.')
       setResults([])
+
+      // Still update quota even on error (might be a rate limit error)
+      await fetchQuota()
     } finally {
       setLoading(false)
     }
@@ -103,9 +137,22 @@ export default function ResearchFinderClient() {
       <div className="container-narrow py-12 space-y-6">
         {/* Search Box */}
         <div className="bg-white rounded-2xl border border-[#E8E2D9] p-6" style={{ boxShadow: '0 2px 8px -2px rgba(26,26,46,0.07)' }}>
-          <label className="block text-sm font-bold text-[#1B2E4B] mb-3">
-            Enter your research topic
-          </label>
+          <div className="flex items-center justify-between mb-3">
+            <label className="block text-sm font-bold text-[#1B2E4B]">
+              Enter your research topic
+            </label>
+            {!loadingQuota && (
+              <div className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                quota.remaining === 0
+                  ? 'bg-red-100 text-red-700'
+                  : quota.remaining <= 2
+                  ? 'bg-amber-100 text-amber-700'
+                  : 'bg-[#F5F0E8] text-[#6B7280]'
+              }`}>
+                {quota.used} / {quota.limit} searches used
+              </div>
+            )}
+          </div>
           <div className="flex gap-3">
             <input
               type="text"
@@ -114,19 +161,33 @@ export default function ResearchFinderClient() {
               onKeyPress={handleKeyPress}
               placeholder="e.g., machine learning in healthcare"
               className="flex-1 px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
-              disabled={loading}
+              disabled={loading || quota.remaining === 0}
             />
             <button
               onClick={handleSearch}
-              disabled={loading}
+              disabled={loading || quota.remaining === 0}
               className="px-6 py-3 bg-[#E8A020] hover:bg-[#C4861A] text-white font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
               {loading ? 'Searching...' : 'Search'}
             </button>
           </div>
-          <p className="text-xs text-[#9CA3AF] mt-2">
-            Limited to 10 searches per hour.
-          </p>
+          <div className="flex items-center justify-between mt-2">
+            <p className="text-xs text-[#9CA3AF]">
+              {quota.remaining === 0 && quota.resetAt
+                ? `Limit reached. Resets ${new Date(quota.resetAt).toLocaleTimeString()}`
+                : quota.remaining <= 2 && quota.remaining > 0
+                ? `${quota.remaining} search${quota.remaining > 1 ? 'es' : ''} remaining this hour`
+                : 'Limited to 20 searches per hour, min. 3 seconds apart'}
+            </p>
+            {quota.resetAt && quota.remaining === 0 && (
+              <button
+                onClick={fetchQuota}
+                className="text-xs text-[#E8A020] hover:text-[#C4861A] font-semibold"
+              >
+                Refresh
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Error Message */}
