@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Suspense } from 'react'
 import type { OrderFormState } from '@/types/order-form'
 import ShareButton from '@/components/shared/share-button'
@@ -265,8 +266,15 @@ export default function CheckoutSuccessPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <span className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white" style={{ background: '#1B2E4B' }}>G</span>
+          <Link href="/" className="inline-flex items-center gap-2.5">
+            <Image
+              src="/gpg-logo-transparent.png"
+              alt="GetPrimeGrade"
+              width={40}
+              height={40}
+              className="w-10 h-10"
+              priority
+            />
             <span className="font-extrabold text-lg tracking-tight text-[#1B2E4B]">GetPrimeGrade</span>
           </Link>
         </div>
