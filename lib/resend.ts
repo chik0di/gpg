@@ -292,18 +292,22 @@ export async function sendOrderInProgressEmail(params: {
   to: string
   firstName: string
   orderId: string
+  moduleName?: string | null
   subjectField: string
   deadline: string
   origin?: string  // Request origin for dynamic link generation
 }) {
-  const { to, firstName, orderId, subjectField, deadline, origin } = params
+  const { to, firstName, orderId, moduleName, subjectField, deadline, origin } = params
   const APP_URL = getAppUrl(origin)
   const shortId = orderId.slice(0, 8).toUpperCase()
   const deadlineFormatted = new Date(deadline).toLocaleDateString('en-GB', { dateStyle: 'long' })
 
+  // Prefer module name over subject field for order reference
+  const orderReference = moduleName || subjectField
+
   const html = base(`
     ${h1(`We've started working on your order, ${firstName || 'there'}!`)}
-    ${p(`Your order <strong>#${shortId}</strong> (${subjectField}) is now in progress. Our team is working on it and we'll deliver before your deadline on <strong>${deadlineFormatted}</strong>.`)}
+    ${p(`Your order <strong>#${shortId}</strong> (${orderReference}) is now in progress. Our team is working on it and we'll deliver before your deadline on <strong>${deadlineFormatted}</strong>.`)}
     ${divider()}
     ${btn('View order status', `${APP_URL}/dashboard/orders/${orderId}`)}
     ${divider()}
@@ -324,16 +328,20 @@ export async function sendOrderCompletedEmail(params: {
   to: string
   firstName: string
   orderId: string
+  moduleName?: string | null
   subjectField: string
   origin?: string  // Request origin for dynamic link generation
 }) {
-  const { to, firstName, orderId, subjectField, origin } = params
+  const { to, firstName, orderId, moduleName, subjectField, origin } = params
   const APP_URL = getAppUrl(origin)
   const shortId = orderId.slice(0, 8).toUpperCase()
 
+  // Prefer module name over subject field for order reference
+  const orderReference = moduleName || subjectField
+
   const html = base(`
     ${h1(`Your work is ready, ${firstName || 'there'}!`)}
-    ${p(`Great news — your order <strong>#${shortId}</strong> (${subjectField}) has been completed and is now available to download from your dashboard.`)}
+    ${p(`Great news — your order <strong>#${shortId}</strong> (${orderReference}) has been completed and is now available to download from your dashboard.`)}
     ${divider()}
     ${btn('Download my work', `${APP_URL}/dashboard/orders/${orderId}`)}
     ${divider()}

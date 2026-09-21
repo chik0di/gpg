@@ -59,7 +59,7 @@ export async function PATCH(
     if (status === 'in_progress' || status === 'completed') {
       const { data: order } = await supabaseAdmin
         .from('orders')
-        .select('subject_field, user_id, deadline')
+        .select('module_name, subject_field, user_id, deadline')
         .eq('id', orderId)
         .single()
 
@@ -77,6 +77,7 @@ export async function PATCH(
               to:           profile.email,
               firstName:    profile.first_name ?? '',
               orderId,
+              moduleName:   order.module_name,
               subjectField: order.subject_field,
               deadline:     order.deadline,
             })
@@ -89,6 +90,7 @@ export async function PATCH(
               to:           profile.email,
               firstName:    profile.first_name ?? '',
               orderId,
+              moduleName:   order.module_name,
               subjectField: order.subject_field,
             })
             if (emailErr) {
