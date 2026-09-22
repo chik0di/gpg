@@ -633,13 +633,18 @@ export async function POST(request: NextRequest) {
 
     // Send emails (fire-and-forget with comprehensive error logging)
     console.log('========================================')
-    console.log('[orders/create] 📧 SENDING CONFIRMATION EMAILS')
+    console.log('[orders/create] 📧 EMAIL SENDING CHECKPOINT - START')
+    console.log('[orders/create] Execution has reached the email sending section')
     console.log('[orders/create] Client email:', clientEmail)
     console.log('[orders/create] Admin email:', 'admin@getprimegrade.com')
     console.log('[orders/create] RESEND_API_KEY present:', !!process.env.RESEND_API_KEY)
     console.log('[orders/create] RESEND_API_KEY prefix:', process.env.RESEND_API_KEY?.substring(0, 10) + '...')
+    console.log('[orders/create] Order ID:', order.id)
+    console.log('[orders/create] Module name:', orderData.moduleName)
+    console.log('[orders/create] Subject field:', orderData.subjectField)
     console.log('========================================')
 
+    console.log('[orders/create] 🔵 CHECKPOINT 1: About to call sendOrderConfirmation()')
     sendOrderConfirmation({
       origin,
       to:                 clientEmail,
@@ -676,6 +681,8 @@ export async function POST(request: NextRequest) {
         console.error('========================================')
       })
 
+    console.log('[orders/create] 🔵 CHECKPOINT 2: Client email call initiated, now calling admin email')
+    console.log('[orders/create] 🔵 CHECKPOINT 2: About to call sendAdminNewOrderAlert()')
     sendAdminNewOrderAlert({
       origin,
       orderId:            order.id,
@@ -708,6 +715,13 @@ export async function POST(request: NextRequest) {
         console.error('[orders/create] Full error object:', JSON.stringify(emailError, null, 2))
         console.error('========================================')
       })
+
+    console.log('========================================')
+    console.log('[orders/create] 🔵 CHECKPOINT 3: Both email functions called (fire-and-forget)')
+    console.log('[orders/create] Emails will process asynchronously')
+    console.log('[orders/create] Watch for success (✅) or failure (❌) logs above')
+    console.log('[orders/create] If no success/failure logs appear, emails failed silently INSIDE the function')
+    console.log('========================================')
 
     // 9. Clean up pending orders for this user (fire-and-forget)
     supabaseAdmin

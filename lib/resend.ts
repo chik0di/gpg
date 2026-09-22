@@ -94,6 +94,13 @@ export async function sendOrderConfirmation(params: {
   isOutsideStandardFields?: boolean
   origin?: string  // Request origin for dynamic link generation
 }) {
+  console.log('========================================')
+  console.log('[resend] 📧 sendOrderConfirmation() CALLED')
+  console.log('[resend] Recipient:', params.to)
+  console.log('[resend] Order ID:', params.orderId)
+  console.log('[resend] RESEND_API_KEY in this context:', !!RESEND_API_KEY)
+  console.log('========================================')
+
   const {
     to, firstName, orderId, moduleName, subjectField,
     academicLevel, deadline, totalAmount, deliverableItems,
@@ -161,6 +168,8 @@ export async function sendOrderConfirmation(params: {
     <td style="padding:12px 0 0;font-size:16px;color:#1B2E4B;font-weight:700;text-align:right;vertical-align:top;border-top:2px solid #E8E2D9;">${totalFormatted}</td>
   </tr>`
 
+  console.log('[resend] Building email HTML template for order confirmation')
+
   const html = base(`
     ${h1(`Order confirmed, ${firstName || 'there'}!`)}
     ${p('Your payment was successful and your order is now with our team. We\'ll get to work right away and deliver before your deadline.')}
@@ -190,12 +199,26 @@ export async function sendOrderConfirmation(params: {
     ${p('<span style="font-size:13px;color:#9CA3AF;">Your order includes 3 free revisions. If you have any questions, reply to this email.</span>')}
   `)
 
-  return resend.emails.send({
-    from: FROM,
-    to,
-    subject: `Order confirmed — #${shortId}`,
-    html,
-  })
+  console.log('[resend] HTML template built, calling resend.emails.send()')
+  console.log('[resend] From:', FROM)
+  console.log('[resend] To:', to)
+  console.log('[resend] Subject:', `Order confirmed — #${shortId}`)
+
+  try {
+    const result = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: `Order confirmed — #${shortId}`,
+      html,
+    })
+    console.log('[resend] ✅ resend.emails.send() completed successfully')
+    console.log('[resend] Result:', result)
+    return result
+  } catch (error) {
+    console.error('[resend] ❌ resend.emails.send() threw an error')
+    console.error('[resend] Error:', error)
+    throw error
+  }
 }
 
 // ── Email: admin new order alert ──────────────────────────────────────────────
@@ -213,6 +236,13 @@ export async function sendAdminNewOrderAlert(params: {
   instructions?: string | null
   origin?: string  // Request origin for dynamic link generation
 }) {
+  console.log('========================================')
+  console.log('[resend] 📧 sendAdminNewOrderAlert() CALLED')
+  console.log('[resend] Order ID:', params.orderId)
+  console.log('[resend] Client:', params.clientName, params.clientEmail)
+  console.log('[resend] RESEND_API_KEY in this context:', !!RESEND_API_KEY)
+  console.log('========================================')
+
   const {
     orderId, clientName, clientEmail, moduleName, subjectField,
     academicLevel, deadline, totalAmount, deliverableSummary, instructions,
@@ -224,6 +254,8 @@ export async function sendAdminNewOrderAlert(params: {
   const deadlineFormatted = new Date(deadline).toLocaleDateString('en-GB', { dateStyle: 'long' })
   const totalFormatted    = `£${totalAmount % 1 === 0 ? totalAmount : totalAmount.toFixed(2)}`
   const shortId           = orderId.slice(0, 8).toUpperCase()
+
+  console.log('[resend] Building admin notification email HTML template')
 
   const html = base(`
     ${h1(`New order — #${shortId}`)}
@@ -244,12 +276,26 @@ export async function sendAdminNewOrderAlert(params: {
     ${btn('View order in admin', `${APP_URL}/admin/orders/${orderId}`)}
   `)
 
-  return resend.emails.send({
-    from: FROM,
-    to:   ADMIN,
-    subject: `New order — #${shortId} from ${clientName}`,
-    html,
-  })
+  console.log('[resend] HTML template built, calling resend.emails.send()')
+  console.log('[resend] From:', FROM)
+  console.log('[resend] To:', ADMIN)
+  console.log('[resend] Subject:', `New order — #${shortId} from ${clientName}`)
+
+  try {
+    const result = await resend.emails.send({
+      from: FROM,
+      to:   ADMIN,
+      subject: `New order — #${shortId} from ${clientName}`,
+      html,
+    })
+    console.log('[resend] ✅ resend.emails.send() completed successfully')
+    console.log('[resend] Result:', result)
+    return result
+  } catch (error) {
+    console.error('[resend] ❌ resend.emails.send() threw an error')
+    console.error('[resend] Error:', error)
+    throw error
+  }
 }
 
 // ── Email: contact form enquiry ───────────────────────────────────────────────
