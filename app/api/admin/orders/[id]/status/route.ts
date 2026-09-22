@@ -57,25 +57,62 @@ export async function PATCH(
 
     // Send notification emails based on status change
     if (status === 'in_progress' || status === 'completed') {
-      const { data: order } = await supabaseAdmin
+      console.log('========================================')
+      console.log('[status] 📧 Preparing to send status update email')
+      console.log('[status] Order ID:', orderId)
+      console.log('[status] New status:', status)
+      console.log('========================================')
+
+      const { data: order, error: orderError } = await supabaseAdmin
         .from('orders')
         .select('module_name, subject_field, user_id, deadline')
         .eq('id', orderId)
         .single()
 
+      if (orderError) {
+        console.error('[status] ❌ Failed to fetch order:', orderError)
+        return NextResponse.json({ ok: true }) // Still return success for status update
+      }
+
+      console.log('[status] Order fetched:', {
+        user_id: order?.user_id,
+        module_name: order?.module_name,
+        subject_field: order?.subject_field
+      })
+
       if (order) {
-        const { data: profile } = await supabaseAdmin
+        const { data: profile, error: profileError } = await supabaseAdmin
           .from('profiles')
           .select('email, first_name')
           .eq('id', order.user_id)
           .single()
 
+        if (profileError) {
+          console.error('[status] ❌ Failed to fetch profile for user:', order.user_id, profileError)
+          return NextResponse.json({ ok: true })
+        }
+
+        console.log('========================================')
+        console.log('[status] 👤 Profile fetched for user:', order.user_id)
+        console.log('[status] Email:', profile?.email)
+        console.log('[status] First name:', profile?.first_name)
+        console.log('[status] First name type:', typeof profile?.first_name)
+        console.log('[status] First name is null:', profile?.first_name === null)
+        console.log('[status] First name is undefined:', profile?.first_name === undefined)
+        console.log('[status] First name is empty string:', profile?.first_name === '')
+        console.log('[status] First name after ?? \'\':', profile?.first_name ?? '')
+        console.log('========================================')
+
         if (profile?.email) {
+          const firstName = profile.first_name ?? ''
+          console.log('[status] firstName variable set to:', firstName, '(length:', firstName.length, ')')
+
           if (status === 'in_progress') {
+            console.log('[status] Sending in-progress email with firstName:', firstName)
             const { error: emailErr } = await sendOrderInProgressEmail({
               origin,
               to:           profile.email,
-              firstName:    profile.first_name ?? '',
+              firstName:    firstName,
               orderId,
               moduleName:   order.module_name,
               subjectField: order.subject_field,
@@ -85,10 +122,11 @@ export async function PATCH(
               console.error('[status] in-progress email failed:', emailErr)
             }
           } else if (status === 'completed') {
+            console.log('[status] Sending completed email with firstName:', firstName)
             const { error: emailErr } = await sendOrderCompletedEmail({
               origin,
               to:           profile.email,
-              firstName:    profile.first_name ?? '',
+              firstName:    firstName,
               orderId,
               moduleName:   order.module_name,
               subjectField: order.subject_field,
@@ -97,6 +135,8 @@ export async function PATCH(
               console.error('[status] completion email failed:', emailErr)
             }
           }
+        } else {
+          console.error('[status] ❌ No email found for user:', order.user_id)
         }
       }
     }

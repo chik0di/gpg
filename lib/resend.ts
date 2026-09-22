@@ -343,6 +343,15 @@ export async function sendOrderInProgressEmail(params: {
   deadline: string
   origin?: string  // Request origin for dynamic link generation
 }) {
+  console.log('========================================')
+  console.log('[resend] 📧 sendOrderInProgressEmail() CALLED')
+  console.log('[resend] firstName param received:', params.firstName)
+  console.log('[resend] firstName type:', typeof params.firstName)
+  console.log('[resend] firstName length:', params.firstName?.length)
+  console.log('[resend] firstName === "":', params.firstName === '')
+  console.log('[resend] firstName || "there" will show:', params.firstName || 'there')
+  console.log('========================================')
+
   const { to, firstName, orderId, moduleName, subjectField, deadline, origin } = params
   const APP_URL = getAppUrl(origin)
   const shortId = orderId.slice(0, 8).toUpperCase()
@@ -350,6 +359,9 @@ export async function sendOrderInProgressEmail(params: {
 
   // Prefer module name over subject field for order reference
   const orderReference = moduleName || subjectField
+
+  console.log('[resend] After destructuring, firstName variable:', firstName)
+  console.log('[resend] Greeting will show:', `We've started working on your order, ${firstName || 'there'}!`)
 
   const html = base(`
     ${h1(`We've started working on your order, ${firstName || 'there'}!`)}
@@ -378,12 +390,24 @@ export async function sendOrderCompletedEmail(params: {
   subjectField: string
   origin?: string  // Request origin for dynamic link generation
 }) {
+  console.log('========================================')
+  console.log('[resend] 📧 sendOrderCompletedEmail() CALLED')
+  console.log('[resend] firstName param received:', params.firstName)
+  console.log('[resend] firstName type:', typeof params.firstName)
+  console.log('[resend] firstName length:', params.firstName?.length)
+  console.log('[resend] firstName === "":', params.firstName === '')
+  console.log('[resend] firstName || "there" will show:', params.firstName || 'there')
+  console.log('========================================')
+
   const { to, firstName, orderId, moduleName, subjectField, origin } = params
   const APP_URL = getAppUrl(origin)
   const shortId = orderId.slice(0, 8).toUpperCase()
 
   // Prefer module name over subject field for order reference
   const orderReference = moduleName || subjectField
+
+  console.log('[resend] After destructuring, firstName variable:', firstName)
+  console.log('[resend] Greeting will show:', `Your work is ready, ${firstName || 'there'}!`)
 
   const html = base(`
     ${h1(`Your work is ready, ${firstName || 'there'}!`)}
