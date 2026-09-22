@@ -40,7 +40,22 @@ export default async function ReviewsPreview() {
   console.log('[Reviews Preview] Anon key length:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.length)
   console.log('========================================')
 
-  // Create anon client for public access to approved reviews
+  // ============================================================================
+  // CRITICAL: Reviews RLS Policy Required for Public Access
+  // ============================================================================
+  // This component displays reviews on the PUBLIC landing page (no auth).
+  // Uses ANON key to query reviews table.
+  //
+  // RECURRING BUG: This has broken 3 times - approved reviews don't appear.
+  // ROOT CAUSE: Missing RLS policy "Anyone can read approved reviews"
+  //
+  // REQUIRED POLICY:
+  // CREATE POLICY 'Anyone can read approved reviews' ON reviews
+  // FOR SELECT TO anon, authenticated USING (is_approved = true);
+  //
+  // If reviews stop appearing here, run migration 021 or check RLS policies!
+  // ============================================================================
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!

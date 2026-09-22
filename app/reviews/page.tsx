@@ -71,7 +71,35 @@ function getRelativeTime(dateString: string): string {
 }
 
 export default async function ReviewsPage() {
-  // Create anon client for public access to approved reviews
+  // ============================================================================
+  // CRITICAL: This page queries the reviews table using the ANON (anonymous) key
+  // ============================================================================
+  // This is a PUBLIC page - users are NOT authenticated.
+  //
+  // RECURRING BUG (occurred 3 times):
+  // Approved reviews exist in database but don't appear on this page.
+  //
+  // ROOT CAUSE:
+  // Missing RLS policy: "Anyone can read approved reviews"
+  // This policy MUST exist on the reviews table for SELECT with:
+  // - TO: anon, authenticated
+  // - USING: is_approved = true
+  //
+  // HOW TO FIX:
+  // 1. Run migration 021_prevent_reviews_rls_regression.sql
+  // 2. OR manually run in Supabase SQL Editor:
+  //    CREATE POLICY 'Anyone can read approved reviews' ON reviews
+  //    FOR SELECT TO anon, authenticated USING (is_approved = true);
+  //    GRANT SELECT ON reviews TO anon;
+  //
+  // HOW TO VERIFY:
+  // SET ROLE anon;
+  // SELECT * FROM reviews WHERE is_approved = true;
+  // RESET ROLE;
+  //
+  // If the above returns NO ROWS but approved reviews exist, the policy is broken!
+  // ============================================================================
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
