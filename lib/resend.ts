@@ -211,12 +211,27 @@ export async function sendOrderConfirmation(params: {
       subject: `Order confirmed — #${shortId}`,
       html,
     })
+
+    // Resend SDK returns { data, error } even on HTTP success
+    // Check if the response contains an error field
+    if (result.error) {
+      console.error('[resend] ❌ Resend API returned an error in the response')
+      console.error('[resend] Error object:', result.error)
+      console.error('[resend] Error name:', result.error.name)
+      console.error('[resend] Error message:', result.error.message)
+      throw new Error(`Resend API error: ${result.error.message}`)
+    }
+
     console.log('[resend] ✅ resend.emails.send() completed successfully')
-    console.log('[resend] Result:', result)
+    console.log('[resend] Email ID:', result.data?.id)
+    console.log('[resend] Full result:', result)
     return result
   } catch (error) {
     console.error('[resend] ❌ resend.emails.send() threw an error')
-    console.error('[resend] Error:', error)
+    console.error('[resend] Error type:', error instanceof Error ? error.constructor.name : typeof error)
+    console.error('[resend] Error message:', error instanceof Error ? error.message : String(error))
+    console.error('[resend] Error stack:', error instanceof Error ? error.stack : 'N/A')
+    console.error('[resend] Full error object:', error)
     throw error
   }
 }
@@ -288,12 +303,27 @@ export async function sendAdminNewOrderAlert(params: {
       subject: `New order — #${shortId} from ${clientName}`,
       html,
     })
+
+    // Resend SDK returns { data, error } even on HTTP success
+    // Check if the response contains an error field
+    if (result.error) {
+      console.error('[resend] ❌ Resend API returned an error in the response')
+      console.error('[resend] Error object:', result.error)
+      console.error('[resend] Error name:', result.error.name)
+      console.error('[resend] Error message:', result.error.message)
+      throw new Error(`Resend API error: ${result.error.message}`)
+    }
+
     console.log('[resend] ✅ resend.emails.send() completed successfully')
-    console.log('[resend] Result:', result)
+    console.log('[resend] Email ID:', result.data?.id)
+    console.log('[resend] Full result:', result)
     return result
   } catch (error) {
     console.error('[resend] ❌ resend.emails.send() threw an error')
-    console.error('[resend] Error:', error)
+    console.error('[resend] Error type:', error instanceof Error ? error.constructor.name : typeof error)
+    console.error('[resend] Error message:', error instanceof Error ? error.message : String(error))
+    console.error('[resend] Error stack:', error instanceof Error ? error.stack : 'N/A')
+    console.error('[resend] Full error object:', error)
     throw error
   }
 }

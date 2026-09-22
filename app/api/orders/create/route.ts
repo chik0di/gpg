@@ -634,99 +634,84 @@ export async function POST(request: NextRequest) {
     const clientName  = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Customer'
     const origin = getOriginFromRequest(request)
 
-    // Send emails (fire-and-forget with comprehensive error logging)
+    // 8. Send notification emails - MUST BE AWAITED
+    // CRITICAL: In serverless environments, if we return the response before awaiting,
+    // the runtime freezes/terminates immediately, cutting off email sends mid-flight.
+    // This was causing emails to never reach Resend despite the functions being called.
     console.log('========================================')
-    console.log('[orders/create] 📧 EMAIL SENDING CHECKPOINT - START')
-    console.log('[orders/create] Execution has reached the email sending section')
+    console.log('[orders/create] 📧 EMAIL SENDING - AWAITING COMPLETION')
     console.log('[orders/create] Client email:', clientEmail)
     console.log('[orders/create] Admin email:', 'admin@getprimegrade.com')
     console.log('[orders/create] RESEND_API_KEY present:', !!process.env.RESEND_API_KEY)
-    console.log('[orders/create] RESEND_API_KEY prefix:', process.env.RESEND_API_KEY?.substring(0, 10) + '...')
     console.log('[orders/create] Order ID:', order.id)
-    console.log('[orders/create] Module name:', orderData.moduleName)
-    console.log('[orders/create] Subject field:', orderData.subjectField)
     console.log('========================================')
 
-    console.log('[orders/create] 🔵 CHECKPOINT 1: About to call sendOrderConfirmation()')
-    sendOrderConfirmation({
-      origin,
-      to:                 clientEmail,
-      firstName:          profile?.first_name ?? '',
-      orderId:            order.id,
-      moduleName:         orderData.moduleName || null,
-      subjectField:       orderData.subjectField,
-      academicLevel:      orderData.academicLevel,
-      deadline:           orderData.deadline,
-      totalAmount:        totalPence / 100,
-      deliverableItems,
-      academicLevelAdjustment: academicAdjustmentPence !== 0 ? academicAdjustmentPence / 100 : null,
-      urgencyPremium: urgencyPremiumPence > 0 ? urgencyPremiumPence / 100 : null,
-      originalityReportPrice: orderData.includeOriginalityReport ? (ORIGINALITY_REPORT_PENCE / 100) : null,
-      isOutsideStandardFields: orderData.isOutsideStandardFields || false,
-    })
-      .then((result) => {
-        console.log('========================================')
-        console.log('[orders/create] ✅ CLIENT CONFIRMATION EMAIL SENT')
-        console.log('[orders/create] Resend response:', result)
-        console.log('[orders/create] Email ID:', result?.data?.id)
-        console.log('========================================')
+    // CRITICAL FIX: Must await email sends to prevent serverless function termination
+    // before completion. In serverless environments, if we return before awaiting,
+    // the runtime can freeze/terminate immediately, cutting off email sends mid-flight.
+    console.log('[orders/create] 🔵 CHECKPOINT 1: Awaiting email sends (parallel)')
+    const emailResults = await Promise.allSettled([
+      sendOrderConfirmation({
+        origin,
+        to:                 clientEmail,
+        firstName:          profile?.first_name ?? '',
+        orderId:            order.id,
+        moduleName:         orderData.moduleName || null,
+        subjectField:       orderData.subjectField,
+        academicLevel:      orderData.academicLevel,
+        deadline:           orderData.deadline,
+        totalAmount:        totalPence / 100,
+        deliverableItems,
+        academicLevelAdjustment: academicAdjustmentPence !== 0 ? academicAdjustmentPence / 100 : null,
+        urgencyPremium: urgencyPremiumPence > 0 ? urgencyPremiumPence / 100 : null,
+        originalityReportPrice: orderData.includeOriginalityReport ? (ORIGINALITY_REPORT_PENCE / 100) : null,
+        isOutsideStandardFields: orderData.isOutsideStandardFields || false,
+      }),
+      sendAdminNewOrderAlert({
+        origin,
+        orderId:            order.id,
+        clientName,
+        clientEmail,
+        moduleName:         orderData.moduleName || null,
+        subjectField:       orderData.subjectField,
+        academicLevel:      orderData.academicLevel,
+        deadline:           orderData.deadline,
+        totalAmount:        totalPence / 100,
+        deliverableSummary,
+        instructions:       orderData.instructions || null,
       })
-      .catch((emailError) => {
-        console.error('========================================')
-        console.error('[orders/create] ❌ CLIENT CONFIRMATION EMAIL FAILED')
-        console.error('[orders/create] Error type:', emailError?.constructor?.name)
-        console.error('[orders/create] Error message:', emailError?.message)
-        console.error('[orders/create] Error stack:', emailError?.stack)
-        console.error('[orders/create] Resend error response:', emailError?.response)
-        console.error('[orders/create] Resend error data:', emailError?.response?.data)
-        console.error('[orders/create] Resend status code:', emailError?.statusCode || emailError?.response?.status)
-        console.error('[orders/create] Full error object:', JSON.stringify(emailError, null, 2))
-        console.error('========================================')
-      })
+    ])
 
-    console.log('[orders/create] 🔵 CHECKPOINT 2: Client email call initiated, now calling admin email')
-    console.log('[orders/create] 🔵 CHECKPOINT 2: About to call sendAdminNewOrderAlert()')
-    sendAdminNewOrderAlert({
-      origin,
-      orderId:            order.id,
-      clientName,
-      clientEmail,
-      moduleName:         orderData.moduleName || null,
-      subjectField:       orderData.subjectField,
-      academicLevel:      orderData.academicLevel,
-      deadline:           orderData.deadline,
-      totalAmount:        totalPence / 100,
-      deliverableSummary,
-      instructions:       orderData.instructions || null,
-    })
-      .then((result) => {
-        console.log('========================================')
-        console.log('[orders/create] ✅ ADMIN NOTIFICATION EMAIL SENT')
-        console.log('[orders/create] Resend response:', result)
-        console.log('[orders/create] Email ID:', result?.data?.id)
-        console.log('========================================')
-      })
-      .catch((emailError) => {
-        console.error('========================================')
-        console.error('[orders/create] ❌ ADMIN NOTIFICATION EMAIL FAILED')
-        console.error('[orders/create] Error type:', emailError?.constructor?.name)
-        console.error('[orders/create] Error message:', emailError?.message)
-        console.error('[orders/create] Error stack:', emailError?.stack)
-        console.error('[orders/create] Resend error response:', emailError?.response)
-        console.error('[orders/create] Resend error data:', emailError?.response?.data)
-        console.error('[orders/create] Resend status code:', emailError?.statusCode || emailError?.response?.status)
-        console.error('[orders/create] Full error object:', JSON.stringify(emailError, null, 2))
-        console.error('========================================')
-      })
+    console.log('[orders/create] 🔵 CHECKPOINT 2: Email promises settled, checking results')
+    const [clientResult, adminResult] = emailResults
 
-    console.log('========================================')
-    console.log('[orders/create] 🔵 CHECKPOINT 3: Both email functions called (fire-and-forget)')
-    console.log('[orders/create] Emails will process asynchronously')
-    console.log('[orders/create] Watch for success (✅) or failure (❌) logs above')
-    console.log('[orders/create] If no success/failure logs appear, emails failed silently INSIDE the function')
-    console.log('========================================')
+    if (clientResult.status === 'fulfilled') {
+      console.log('========================================')
+      console.log('[orders/create] ✅ CLIENT CONFIRMATION EMAIL SENT')
+      console.log('[orders/create] Email ID:', clientResult.value?.data?.id)
+      console.log('========================================')
+    } else {
+      console.error('========================================')
+      console.error('[orders/create] ❌ CLIENT CONFIRMATION EMAIL FAILED')
+      console.error('[orders/create] Error:', clientResult.reason?.message || clientResult.reason)
+      console.error('========================================')
+    }
 
-    // 9. Clean up pending orders for this user (fire-and-forget)
+    if (adminResult.status === 'fulfilled') {
+      console.log('========================================')
+      console.log('[orders/create] ✅ ADMIN NOTIFICATION EMAIL SENT')
+      console.log('[orders/create] Email ID:', adminResult.value?.data?.id)
+      console.log('========================================')
+    } else {
+      console.error('========================================')
+      console.error('[orders/create] ❌ ADMIN NOTIFICATION EMAIL FAILED')
+      console.error('[orders/create] Error:', adminResult.reason?.message || adminResult.reason)
+      console.error('========================================')
+    }
+
+    console.log('[orders/create] 🔵 CHECKPOINT 3: Email sending complete')
+
+    // 9. Clean up pending orders for this user (can be fire-and-forget as this is non-critical)
     supabaseAdmin
       .from('pending_orders')
       .delete()
