@@ -402,6 +402,9 @@ export async function POST(request: NextRequest) {
         price:     pricePence / 100, // Store as pounds for backward compat
         price_pence: pricePence,     // Store exact pence
         extracted_by_ai: orderData.usedAIExtraction || false,
+        ai_description: d.aiDescription || null, // Preserve AI-extracted description
+        raw_quantity: d.quantity || null,
+        quantity_type: d.type === 'written' ? d.sizeMode : (d.type === 'presentation' ? 'slides' : null),
       }
     })
 

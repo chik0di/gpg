@@ -33,6 +33,13 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function deliverableBasePrice(d: Deliverable): number {
+  // CRITICAL: Use stored basePrice for AI-extracted deliverables
+  // This preserves the exact price confirmed on the review screen
+  if (d.basePrice && d.basePrice > 0) {
+    return d.basePrice
+  }
+
+  // Otherwise calculate from deliverable details (manual entries)
   if (d.type === 'written') {
     const pages = d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE)
     return calcWrittenPrice(pages)
@@ -46,6 +53,14 @@ function deliverableBasePrice(d: Deliverable): number {
 }
 
 function deliverableLabel(d: Deliverable): string {
+  // CRITICAL: Use AI description if available
+  // This preserves the exact description confirmed on the review screen
+  // (e.g., "viva voce examination" instead of generic "Database Design")
+  if (d.aiDescription) {
+    return d.aiDescription
+  }
+
+  // Fallback to generic labels for manually-added deliverables
   if (d.type === 'written') {
     const pages = d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE)
     return `Written — ${pages} page${pages !== 1 ? 's' : ''}`
