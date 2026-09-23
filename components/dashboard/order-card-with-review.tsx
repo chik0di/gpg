@@ -14,6 +14,7 @@ interface Props {
     status: string
     total_amount: number
     created_at: string
+    module_name?: string | null
   }
   moduleName?: string | null
 }
@@ -137,7 +138,7 @@ export default function OrderCardWithReview({ order, moduleName = null }: Props)
           {/* Main info */}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-[#1B2E4B] truncate">
-              {order.subject_field}
+              {order.module_name || moduleName || order.subject_field}
               <span className="font-normal text-[#9CA3AF] ml-2">· {order.academic_level}</span>
             </p>
             <div className="flex items-center gap-2 mt-0.5">

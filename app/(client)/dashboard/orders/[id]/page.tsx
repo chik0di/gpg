@@ -130,7 +130,7 @@ export default async function OrderDetailPage({ params }: Props) {
           <p className="text-xs font-bold text-[#6B7280] uppercase tracking-wide">Order details</p>
         </div>
         <div className="px-5">
-          <Row label="Subject" value={order.subject_field} />
+          <Row label="Subject" value={order.module_name || order.subject_field} />
           <Row label="Academic level" value={order.academic_level} />
           <Row label="Deadline" value={new Date(order.deadline).toLocaleDateString('en-GB', { dateStyle: 'long' })} />
           <Row label="Originality report" value={order.originality_report ? 'Included' : 'Not included'} />
