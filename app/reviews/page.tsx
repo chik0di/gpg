@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   description: 'Read what our clients say about our model answers and study materials',
 }
 
+// Revalidate every 5 minutes to show newly approved reviews
+export const revalidate = 300
+
 interface Review {
   id: string
   rating: number
