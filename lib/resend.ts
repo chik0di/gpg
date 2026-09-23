@@ -75,7 +75,7 @@ function divider() {
 
 interface DeliverableItem {
   description: string
-  basePrice: number
+  finalPrice: number  // Final price with all multipliers applied
 }
 
 export async function sendOrderConfirmation(params: {
@@ -87,9 +87,7 @@ export async function sendOrderConfirmation(params: {
   academicLevel: string
   deadline: string
   totalAmount: number
-  deliverableItems: DeliverableItem[]  // Individual deliverable items with base prices
-  academicLevelAdjustment?: number | null  // Adjustment amount (can be negative or positive)
-  urgencyPremium?: number | null  // Urgency premium amount (always positive or zero)
+  deliverableItems: DeliverableItem[]  // Individual deliverable items with FINAL prices (all multipliers applied)
   originalityReportPrice?: number | null  // Originality report addon price
   isOutsideStandardFields?: boolean
   origin?: string  // Request origin for dynamic link generation
@@ -104,7 +102,6 @@ export async function sendOrderConfirmation(params: {
   const {
     to, firstName, orderId, moduleName, subjectField,
     academicLevel, deadline, totalAmount, deliverableItems,
-    academicLevelAdjustment = null, urgencyPremium = null,
     originalityReportPrice = null,
     isOutsideStandardFields = false,
     origin,
@@ -124,41 +121,22 @@ export async function sendOrderConfirmation(params: {
     ? p('<strong>Please note:</strong> As your assignment falls outside our standard subject areas, our team will review your brief within 24 hours to confirm we can complete your work. If we are unable to proceed for any reason, you will receive a full refund immediately — no questions asked.')
     : ''
 
-  // Build itemized receipt table
+  // Build itemized receipt table - shows final prices only (matches checkout display)
   let receiptRows = ''
 
-  // Deliverable items
+  // Deliverable items with final prices (all multipliers already applied)
   deliverableItems.forEach((item, index) => {
     receiptRows += `<tr>
       <td style="padding:10px 0;font-size:14px;color:#1B2E4B;vertical-align:top;border-top:${index === 0 ? '1px solid #E8E2D9' : 'none'};">${item.description}</td>
-      <td style="padding:10px 0;font-size:14px;color:#1B2E4B;font-weight:600;text-align:right;vertical-align:top;border-top:${index === 0 ? '1px solid #E8E2D9' : 'none'};">${fmt(item.basePrice)}</td>
+      <td style="padding:10px 0;font-size:14px;color:#1B2E4B;font-weight:600;text-align:right;vertical-align:top;border-top:${index === 0 ? '1px solid #E8E2D9' : 'none'};">${fmt(item.finalPrice)}</td>
     </tr>`
   })
 
-  // Academic level adjustment (can be positive or negative)
-  if (academicLevelAdjustment !== null && academicLevelAdjustment !== 0) {
-    const isIncrease = academicLevelAdjustment > 0
-    const color = isIncrease ? '#C4861A' : '#16A34A'
-    const sign = isIncrease ? '+' : '−'
-    receiptRows += `<tr>
-      <td style="padding:8px 0;font-size:13px;color:#9CA3AF;vertical-align:top;">Academic level adjustment (${academicLevel})</td>
-      <td style="padding:8px 0;font-size:13px;font-weight:600;text-align:right;vertical-align:top;color:${color};">${sign}${fmt(Math.abs(academicLevelAdjustment))}</td>
-    </tr>`
-  }
-
-  // Urgency premium
-  if (urgencyPremium !== null && urgencyPremium > 0) {
-    receiptRows += `<tr>
-      <td style="padding:8px 0;font-size:13px;color:#9CA3AF;vertical-align:top;">Urgency premium</td>
-      <td style="padding:8px 0;font-size:13px;font-weight:600;text-align:right;vertical-align:top;color:#C4861A;">+${fmt(urgencyPremium)}</td>
-    </tr>`
-  }
-
-  // Originality report addon
+  // Originality report addon (if included)
   if (originalityReportPrice !== null && originalityReportPrice > 0) {
     receiptRows += `<tr>
-      <td style="padding:8px 0;font-size:13px;color:#9CA3AF;vertical-align:top;">Originality &amp; AI Detection Report</td>
-      <td style="padding:8px 0;font-size:13px;font-weight:600;text-align:right;vertical-align:top;color:#1B2E4B;">+${fmt(originalityReportPrice)}</td>
+      <td style="padding:10px 0;font-size:14px;color:#1B2E4B;vertical-align:top;">Originality &amp; AI Detection Report</td>
+      <td style="padding:10px 0;font-size:14px;color:#1B2E4B;font-weight:600;text-align:right;vertical-align:top;">${fmt(originalityReportPrice)}</td>
     </tr>`
   }
 

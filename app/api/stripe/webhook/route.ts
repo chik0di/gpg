@@ -250,9 +250,17 @@ export async function POST(request: NextRequest) {
             return d.type
           }).join(', ')
 
-          // Build itemized deliverable list for client receipt
+          // Calculate multipliers for final pricing
+          const academicMult = getAcademicMultiplier(orderData.academicLevel)
+          const deadlineMult = getDeadlineMultiplier(orderData.deadline)
+
+          // Build itemized deliverable list with FINAL prices (all multipliers applied)
           const deliverableItems = orderData.deliverables.map((d) => {
             const basePrice = deliverableBasePrice(d)
+
+            // Apply all multipliers to get final price
+            const finalPrice = basePrice * academicMult * deadlineMult
+
             let description = ''
 
             if (d.type === 'written') {
@@ -269,15 +277,8 @@ export async function POST(request: NextRequest) {
               description = `Practical work: ${practicalItem?.label ?? d.practicalKey}`
             }
 
-            return { description, basePrice }
+            return { description, finalPrice }
           })
-
-          // Calculate adjustments using the calcOrderTotal breakdown
-          const academicMult = getAcademicMultiplier(orderData.academicLevel)
-          const deadlineMult = getDeadlineMultiplier(orderData.deadline)
-
-          const academicAdjustment = subtotal * (academicMult - 1)
-          const urgencyPremium = subtotal * academicMult * (deadlineMult - 1)
 
           const clientEmail = profile?.email ?? ''
           const clientName  = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Customer'
@@ -294,8 +295,6 @@ export async function POST(request: NextRequest) {
             deadline:           orderData.deadline,
             totalAmount:        total,
             deliverableItems,
-            academicLevelAdjustment: academicAdjustment !== 0 ? academicAdjustment : null,
-            urgencyPremium: urgencyPremium > 0 ? urgencyPremium : null,
             originalityReportPrice: orderData.includeOriginalityReport ? ORIGINALITY_REPORT_PRICE : null,
             isOutsideStandardFields: false,
           }).catch((e) => console.error('[webhook] client confirmation email failed:', e))
