@@ -19,6 +19,16 @@ export default function DownloadWithReview({
   const [showReviewPopup, setShowReviewPopup] = useState(false)
   const [checkingReview, setCheckingReview] = useState(false)
 
+  // DEBUG: Log on component mount
+  console.log('========================================')
+  console.log('[DownloadWithReview] 🔧 COMPONENT MOUNTED')
+  console.log('[DownloadWithReview] Order ID:', orderId)
+  console.log('[DownloadWithReview] Module name:', moduleName)
+  console.log('[DownloadWithReview] Download URL exists:', !!downloadUrl)
+  console.log('[DownloadWithReview] Download URL:', downloadUrl?.substring(0, 100) + '...')
+  console.log('[DownloadWithReview] Component rendered - waiting for user to click download')
+  console.log('========================================')
+
   const handleDownloadClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
     console.log('========================================')
     console.log('[DownloadWithReview] 📥 DOWNLOAD CLICKED')
