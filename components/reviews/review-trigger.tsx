@@ -149,7 +149,7 @@ export default function ReviewTrigger({ orderId, moduleName, isCompleted }: Revi
   const handleSubmitReview = async (data: {
     rating: number
     reviewText: string
-    displayPreference: 'anonymous' | 'first_name' | 'first_name_module'
+    displayPreference: 'anonymous' | 'first_name_module'
   }) => {
     console.log('[ReviewTrigger] handleSubmitReview called')
     console.log('[ReviewTrigger] Submitting review for order:', orderId)

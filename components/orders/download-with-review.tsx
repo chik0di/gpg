@@ -82,7 +82,7 @@ export default function DownloadWithReview({
   const handleReviewSubmit = async (data: {
     rating: number
     reviewText: string
-    displayPreference: 'anonymous' | 'first_name' | 'first_name_module'
+    displayPreference: 'anonymous' | 'first_name_module'
   }) => {
     console.log('[DownloadWithReview] Submitting review for order:', orderId)
 

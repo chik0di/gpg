@@ -112,7 +112,7 @@ export default function OrderCardWithReview({ order, moduleName = null }: Props)
   const handleReviewSubmit = async (data: {
     rating: number
     reviewText: string
-    displayPreference: 'anonymous' | 'first_name' | 'first_name_module'
+    displayPreference: 'anonymous' | 'first_name_module'
   }) => {
     const response = await fetch('/api/reviews/submit', {
       method: 'POST',

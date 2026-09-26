@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     // Check if user owns this order and it's completed
     const { data: order, error: orderError } = await supabase
       .from('orders')
-      .select('id, status, module_name, user_id')
+      .select('id, status, module_name, subject_field, user_id')
       .eq('id', orderId)
       .eq('user_id', user.id)
       .single()
@@ -90,31 +90,42 @@ export async function POST(request: Request) {
         console.log('[reviews/submit]   → displayName = null')
         console.log('[reviews/submit]   → isAnonymous = true')
         break
-      case 'first_name':
-        displayName = profile?.first_name ? profile.first_name.trim().slice(0, 100) : 'Anonymous'
-        console.log('[reviews/submit] ✅ Case: first_name')
-        console.log('[reviews/submit]   → displayName =', displayName)
-        break
       case 'first_name_module':
         console.log('[reviews/submit] ✅ Case: first_name_module')
         console.log('[reviews/submit]   Checking conditions:')
         console.log('[reviews/submit]   - profile?.first_name:', !!profile?.first_name, '→', profile?.first_name)
         console.log('[reviews/submit]   - order.module_name:', !!order.module_name, '→', order.module_name)
+        console.log('[reviews/submit]   - order.subject_field:', !!order.subject_field, '→', order.subject_field)
 
-        if (profile?.first_name && order.module_name) {
+        if (profile?.first_name) {
           const firstName = profile.first_name.trim().slice(0, 50)
-          const moduleName = order.module_name.trim().slice(0, 100)
-          displayName = `${firstName} — ${moduleName}`
-          showModule = true
-          console.log('[reviews/submit]   ✅ Both exist → Full format')
-          console.log('[reviews/submit]   → firstName:', firstName)
-          console.log('[reviews/submit]   → moduleName:', moduleName)
-          console.log('[reviews/submit]   → displayName:', displayName)
-          console.log('[reviews/submit]   → showModule:', showModule)
-        } else if (profile?.first_name) {
-          displayName = profile.first_name.trim().slice(0, 100)
-          console.log('[reviews/submit]   ⚠️  Only first name → First name only')
-          console.log('[reviews/submit]   → displayName:', displayName)
+
+          // Priority 1: Use module_name if available
+          if (order.module_name) {
+            const moduleName = order.module_name.trim().slice(0, 100)
+            displayName = `${firstName} — ${moduleName}`
+            showModule = true
+            console.log('[reviews/submit]   ✅ Using module_name')
+            console.log('[reviews/submit]   → firstName:', firstName)
+            console.log('[reviews/submit]   → moduleName:', moduleName)
+            console.log('[reviews/submit]   → displayName:', displayName)
+          }
+          // Priority 2: Fall back to subject_field if module_name is null
+          else if (order.subject_field) {
+            const subjectField = order.subject_field.trim().slice(0, 100)
+            displayName = `${firstName} — ${subjectField}`
+            showModule = true
+            console.log('[reviews/submit]   ⚠️  Falling back to subject_field (no module_name)')
+            console.log('[reviews/submit]   → firstName:', firstName)
+            console.log('[reviews/submit]   → subjectField:', subjectField)
+            console.log('[reviews/submit]   → displayName:', displayName)
+          }
+          // Priority 3: If both are null, use Anonymous (should never happen but defensive)
+          else {
+            displayName = 'Anonymous'
+            console.log('[reviews/submit]   ❌ No module_name or subject_field → Anonymous fallback')
+            console.log('[reviews/submit]   → displayName:', displayName)
+          }
         } else {
           displayName = 'Anonymous'
           console.log('[reviews/submit]   ❌ No first name → Anonymous')
@@ -122,8 +133,8 @@ export async function POST(request: Request) {
         }
         break
       default:
-        displayName = profile?.first_name ? profile.first_name.trim().slice(0, 100) : 'Anonymous'
-        console.log('[reviews/submit] ⚠️  Case: default (unexpected)')
+        displayName = 'Anonymous'
+        console.log('[reviews/submit] ⚠️  Case: default (unexpected) → Anonymous')
         console.log('[reviews/submit]   → displayName =', displayName)
     }
 

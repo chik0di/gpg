@@ -9,7 +9,7 @@ interface ReviewPopupProps {
   onSubmit: (data: {
     rating: number
     reviewText: string
-    displayPreference: 'anonymous' | 'first_name' | 'first_name_module'
+    displayPreference: 'anonymous' | 'first_name_module'
   }) => Promise<void>
 }
 
@@ -17,7 +17,7 @@ export default function ReviewPopup({ orderId, moduleName, onClose, onSubmit }: 
   const [rating, setRating] = useState(0)
   const [hoveredRating, setHoveredRating] = useState(0)
   const [reviewText, setReviewText] = useState('')
-  const [displayPreference, setDisplayPreference] = useState<'anonymous' | 'first_name' | 'first_name_module'>('first_name_module')
+  const [displayPreference, setDisplayPreference] = useState<'anonymous' | 'first_name_module'>('first_name_module')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const MAX_REVIEW_LENGTH = 2000
@@ -153,25 +153,13 @@ export default function ReviewPopup({ orderId, moduleName, onClose, onSubmit }: 
               <input
                 type="radio"
                 name="display"
-                value="first_name"
-                checked={displayPreference === 'first_name'}
-                onChange={(e) => setDisplayPreference(e.target.value as any)}
-                className="w-4 h-4 text-[#E8A020] border-[#D1D5DB] focus:ring-[#E8A020]"
-              />
-              <span className="text-sm text-[#1B2E4B]">First name only</span>
-            </label>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="radio"
-                name="display"
                 value="first_name_module"
                 checked={displayPreference === 'first_name_module'}
                 onChange={(e) => setDisplayPreference(e.target.value as any)}
                 className="w-4 h-4 text-[#E8A020] border-[#D1D5DB] focus:ring-[#E8A020]"
               />
               <span className="text-sm text-[#1B2E4B]">
-                First name + module
-                {!moduleName && <span className="text-[#9CA3AF] ml-1">(no module name)</span>}
+                First name + {moduleName ? 'module' : 'subject'}
               </span>
             </label>
           </div>
