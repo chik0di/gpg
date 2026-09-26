@@ -90,6 +90,27 @@ function ReviewRow({ review, onAction }: { review: Review; onAction: () => void 
     }
   }
 
+  const handleUnpublish = async () => {
+    if (!confirm('Are you sure you want to unpublish this review? It will be removed from the live site and moved back to pending.')) return
+
+    setLoading(true)
+    try {
+      const response = await fetch('/api/admin/reviews/unpublish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewId: review.id }),
+      })
+
+      if (!response.ok) throw new Error('Failed to unpublish review')
+      onAction()
+    } catch (error) {
+      console.error('Failed to unpublish review:', error)
+      alert('Failed to unpublish review')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const reviewText = review.review_text || ''
   const isLong = reviewText.length > 80
   const displayText = !expanded && isLong ? reviewText.slice(0, 80) + '...' : reviewText
@@ -161,7 +182,16 @@ function ReviewRow({ review, onAction }: { review: Review; onAction: () => void 
             </button>
           </div>
         ) : (
-          <span className="text-xs text-green-600 font-semibold">Approved</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-green-600 font-semibold">Live</span>
+            <button
+              onClick={handleUnpublish}
+              disabled={loading}
+              className="px-3 py-1.5 bg-amber-600 text-white font-bold text-xs rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 whitespace-nowrap"
+            >
+              Unpublish
+            </button>
+          </div>
         )}
       </td>
     </tr>

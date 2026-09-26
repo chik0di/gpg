@@ -1,0 +1,38 @@
+import { NextResponse } from 'next/server'
+import { createServerClient } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth/admin'
+
+export async function POST(request: Request) {
+  try {
+    // Verify admin access
+    await requireAdmin()
+
+    const { reviewId } = await request.json()
+
+    if (!reviewId) {
+      return NextResponse.json({ error: 'Review ID is required' }, { status: 400 })
+    }
+
+    // Use regular client - RLS policy will enforce admin access
+    const supabase = createServerClient()
+    const { error } = await supabase
+      .from('reviews')
+      .update({ is_approved: false })
+      .eq('id', reviewId)
+      .eq('is_approved', true) // Only unpublish if currently approved
+
+    if (error) {
+      console.error('Failed to unpublish review:', error)
+      return NextResponse.json({ error: 'Failed to unpublish review' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    // requireAdmin throws Response with 403
+    if (error instanceof Response) {
+      return error
+    }
+    console.error('Unpublish review error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
