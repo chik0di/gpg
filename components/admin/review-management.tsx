@@ -20,13 +20,16 @@ interface Props {
   approvedReviews: Review[]
 }
 
-function StarRating({ rating }: { rating: number }) {
+function StarRating({ rating, compact = false }: { rating: number; compact?: boolean }) {
+  const size = compact ? 'w-4 h-4' : 'w-5 h-5'
+  const gap = compact ? 'gap-0.5' : 'gap-1'
+
   return (
-    <div className="flex gap-1">
+    <div className={`flex ${gap}`}>
       {[1, 2, 3, 4, 5].map((star) => (
         <svg
           key={star}
-          className="w-5 h-5"
+          className={size}
           fill={star <= rating ? '#E8A020' : 'none'}
           stroke={star <= rating ? '#E8A020' : '#D1D5DB'}
           strokeWidth={2}
@@ -43,8 +46,9 @@ function StarRating({ rating }: { rating: number }) {
   )
 }
 
-function ReviewCard({ review, onAction }: { review: Review; onAction: () => void }) {
+function ReviewRow({ review, onAction }: { review: Review; onAction: () => void }) {
   const [loading, setLoading] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   const handleApprove = async () => {
     setLoading(true)
@@ -86,56 +90,81 @@ function ReviewCard({ review, onAction }: { review: Review; onAction: () => void
     }
   }
 
+  const reviewText = review.review_text || ''
+  const isLong = reviewText.length > 80
+  const displayText = !expanded && isLong ? reviewText.slice(0, 80) + '...' : reviewText
+
   return (
-    <div className="bg-white border border-[#E8E2D9] rounded-2xl p-5">
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <StarRating rating={review.rating} />
-            <span className="text-xs text-[#9CA3AF]">
-              {new Date(review.created_at).toLocaleDateString('en-GB', { dateStyle: 'medium' })}
-            </span>
+    <tr className="border-b border-[#E8E2D9] hover:bg-[#F5F0E8]/30 transition-colors">
+      {/* Client/Module */}
+      <td className="px-4 py-3">
+        <div className="text-sm font-semibold text-[#1B2E4B]">
+          {review.display_name || 'Anonymous'}
+        </div>
+        {review.module_name && (
+          <div className="text-xs text-[#9CA3AF] mt-0.5">{review.module_name}</div>
+        )}
+      </td>
+
+      {/* Star Rating */}
+      <td className="px-4 py-3">
+        <StarRating rating={review.rating} compact />
+      </td>
+
+      {/* Review Text */}
+      <td className="px-4 py-3 max-w-md">
+        {reviewText ? (
+          <div>
+            <p className="text-sm text-[#6B7280] leading-snug">
+              "{displayText}"
+            </p>
+            {isLong && (
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="text-xs text-[#E8A020] hover:text-[#d89518] mt-1 font-semibold"
+              >
+                {expanded ? 'Show less' : 'Show more'}
+              </button>
+            )}
           </div>
-          <p className="text-sm font-semibold text-[#1B2E4B]">
-            {review.display_name || 'Anonymous'}
-          </p>
-          {review.module_name && (
-            <p className="text-xs text-[#9CA3AF] mt-0.5">{review.module_name}</p>
-          )}
-        </div>
-        <div className="text-right">
-          <p className="text-xs text-[#9CA3AF]">Order</p>
-          <p className="text-sm font-mono font-semibold text-[#1B2E4B]">
-            #{review.order_id.slice(0, 8).toUpperCase()}
-          </p>
-        </div>
-      </div>
+        ) : (
+          <span className="text-xs text-[#9CA3AF] italic">No text provided</span>
+        )}
+      </td>
 
-      {review.review_text && (
-        <p className="text-sm text-[#6B7280] leading-relaxed mb-4 p-3 bg-[#F5F0E8] rounded-xl">
-          "{review.review_text}"
-        </p>
-      )}
+      {/* Date */}
+      <td className="px-4 py-3 text-sm text-[#6B7280] whitespace-nowrap">
+        {new Date(review.created_at).toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric'
+        })}
+      </td>
 
-      {!review.is_approved && (
-        <div className="flex gap-2">
-          <button
-            onClick={handleApprove}
-            disabled={loading}
-            className="flex-1 px-4 py-2 bg-green-600 text-white font-bold text-sm rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
-          >
-            Approve
-          </button>
-          <button
-            onClick={handleReject}
-            disabled={loading}
-            className="flex-1 px-4 py-2 bg-red-600 text-white font-bold text-sm rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
-          >
-            Reject
-          </button>
-        </div>
-      )}
-    </div>
+      {/* Actions */}
+      <td className="px-4 py-3">
+        {!review.is_approved ? (
+          <div className="flex gap-2">
+            <button
+              onClick={handleApprove}
+              disabled={loading}
+              className="px-3 py-1.5 bg-green-600 text-white font-bold text-xs rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 whitespace-nowrap"
+            >
+              Approve
+            </button>
+            <button
+              onClick={handleReject}
+              disabled={loading}
+              className="px-3 py-1.5 bg-red-600 text-white font-bold text-xs rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 whitespace-nowrap"
+            >
+              Reject
+            </button>
+          </div>
+        ) : (
+          <span className="text-xs text-green-600 font-semibold">Approved</span>
+        )}
+      </td>
+    </tr>
   )
 }
 
@@ -175,7 +204,7 @@ export default function ReviewManagement({ pendingReviews, approvedReviews }: Pr
         </button>
       </div>
 
-      {/* Reviews list */}
+      {/* Reviews table */}
       {reviews.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-[#9CA3AF]">
@@ -183,10 +212,33 @@ export default function ReviewManagement({ pendingReviews, approvedReviews }: Pr
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {reviews.map((review) => (
-            <ReviewCard key={review.id} review={review} onAction={handleAction} />
-          ))}
+        <div className="bg-[#F5F0E8] rounded-2xl border border-[#E8E2D9] overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-[#1B2E4B] text-white">
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide">
+                  Client / Module
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide">
+                  Rating
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide">
+                  Review
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide">
+                  Date
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white">
+              {reviews.map((review) => (
+                <ReviewRow key={review.id} review={review} onAction={handleAction} />
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
