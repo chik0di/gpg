@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import StatsStrip from './stats-strip'
 import FiltersBar, { type Filters } from './filters-bar'
 import UrgentPanel from './urgent-panel'
@@ -18,6 +18,7 @@ interface Order {
   user_id: string
   client_name?: string
   client_email?: string
+  has_active_revision?: boolean
   deliverables_count?: number
 }
 
@@ -69,6 +70,8 @@ export default function AdminDashboard({ initialOrders }: Props) {
     search: '',
   })
 
+  useEffect(() => { setOrders(initialOrders) }, [initialOrders])
+
   // Calculate stats
   const stats = useMemo(() => {
     const totalOrders = orders.length
@@ -92,7 +95,9 @@ export default function AdminDashboard({ initialOrders }: Props) {
 
     // Status
     if (filters.status === 'active') {
-      filtered = filtered.filter(o => o.status === 'pending' || o.status === 'in_progress')
+      filtered = filtered.filter(o => o.status === 'pending' || o.status === 'in_progress' || o.has_active_revision)
+    } else if (filters.status === 'revisions') {
+      filtered = filtered.filter(o => o.has_active_revision)
     } else if (filters.status !== 'all') {
       filtered = filtered.filter(o => o.status === filters.status)
     }
@@ -230,6 +235,7 @@ export default function AdminDashboard({ initialOrders }: Props) {
     if (filters.status === 'pending') return "No pending orders at the moment."
     if (filters.status === 'in_progress') return "No orders in progress right now."
     if (filters.status === 'completed') return "No completed orders yet."
+    if (filters.status === 'revisions') return 'No active revision requests.'
     if (filters.search) return `No orders match "${filters.search}"`
     return "No orders found with the current filters."
   }
@@ -242,6 +248,10 @@ export default function AdminDashboard({ initialOrders }: Props) {
         activeFilter={filters.status === 'all' ? null : filters.status}
         onFilterClick={handleStatFilterClick}
       />
+
+      <button className="px-4 py-2 rounded-xl border border-[#E8E2D9] bg-white text-sm font-semibold text-[#1B2E4B]" onClick={() => handleStatFilterClick('revisions')}>
+        Active revision requests ({orders.filter(o => o.has_active_revision).length})
+      </button>
 
       {/* Filters Bar */}
       <FiltersBar

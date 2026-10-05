@@ -139,6 +139,11 @@ export async function POST(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
     }
 
+    const { data: activeRevision, error: revisionError } = await supabaseAdmin.from('order_revisions')
+      .select('id').eq('order_id', orderId).in('status', ['requested', 'in_progress']).maybeSingle()
+    if (revisionError) return NextResponse.json({ error: 'Could not check revision requests.' }, { status: 503 })
+    if (activeRevision) return NextResponse.json({ error: 'Deliver revised work through the active revision request below.' }, { status: 409 })
+
     // Get user email from joined profile
     const userEmail = (order.profiles as any)?.email || ''
 
@@ -153,7 +158,7 @@ export async function POST(
 
     // Build filename with or without last name
     const namePart = lastClean ? `${firstClean}_${lastClean}` : firstClean
-    const fileName   = `${subject}_${namePart}_${orderId}.${ext}`
+    const fileName   = `${subject}_${namePart}_${orderId}_${crypto.randomUUID()}.${ext}`
     const storagePath = `completed/${fileName}`
 
     // Upload to Supabase Storage
@@ -164,20 +169,13 @@ export async function POST(
       .from('order-files')
       .upload(storagePath, buffer, {
         contentType: file.type || 'application/octet-stream',
-        upsert: true,
+        upsert: false,
       })
 
     if (uploadErr) {
       console.error('[upload] storage error:', uploadErr)
       return NextResponse.json({ error: 'File upload failed' }, { status: 500 })
     }
-
-    // Delete any existing completed file record first (to allow re-upload)
-    await supabaseAdmin
-      .from('order_files')
-      .delete()
-      .eq('order_id', orderId)
-      .eq('file_type', 'completed')
 
     // Store the file path in order_files table
     const { error: dbErr } = await supabaseAdmin
@@ -189,6 +187,7 @@ export async function POST(
       })
 
     if (dbErr) {
+      await supabaseAdmin.storage.from('order-files').remove([storagePath])
       console.error('[upload] db error:', dbErr)
       return NextResponse.json({ error: 'Failed to record file' }, { status: 500 })
     }

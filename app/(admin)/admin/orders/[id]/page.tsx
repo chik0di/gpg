@@ -8,6 +8,10 @@ import FileUploader from '@/components/admin/file-uploader'
 import DeleteCompletedButton from '@/components/admin/delete-completed-button'
 import { getClientDisplayName, getClientInitial } from '@/lib/utils/client-name'
 
+import RevisionPanel from '@/components/orders/revision-panel'
+import DeliveryHistory from '@/components/orders/delivery-history'
+import { revisionsForOrder } from '@/lib/revision-server'
+
 export const metadata: Metadata = { title: 'Admin — Order Detail' }
 
 interface Props { params: { id: string } }
@@ -38,13 +42,13 @@ export default async function AdminOrderDetailPage({ params }: Props) {
     .eq('id', params.id)
     .single() as {
       data: {
-        id: string; status: string; total_amount: number; academic_level: string; user_id: string
+        id: string; first_delivered_at: string | null; status: string; total_amount: number; academic_level: string; user_id: string
         module_name: string | null; subject_field: string; deadline: string; additional_instructions: string | null
         originality_report: boolean; stripe_payment_intent_id: string | null; created_at: string
         is_outside_standard_fields: boolean | null
         profiles: { first_name: string | null; last_name: string | null; email: string } | null
         deliverables: Array<{ id: string; type: string; subtype: string | null; size_band: string | null; price: number }>
-        order_files: Array<{ id: string; file_url: string; file_type: string }>
+        order_files: Array<{ id: string; file_url: string; file_type: string; created_at: string; revision_id: string | null }>
       } | null
     }
 
@@ -60,11 +64,15 @@ export default async function AdminOrderDetailPage({ params }: Props) {
   const placed        = new Date(order.created_at).toLocaleDateString('en-GB', { dateStyle: 'long' })
   const shortId       = order.id.slice(0, 8).toUpperCase()
   const assignFile    = order.order_files.find((f) => f.file_type === 'assignment')
-  const completedFile = order.order_files.find((f) => f.file_type === 'completed')
+  const completedFiles = order.order_files.filter(f => f.file_type === 'completed').sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  const completedFile = completedFiles[0]
 
   // Generate signed URLs server-side
   const assignUrl    = assignFile    ? await getSignedUrl(assignFile.file_url)    : null
   const completedUrl = completedFile ? await getSignedUrl(completedFile.file_url) : null
+
+  const revisions = await revisionsForOrder(order.id)
+  const deliveryFiles = await Promise.all(completedFiles.map(async f => ({ ...f, url: await getSignedUrl(f.file_url) })))
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -238,15 +246,18 @@ export default async function AdminOrderDetailPage({ params }: Props) {
                 </svg>
                 View uploaded work
               </a>
-              <DeleteCompletedButton orderId={order.id} />
+              {!order.first_delivered_at && order.status !== 'completed' && <DeleteCompletedButton orderId={order.id} />}
             </div>
-            <p className="text-xs text-[#9CA3AF]">Replace by uploading a new file below.</p>
-            <FileUploader orderId={order.id} />
+            <p className="text-xs text-[#9CA3AF]">Earlier versions are preserved when you upload a new file. Use the revision request below to deliver a revision.</p>
+            {revisions?.some(r => r.status === 'requested' || r.status === 'in_progress') ? <p className="text-sm text-[#6B7280]">Deliver revised work through the revision request below.</p> : <FileUploader orderId={order.id} />}
           </div>
         ) : (
-          <FileUploader orderId={order.id} />
+          revisions?.some(r => r.status === 'requested' || r.status === 'in_progress') ? <p className="text-sm text-[#6B7280]">Deliver revised work through the revision request below.</p> : <FileUploader orderId={order.id} />
         )}
       </div>
+
+      <DeliveryHistory files={deliveryFiles} />
+      <RevisionPanel admin orderId={order.id} orderStatus={order.status} firstDeliveredAt={order.first_delivered_at ?? null} revisions={revisions} />
 
       {/* Status update */}
       <div className="bg-white rounded-2xl border border-[#E8E2D9] p-5" style={{ boxShadow: '0 2px 8px -2px rgba(26,26,46,0.07)' }}>

@@ -104,7 +104,10 @@ export default function TermsPage() {
                 <div>
                   <h3 className="text-base font-bold text-[#1B2E4B] mb-3">5. Revision policy</h3>
                   <p>
-                    Each order includes three free revisions. Revision requests must be consistent with the
+                    Each order includes three free revision rounds, requested within 14 days of the first delivery.
+                    A round is used when revised work is delivered. One request may be active at a time;
+                    declined requests and requests cancelled before work starts do not use a round.
+                    Requests submitted within the window remain valid until completed. Revision requests must be consistent with the
                     original brief submitted at the time of order — requests that materially change the scope
                     of the work may be treated as a new order. Revisions are requested through your
                     dashboard.
@@ -115,8 +118,7 @@ export default function TermsPage() {
                   <h3 className="text-base font-bold text-[#1B2E4B] mb-3">6. Refund policy</h3>
                   <p>
                     If the delivered work does not meet the requirements of your original brief and all three
-                    revision attempts have been exhausted, you may request a refund within 48 hours of the
-                    delivery date. Refund requests submitted after this window, or where revisions have not
+                    revision attempts have been exhausted, you may request a refund within 48 hours of delivery of the third revision. Refund requests submitted after this window, or where revisions have not
                     been used, will not be eligible. Approved refunds are returned to the original payment
                     method within 5–10 business days.
                   </p>

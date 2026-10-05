@@ -15,13 +15,18 @@ export async function DELETE(
     }
 
     const orderId = params.id
+    const { data: order } = await supabaseAdmin.from('orders').select('first_delivered_at').eq('id', orderId).single()
+    if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    if (order.first_delivered_at) return NextResponse.json({ error: 'Delivered files are preserved in the delivery history.' }, { status: 409 })
 
     // Get the completed file record
     const { data: fileRecord, error: fetchError } = await supabaseAdmin
       .from('order_files')
-      .select('file_url')
+      .select('id, file_url')
       .eq('order_id', orderId)
       .eq('file_type', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(1)
       .single()
 
     if (fetchError || !fileRecord) {
@@ -42,8 +47,7 @@ export async function DELETE(
     const { error: dbError } = await supabaseAdmin
       .from('order_files')
       .delete()
-      .eq('order_id', orderId)
-      .eq('file_type', 'completed')
+      .eq('id', fileRecord.id)
 
     if (dbError) {
       console.error('[delete-completed] db error:', dbError)

@@ -69,10 +69,11 @@ export default function FiltersBar({ filters, onChange, onClear, resultCount, to
             className="px-3 py-2 border border-[#E8E2D9] rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/40"
           >
             <option value="all">All statuses</option>
-            <option value="active">Active (Pending + In Progress)</option>
+            <option value="active">Active orders and revisions</option>
             <option value="pending">Pending</option>
             <option value="in_progress">In Progress</option>
             <option value="completed">Completed</option>
+            <option value="revisions">Revision requests</option>
           </select>
 
           {/* Urgency */}

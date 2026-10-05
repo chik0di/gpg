@@ -21,11 +21,11 @@ const FAQS = [
   },
   {
     q: 'How many revisions do I get?',
-    a: "Every order includes three free revisions. If the delivered work doesn't fully match your brief, simply request a revision through your dashboard and we'll address it promptly.",
+    a: "Every order includes three free revision rounds, requested within 14 days of first delivery. A round is used when revised work is delivered. If the delivered work doesn't fully match your brief, simply request a revision through your dashboard and we'll address it promptly.",
   },
   {
     q: 'What is your refund policy?',
-    a: "If the work doesn't meet the requirements in your original brief and all three revisions have been exhausted, you're entitled to a money-back refund. Refund requests must be submitted within 48 hours of delivery.",
+    a: "If the work doesn't meet the requirements in your original brief and all three revisions have been exhausted, you're entitled to a money-back refund. Refund requests must be submitted within 48 hours of delivery of the third revision.",
   },
   {
     q: 'How long does delivery take?',

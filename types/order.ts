@@ -44,6 +44,7 @@ export interface OrderFile {
   id: string
   order_id: string
   file_url: string
+  revision_id?: string | null
   file_type: 'assignment' | 'completed'
   created_at: string
 }

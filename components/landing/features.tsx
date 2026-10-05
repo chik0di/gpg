@@ -2,7 +2,7 @@ const FEATURES = [
   { icon: '🎓', title: 'Subject-specialist writers', description: 'Every writer holds a degree in their subject area and has proven expertise in academic work. No exceptions.' },
   { icon: '⏰', title: 'Deadline guaranteed', description: 'We\'ve never missed a deadline. Your work arrives on time, every time.' },
   { icon: '🔒', title: '100% confidential', description: 'Your identity and order details are never shared with third parties.' },
-  { icon: '♻️', title: 'Free revisions', description: 'Unlimited revisions within 14 days if the work doesn\'t match your brief.' },
+  { icon: '♻️', title: 'Free revisions', description: 'Three free revision rounds requested within 14 days of first delivery if the work doesn\'t match your brief.' },
   { icon: '📋', title: 'Plagiarism-free', description: 'Every piece is written from scratch and includes a free plagiarism report.' },
   { icon: '💬', title: '24/7 support', description: 'Our support team is available around the clock via live chat and email.' },
 ]

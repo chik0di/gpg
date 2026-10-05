@@ -8,7 +8,7 @@ if (!RESEND_API_KEY) {
   console.error('[resend] ❌ RESEND_API_KEY is not set in environment variables!')
   console.error('[resend] Email sending will fail. Check Vercel environment variables.')
 } else {
-  console.log('[resend] ✅ RESEND_API_KEY is set:', RESEND_API_KEY.substring(0, 10) + '...')
+  console.log('[resend] RESEND_API_KEY is configured')
 }
 
 const resend = new Resend(RESEND_API_KEY)
@@ -423,7 +423,7 @@ export async function sendOrderCompletedEmail(params: {
     ${divider()}
     ${btn('Download my work', `${APP_URL}/dashboard/orders/${orderId}`)}
     ${divider()}
-    ${p('<span style="font-size:13px;color:#9CA3AF;">Remember: you have 3 free revisions if anything needs adjusting. Just reply to this email or request a revision from your dashboard within 14 days.</span>')}
+    ${p('<span style="font-size:13px;color:#9CA3AF;">Remember: you have 3 free revisions if anything needs adjusting. Request a revision from your dashboard within 14 days of first delivery.</span>')}
   `)
 
   return resend.emails.send({
@@ -481,4 +481,29 @@ export async function sendEmailChangeSecurityNotification(params: {
     subject: 'Your GetPrimeGrade account email was changed',
     html,
   })
+}
+
+export async function sendRevisionNotification(params: {
+  orderId: string
+  status: 'requested' | 'in_progress' | 'delivered' | 'declined' | 'cancelled'
+  clientEmail: string
+  origin: string
+}) {
+  const { orderId, status, clientEmail, origin } = params
+  const adminEvent = status === 'requested' || status === 'cancelled'
+  const text = {
+    requested: 'A client has requested a revision. Open the order to review their feedback.',
+    in_progress: 'We have started your revision. You can follow its progress on your order page.',
+    delivered: 'Your revised work is ready to download. Earlier versions remain available on your order page.',
+    declined: 'Your revision request has been declined. Open your order to read the explanation. This has not used a free revision.',
+    cancelled: 'The client has cancelled their revision request. No free revision has been used.',
+  }[status]
+  const label = { requested: 'New revision request', in_progress: 'Revision in progress', delivered: 'Revised work ready', declined: 'Revision request update', cancelled: 'Revision request cancelled' }[status]
+  const result = await resend.emails.send({
+    from: FROM, to: adminEvent ? ADMIN : clientEmail,
+    subject: `${label} — #${orderId.slice(0, 8).toUpperCase()}`,
+    html: base(h1(label) + p(text) + btn('View order', `${getAppUrl(origin)}/${adminEvent ? 'admin' : 'dashboard'}/orders/${orderId}`)),
+  })
+  if (result.error) throw new Error(result.error.message)
+  return result
 }

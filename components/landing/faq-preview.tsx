@@ -14,7 +14,7 @@ const FAQS = [
   },
   {
     q: "What if I'm not happy with what I receive?",
-    a: "Every order includes 3 free revisions. If the work doesn't match your brief after all three, we'll issue a full refund. No arguments, no hoops. Our guarantee is written into our Terms & Conditions.",
+    a: "Every order includes 3 free revision rounds, requested from your dashboard within 14 days of first delivery. If the work doesn't match your original brief after all three, request a refund within 48 hours of the third revision's delivery. See our Terms & Conditions for details.",
   },
 ]
 

@@ -7,6 +7,10 @@ import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/types/order'
 import type { Deliverable, OrderFile } from '@/types/order'
 import DownloadWithReview from '@/components/orders/download-with-review'
 
+import RevisionPanel from '@/components/orders/revision-panel'
+import DeliveryHistory from '@/components/orders/delivery-history'
+import { revisionsForOrder } from '@/lib/revision-server'
+
 export const metadata: Metadata = { title: 'Order Details' }
 
 interface Props { params: { id: string } }
@@ -52,11 +56,15 @@ export default async function OrderDetailPage({ params }: Props) {
   const deliverables: Deliverable[] = order.deliverables ?? []
   const files: OrderFile[]          = order.order_files ?? []
   const assignFile                   = files.find((f) => f.file_type === 'assignment')
-  const completedFile                = files.find((f) => f.file_type === 'completed')
+  const completedFiles = files.filter(f => f.file_type === 'completed').sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  const completedFile = completedFiles[0]
 
   // Generate signed URLs server-side for secure file access
   const assignUrl    = assignFile    ? await getSignedUrl(assignFile.file_url)    : null
   const completedUrl = completedFile ? await getSignedUrl(completedFile.file_url) : null
+
+  const revisions = await revisionsForOrder(order.id)
+  const deliveryFiles = order.first_delivered_at || order.status === 'completed' ? await Promise.all(completedFiles.map(async f => ({ ...f, url: await getSignedUrl(f.file_url) }))) : []
 
   // ========================================
   // DEBUG: Log what will be passed to ReviewTrigger
@@ -99,13 +107,16 @@ export default async function OrderDetailPage({ params }: Props) {
       </div>
 
       {/* Download completed work - with review trigger on click */}
-      {order.status === 'completed' && completedUrl && (
+      {(order.first_delivered_at || order.status === 'completed') && completedUrl && (
         <DownloadWithReview
           orderId={order.id}
           moduleName={order.module_name}
           downloadUrl={completedUrl}
         />
       )}
+
+      <DeliveryHistory files={deliveryFiles} />
+      <RevisionPanel orderId={order.id} orderStatus={order.status} firstDeliveredAt={order.first_delivered_at ?? null} revisions={revisions} />
 
       {/* Download assignment brief */}
       {assignUrl && (

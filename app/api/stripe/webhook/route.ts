@@ -73,7 +73,8 @@ export async function POST(request: NextRequest) {
         console.log('[webhook] Order already exists:', existing.id, '| status:', existing.status)
 
         // Update to paid if not already
-        if (existing.status !== 'paid') {
+        // A retried payment event must not undo fulfilment or close revision access.
+        if (existing.status !== 'paid' && existing.status !== 'in_progress' && existing.status !== 'completed') {
           await supabaseAdmin
             .from('orders')
             .update({ status: 'paid' })

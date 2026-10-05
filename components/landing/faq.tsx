@@ -13,7 +13,7 @@ const FAQS = [
   },
   {
     q: 'What if I\'m not happy with the work?',
-    a: 'We offer unlimited free revisions within 14 days of delivery. If the work fundamentally doesn\'t match your brief, we\'ll offer a full refund.',
+    a: 'We offer three free revision rounds, requested through your dashboard within 14 days of first delivery. If the work fundamentally doesn\'t match your brief, we\'ll offer a full refund.',
   },
   {
     q: 'What subjects do you cover?',

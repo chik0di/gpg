@@ -35,6 +35,9 @@ export default async function AdminPage() {
     `)
     .order('created_at', { ascending: false }) as { data: AdminOrder[] | null; error: any }
 
+  const { data: activeRevisions } = await supabaseAdmin.from('order_revisions').select('order_id').in('status', ['requested', 'in_progress'])
+  const revisionOrderIds = new Set((activeRevisions ?? []).map(r => r.order_id))
+
   // Fetch approved reviews count
   const { count: approvedReviewsCount } = await supabaseAdmin
     .from('reviews')
@@ -79,6 +82,7 @@ export default async function AdminPage() {
       client_name: clientName,
       client_email: client?.email || '',
       deliverables_count: order.deliverables?.length || 0,
+      has_active_revision: revisionOrderIds.has(order.id),
     }
   }))
 

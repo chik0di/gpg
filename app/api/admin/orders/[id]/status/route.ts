@@ -52,6 +52,9 @@ export async function PATCH(
       .eq('id', orderId)
 
     if (updateErr) {
+      if (updateErr.message === 'Upload completed work before marking the order completed') {
+        return NextResponse.json({ error: updateErr.message }, { status: 409 })
+      }
       return NextResponse.json({ error: updateErr.message }, { status: 500 })
     }
 

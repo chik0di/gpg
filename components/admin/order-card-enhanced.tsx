@@ -15,6 +15,7 @@ interface Order {
   user_id: string
   client_name?: string
   client_email?: string
+  has_active_revision?: boolean
   deliverables_count?: number
   is_outside_standard_fields?: boolean
 }
@@ -176,6 +177,7 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="px-1.5 py-0.5 bg-[#F5F0E8] rounded text-[10px] font-semibold text-[#1B2E4B]">
                 {order.subject_field}
+                {order.has_active_revision && <span className="ml-2 text-xs font-semibold text-amber-700">Revision requested</span>}
               </span>
               <span className="px-1.5 py-0.5 bg-[#F5F0E8] rounded text-[10px] font-semibold text-[#6B7280]">
                 {order.academic_level}
