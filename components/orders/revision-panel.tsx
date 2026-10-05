@@ -33,11 +33,16 @@ function RevisionActions({ orderId, revision, admin }: { orderId: string; revisi
       const res = await fetch(`/api/${admin ? 'admin/' : ''}orders/${orderId}/revisions/${revision.id}`, { method: 'PATCH', ...(admin ? { body: form } : {}) })
       const result = await res.json()
       if (!res.ok) throw new Error(result.error || 'Could not update request.')
+      if (admin && result.notification?.accepted === false) {
+        setError('The revision was saved, but the client email could not be sent. Check the server logs for the notification error. Do not deliver the revision again.')
+      }
       router.refresh()
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not update request.') }
     finally { setBusy(false) }
   }
-  if (!['requested', 'in_progress'].includes(revision.status)) return null
+  if (!['requested', 'in_progress'].includes(revision.status)) {
+    return error ? <p role="alert" className="mt-3 text-sm text-red-600">{error}</p> : null
+  }
   return (
     <div className="space-y-3 mt-3">
       {admin ? <>

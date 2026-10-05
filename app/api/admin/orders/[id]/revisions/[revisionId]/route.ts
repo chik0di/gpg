@@ -36,8 +36,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     })
     if (error) return NextResponse.json({ error: revisionMutationError(error.message) }, { status: 409 })
     saved = true
-    await notifyRevision(params.id, status, getOriginFromRequest(request))
-    return NextResponse.json({ revision: data })
+    const notification = await notifyRevision(params.id, status, getOriginFromRequest(request))
+    return NextResponse.json({ revision: data, notification })
   } catch {
     return NextResponse.json({ error: 'Could not save the revision. Please try again.' }, { status: 500 })
   } finally {

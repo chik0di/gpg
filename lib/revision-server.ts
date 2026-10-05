@@ -29,13 +29,19 @@ export async function revisionsForOrder(orderId: string) {
 export async function notifyRevision(orderId: string, status: OrderRevision['status'], origin: string) {
   // A saved request/delivery remains successful if the email provider is unavailable.
   try {
-    const { data: order } = await supabaseAdmin.from('orders').select('user_id').eq('id', orderId).single()
+    const { data: order, error: orderError } = await supabaseAdmin.from('orders').select('user_id').eq('id', orderId).single()
+    if (orderError) throw new Error(`Order lookup failed: ${orderError.message}`)
     if (!order) throw new Error('Order not found for notification')
-    const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(order.user_id)
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.getUserById(order.user_id)
+    if (userError) throw new Error(`Recipient lookup failed: ${userError.message}`)
     if (!user?.email) throw new Error('Recipient not found')
-    await sendRevisionNotification({ orderId, status, clientEmail: user.email, origin })
+    const result = await sendRevisionNotification({ orderId, status, clientEmail: user.email, origin })
+    if (!result.data?.id) throw new Error('Email provider did not return a message ID')
+    console.info('[revisions] Email accepted:', { orderId, status, emailId: result.data.id })
+    return { accepted: true, emailId: result.data.id }
   } catch (error) {
-    console.error('[revisions] Notification failed:', error instanceof Error ? error.message : 'Unknown error')
+    console.error('[revisions] Notification failed:', { orderId, status, error: error instanceof Error ? error.message : 'Unknown error' })
+    return { accepted: false }
   }
 }
 
