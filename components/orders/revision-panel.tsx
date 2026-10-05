@@ -18,6 +18,7 @@ const inputClass = 'w-full border border-[#E8E2D9] rounded-xl p-3 text-sm focus:
 function RevisionActions({ orderId, revision, admin }: { orderId: string; revision: OrderRevision; admin: boolean }) {
   const [response, setResponse] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
@@ -43,9 +44,27 @@ function RevisionActions({ orderId, revision, admin }: { orderId: string; revisi
         <label className="block text-sm font-semibold">Response to client
           <textarea className={`${inputClass} mt-2`} rows={3} maxLength={5000} value={response} onChange={e => setResponse(e.target.value)} placeholder="Optional update, or an explanation if declining" />
         </label>
-        {revision.status === 'in_progress' && <label className="block text-sm">Revised work (PDF, Word, PowerPoint, Excel or ZIP; up to 100 MB)
-          <input className="block mt-2 text-sm" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip" onChange={e => setFile(e.target.files?.[0] || null)} />
-        </label>}
+        {revision.status === 'in_progress' && <div className="space-y-2">
+          <p className="text-sm font-semibold text-[#1B2E4B]">Revised work</p>
+          <p className="text-xs text-[#6B7280]">PDF, Word, PowerPoint, Excel or ZIP; up to 100 MB</p>
+          <input ref={fileInputRef} className="hidden" aria-label="Revised work file" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip" disabled={busy} onChange={e => setFile(e.target.files?.[0] || null)} />
+          {file ? <div className="flex items-center gap-3 rounded-xl border border-[#E8E2D9] bg-[#F5F0E8] px-4 py-3">
+            <svg aria-hidden="true" className="h-5 w-5 shrink-0 text-[#1B2E4B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-[#1B2E4B]" title={file.name}>{file.name}</p>
+              <p className="text-xs text-[#6B7280]">{file.size < 1024 * 1024 ? `${Math.max(1, Math.ceil(file.size / 1024))} KB` : `${(file.size / (1024 * 1024)).toFixed(1)} MB`}</p>
+            </div>
+            <button type="button" aria-label="Remove revised work file" title="Remove file" disabled={busy} className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[#6B7280] hover:bg-white hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8A020] disabled:opacity-50" onClick={() => {
+              setFile(null)
+              if (fileInputRef.current) fileInputRef.current.value = ''
+            }}>
+              <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div> : <button type="button" disabled={busy} onClick={() => fileInputRef.current?.click()} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#9CA3AF] bg-[#F5F0E8] px-4 py-4 text-sm font-semibold text-[#1B2E4B] transition-colors hover:border-[#E8A020] hover:bg-[#FDF8F0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8A020] disabled:opacity-50">
+            <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 16V4m0 0L8 8m4-4l4 4M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3" /></svg>
+            Choose revised work file
+          </button>}
+        </div>}
         <div className="flex flex-wrap gap-2">
           {revision.status === 'requested' && <button className={buttonClass} disabled={busy} onClick={() => act('in_progress')}>Start revision</button>}
           {revision.status === 'in_progress' && <button className={buttonClass} disabled={busy || !file} onClick={() => act('delivered')}>Deliver revised work</button>}
@@ -96,9 +115,27 @@ export default function RevisionPanel({ orderId, orderStatus, firstDeliveredAt, 
           <label className="block text-sm font-semibold">What needs changing?
             <textarea required minLength={10} maxLength={5000} rows={5} value={instructions} onChange={e => setInstructions(e.target.value)} className={`${inputClass} mt-2`} placeholder="Describe the changes and refer to pages or sections where possible." />
           </label>
-          <label className="block text-sm">Feedback attachment (optional; PDF, Word or image; up to 20 MB)
-            <input ref={inputRef} className="block mt-2 text-sm" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" onChange={e => setAttachment(e.target.files?.[0] || null)} />
-          </label>
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-[#1B2E4B]">Feedback attachment <span className="font-normal text-[#6B7280]">(optional)</span></p>
+            <p className="text-xs text-[#6B7280]">PDF, Word or image; up to 20 MB</p>
+            <input ref={inputRef} className="hidden" aria-label="Feedback attachment" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" disabled={busy} onChange={e => setAttachment(e.target.files?.[0] || null)} />
+            {attachment ? <div className="flex items-center gap-3 rounded-xl border border-[#E8E2D9] bg-[#F5F0E8] px-4 py-3">
+              <svg aria-hidden="true" className="h-5 w-5 shrink-0 text-[#1B2E4B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-[#1B2E4B]" title={attachment.name}>{attachment.name}</p>
+                <p className="text-xs text-[#6B7280]">{attachment.size < 1024 * 1024 ? `${Math.max(1, Math.ceil(attachment.size / 1024))} KB` : `${(attachment.size / (1024 * 1024)).toFixed(1)} MB`}</p>
+              </div>
+              <button type="button" aria-label="Remove feedback attachment" title="Remove attachment" disabled={busy} className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[#6B7280] hover:bg-white hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8A020] disabled:opacity-50" onClick={() => {
+                setAttachment(null)
+                if (inputRef.current) inputRef.current.value = ''
+              }}>
+                <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div> : <button type="button" disabled={busy} onClick={() => inputRef.current?.click()} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#9CA3AF] bg-[#F5F0E8] px-4 py-4 text-sm font-semibold text-[#1B2E4B] transition-colors hover:border-[#E8A020] hover:bg-[#FDF8F0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8A020] disabled:opacity-50">
+              <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 16V4m0 0L8 8m4-4l4 4M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3" /></svg>
+              Choose feedback file
+            </button>}
+          </div>
           <button disabled={busy} className={buttonClass}>{busy ? 'Submitting…' : 'Request a revision'}</button>
         </form>)}
         {message && <p role="status" className="text-sm">{message}</p>}
