@@ -152,7 +152,7 @@ function formatAPAJournal(source: JournalSource): FormattedCitation {
   const issue = source.issue ? `(${source.issue})` : ''
   const doiPart = source.doi ? ` https://doi.org/${source.doi}` : ''
 
-  const fullReference = `${authors} (${source.year}). ${source.title}. *${source.journalName}*, *${source.volume}*${issue}, ${source.pageRange}.${doiPart}`
+  const fullReference = `${authors} (${source.year}). ${source.title}. *${source.journalName}*${source.volume ? `, *${source.volume}*` : ''}${issue}${source.pageRange ? `, ${source.pageRange}` : ''}.${doiPart}`
 
   return {
     inText,
@@ -240,7 +240,7 @@ function formatMLAJournal(source: JournalSource): FormattedCitation {
   const inText = `(${formatMLAAuthorsInText(source.authors)})`
 
   const issue = source.issue ? `, no. ${source.issue}` : ''
-  const fullReference = `${authors} "${source.title}." *${source.journalName}*, vol. ${source.volume}${issue}, ${source.year}, pp. ${source.pageRange}.`
+  const fullReference = `${authors} "${source.title}." *${source.journalName}*${source.volume ? `, vol. ${source.volume}` : ''}${issue}, ${source.year}${source.pageRange ? `, pp. ${source.pageRange}` : ''}.`
 
   return {
     inText,
@@ -323,7 +323,7 @@ function formatChicagoJournal(source: JournalSource): FormattedCitation {
   const issue = source.issue ? `, no. ${source.issue}` : ''
   const doiPart = source.doi ? ` https://doi.org/${source.doi}` : ''
 
-  const fullReference = `${authors} ${source.year}. "${source.title}." *${source.journalName}* ${source.volume}${issue}: ${source.pageRange}.${doiPart}`
+  const fullReference = `${authors} ${source.year}. "${source.title}." *${source.journalName}*${source.volume ? ` ${source.volume}` : ''}${issue}${source.pageRange ? `: ${source.pageRange}` : ''}.${doiPart}`
 
   return {
     inText,
@@ -405,7 +405,7 @@ function formatHarvardJournal(source: JournalSource): FormattedCitation {
   const inText = `(${formatHarvardAuthorsInText(source.authors)}, ${source.year})`
 
   const issue = source.issue ? `(${source.issue})` : ''
-  const fullReference = `${authors} (${source.year}) '${source.title}', *${source.journalName}*, ${source.volume}${issue}, ${source.pageRange}.`
+  const fullReference = `${authors} (${source.year}) '${source.title}', *${source.journalName}*${source.volume ? `, ${source.volume}` : ''}${issue}${source.pageRange ? `, ${source.pageRange}` : ''}.`
 
   return {
     inText,
@@ -501,7 +501,7 @@ function formatVancouverJournal(source: JournalSource): FormattedCitation {
   const issue = source.issue ? `(${source.issue})` : ''
   const pages = elidePagesVancouver(source.pageRange)
 
-  const fullReference = `${number}. ${authors} ${source.title}. ${source.journalName}. ${source.year};${source.volume}${issue}:${pages}.`
+  const fullReference = `${number}. ${authors} ${source.title}. ${source.journalName}. ${source.year}${source.volume || issue ? `;${source.volume}${issue}` : ''}${pages ? `:${pages}` : ''}.`
 
   return {
     inText,

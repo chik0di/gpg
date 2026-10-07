@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   formatCitation,
   sortCitations,
@@ -13,6 +13,8 @@ import {
   type WebsiteSource,
   type JournalSource,
 } from '@/lib/citation-formatter'
+
+import type { ReferenceMetadata } from '@/lib/academic-metadata'
 
 const STYLES: { value: CitationStyle; label: string }[] = [
   { value: 'APA', label: 'APA 7th' },
@@ -61,6 +63,59 @@ export default function ReferenceGeneratorClient() {
   const [journalIssue, setJournalIssue] = useState('')
   const [journalPageRange, setJournalPageRange] = useState('')
   const [journalDoi, setJournalDoi] = useState('')
+
+  const [lookupInput, setLookupInput] = useState('')
+  const [lookupLoading, setLookupLoading] = useState(false)
+  const [lookupMessage, setLookupMessage] = useState('')
+  const [lookupError, setLookupError] = useState('')
+  const lookupController = useRef<AbortController | null>(null)
+  const handoffStarted = useRef(false)
+
+  async function retrieveReference(input: string) {
+    lookupController.current?.abort()
+    const controller = new AbortController()
+    lookupController.current = controller
+    setLookupLoading(true); setLookupMessage(''); setLookupError('')
+    try {
+      const response = await fetch('/api/resources/reference', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input }), signal: controller.signal,
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Lookup failed. Enter the details manually.')
+      const metadata: ReferenceMetadata = data.metadata
+      clearForm()
+      setSourceType(metadata.type)
+      if (metadata.type === 'book') {
+        setBookAuthors(metadata.authors.join('; ')); setBookTitle(metadata.title); setBookYear(metadata.year)
+        setBookPublisher(metadata.publisher || ''); setBookPlace(metadata.place || '')
+      } else if (metadata.type === 'journal') {
+        setJournalAuthors(metadata.authors.join('; ')); setJournalTitle(metadata.title); setJournalYear(metadata.year)
+        setJournalName(metadata.journalName || ''); setJournalVolume(metadata.volume || '')
+        setJournalIssue(metadata.issue || ''); setJournalPageRange(metadata.pageRange || ''); setJournalDoi(metadata.doi || '')
+      } else {
+        setWebAuthors(metadata.authors.join('; ')); setWebTitle(metadata.title); setWebYear(metadata.year)
+        setWebOrganisation(metadata.organisation || ''); setWebUrl(metadata.url || input)
+        setWebDateAccessed(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }))
+      }
+      setLookupMessage(`Details retrieved from ${data.provider}. Check the source type and every field below; fill in any missing details before generating your reference.`)
+    } catch (error) {
+      if (!controller.signal.aborted) setLookupError(error instanceof Error ? error.message : 'Lookup failed. Enter the details manually.')
+    } finally {
+      if (!controller.signal.aborted) setLookupLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    const input = new URLSearchParams(window.location.search).get('lookup')
+    if (input && !handoffStarted.current) {
+      handoffStarted.current = true
+      setLookupInput(input)
+      void retrieveReference(input)
+    }
+    // Lookup runs once when arriving from the Research Finder.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Load bibliography from sessionStorage on mount
   useEffect(() => {
@@ -209,8 +264,8 @@ export default function ReferenceGeneratorClient() {
         } as WebsiteSource
       } else {
         const authors = parseAuthors(journalAuthors)
-        if (authors.length === 0 || !journalTitle || !journalName || !journalYear || !journalVolume || !journalPageRange) {
-          alert('Please fill in authors, article title, journal name, year, volume, and page range')
+        if (authors.length === 0 || !journalTitle || !journalName || !journalYear) {
+          alert('Please fill in authors, article title, journal name, and year')
           return
         }
 
@@ -311,6 +366,8 @@ export default function ReferenceGeneratorClient() {
   }
 
   const clearForm = () => {
+    setLookupMessage('')
+    setLookupError('')
     setBookAuthors('')
     setBookTitle('')
     setBookYear('')
@@ -347,6 +404,19 @@ export default function ReferenceGeneratorClient() {
       </section>
 
       <div className="container-narrow py-12 space-y-8">
+        <form onSubmit={event => { event.preventDefault(); void retrieveReference(lookupInput.trim()) }} className="bg-white rounded-2xl border border-[#E8E2D9] p-6 space-y-3">
+          <label htmlFor="reference-lookup" className="block text-lg font-bold text-[#1B2E4B]">Find reference details automatically</label>
+          <p className="text-sm text-[#6B7280]">Paste a DOI, ISBN-10, ISBN-13, or public webpage link.</p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input id="reference-lookup" value={lookupInput} onChange={event => setLookupInput(event.target.value)} placeholder="DOI, ISBN, or https://…" required maxLength={2000} disabled={lookupLoading} className="min-w-0 flex-1 px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30" />
+            <button disabled={lookupLoading || !lookupInput.trim()} className="px-5 py-3 bg-[#1B2E4B] text-white font-bold rounded-xl disabled:opacity-50">{lookupLoading ? 'Finding details…' : 'Find reference'}</button>
+          </div>
+          <p className="text-xs text-[#6B7280]">Some websites block automatic access or omit citation details. You can always complete the form manually.</p>
+          {lookupLoading && <p role="status" className="text-sm text-[#6B7280]">Retrieving source details…</p>}
+          {lookupError && <p role="alert" className="text-sm text-red-700">{lookupError}</p>}
+          {lookupMessage && <p role="status" className="text-sm text-green-700">{lookupMessage}</p>}
+        </form>
+
         {/* Style Selection */}
         <div>
           <label className="block text-sm font-bold text-[#1B2E4B] mb-3">Citation Style</label>
@@ -374,6 +444,7 @@ export default function ReferenceGeneratorClient() {
             {SOURCE_TYPES.map(type => (
               <button
                 key={type.value}
+                disabled={lookupLoading}
                 onClick={() => {
                   setSourceType(type.value)
                   clearForm()
@@ -397,6 +468,7 @@ export default function ReferenceGeneratorClient() {
             <h2 className="text-lg font-bold text-[#1B2E4B]">Enter Source Details</h2>
             <button
               onClick={clearForm}
+              disabled={lookupLoading}
               className="flex items-center gap-1.5 text-sm font-semibold text-[#6B7280] hover:text-[#E8A020] transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -406,6 +478,7 @@ export default function ReferenceGeneratorClient() {
             </button>
           </div>
 
+          <fieldset disabled={lookupLoading}>
           {sourceType === 'book' && (
             <div className="space-y-4">
               <div>
@@ -627,7 +700,7 @@ export default function ReferenceGeneratorClient() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-[#1B2E4B] mb-2">
-                    Volume <span className="text-red-500">*</span>
+                    Volume (if available)
                   </label>
                   <input
                     type="text"
@@ -651,7 +724,7 @@ export default function ReferenceGeneratorClient() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-[#1B2E4B] mb-2">
-                    Page Range <span className="text-red-500">*</span>
+                    Pages / article number (if available)
                   </label>
                   <input
                     type="text"
@@ -676,11 +749,13 @@ export default function ReferenceGeneratorClient() {
           )}
 
           <button
+            disabled={lookupLoading}
             onClick={handleGenerate}
             className="w-full mt-6 bg-[#E8A020] hover:bg-[#C4861A] text-white font-bold py-3 rounded-xl transition-colors"
           >
             Generate Citation
           </button>
+          </fieldset>
         </div>
 
         {/* Generated Output */}
