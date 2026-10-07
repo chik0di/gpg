@@ -47,7 +47,7 @@ export default function DashboardNav({ user, profile }: Props) {
           </Link>
 
           {/* Nav links */}
-          <nav className="hidden sm:flex items-center gap-1">
+          <nav className="hidden lg:flex items-center gap-1">
             {/* Overview */}
             <Link
               href="/dashboard"
@@ -58,6 +58,14 @@ export default function DashboardNav({ user, profile }: Props) {
               }}
             >
               Overview
+            </Link>
+
+            <Link
+              href="/dashboard/saved-sources"
+              className="px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150"
+              style={{ background: pathname === '/dashboard/saved-sources' ? '#FDF3DC' : 'transparent', color: pathname === '/dashboard/saved-sources' ? '#C4861A' : '#6B7280' }}
+            >
+              Saved sources
             </Link>
 
             {/* Resources dropdown */}
@@ -127,7 +135,7 @@ export default function DashboardNav({ user, profile }: Props) {
           {/* Right side */}
           <div className="flex items-center gap-4">
             {/* Avatar + name */}
-            <div className="hidden sm:flex items-center gap-2.5">
+            <div className="hidden lg:flex items-center gap-2.5">
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
                 style={{ background: '#1B2E4B' }}
@@ -147,7 +155,7 @@ export default function DashboardNav({ user, profile }: Props) {
         </div>
 
         {/* Mobile nav */}
-        <nav className="sm:hidden flex gap-1 pb-3 overflow-x-auto">
+        <nav className="lg:hidden flex gap-1 pb-3 overflow-x-auto">
           {/* Overview */}
           <Link
             href="/dashboard"
@@ -158,6 +166,14 @@ export default function DashboardNav({ user, profile }: Props) {
             }}
           >
             Overview
+          </Link>
+
+          <Link
+            href="/dashboard/saved-sources"
+            className="px-4 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all"
+            style={{ background: pathname === '/dashboard/saved-sources' ? '#FDF3DC' : 'transparent', color: pathname === '/dashboard/saved-sources' ? '#C4861A' : '#6B7280' }}
+          >
+            Saved sources
           </Link>
 
           {/* Resources (mobile expands to show both) */}

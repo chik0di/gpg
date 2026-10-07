@@ -5,6 +5,11 @@ export interface ReferenceMetadata {
   title: string
   authors: string[]
   year: string
+  edition?: string
+  isbn?: string
+  publicationDate?: string
+  siteName?: string
+  articleNumber?: string
   publisher?: string
   place?: string
   journalName?: string
@@ -58,6 +63,7 @@ export interface CrossrefWork {
   author?: { given?: string; family?: string; name?: string }[]
   type?: string
   publisher?: string
+  'edition-number'?: string
   'publisher-location'?: string
   'container-title'?: string[]
   published?: { 'date-parts'?: number[][] }
@@ -81,7 +87,9 @@ export function crossrefMetadata(work: CrossrefWork): ReferenceMetadata {
     journalName: plainText(work['container-title']?.[0]),
     volume: work.volume,
     issue: work.issue,
-    pageRange: work.page || work['article-number'],
+    pageRange: work.page,
+    articleNumber: work['article-number'],
+    edition: work['edition-number'],
     doi: work.DOI,
     url: work.DOI ? `https://doi.org/${work.DOI}` : safeLink(work.URL),
   }

@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
+import { researchSourceKey, PENDING_SOURCE_STORAGE_KEY } from '@/lib/saved-sources'
 import type { ResearchSource } from '@/lib/research-materials'
 
 export default function ResearchFinderClient() {
@@ -16,6 +18,70 @@ export default function ResearchFinderClient() {
   const [searched, setSearched] = useState(false)
   const [cooldown, setCooldown] = useState(false)
   const [quota, setQuota] = useState<{ used: number; remaining: number; limit: number; resetAt: number | null } | null>(null)
+
+  const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set())
+  const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set())
+  const [saveError, setSaveError] = useState('')
+  const [saveMessage, setSaveMessage] = useState('')
+  const [needsSignIn, setNeedsSignIn] = useState(false)
+  const pendingStarted = useRef(false)
+
+  async function saveSource(source: ResearchSource) {
+    const key = researchSourceKey(source)
+    setSavingKeys(previous => new Set(previous).add(key))
+    setSaveError(''); setSaveMessage(''); setNeedsSignIn(false)
+    try {
+      const payload = { ...source, abstract: source.abstract?.slice(0, 20000) }
+      const response = await fetch('/api/saved-sources', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      })
+      const data = await response.json()
+      if (response.status === 401) {
+        try { sessionStorage.setItem(PENDING_SOURCE_STORAGE_KEY, JSON.stringify(payload)) } catch { /* Sign-in still works without temporary browser storage. */ }
+        setNeedsSignIn(true)
+        setSaveMessage(`Sign in to save “${source.title}” to your reading list.`)
+        return
+      }
+      if (!response.ok) throw new Error(data.error || 'Could not save this source.')
+      setSavedKeys(previous => new Set(previous).add(data.source.source_key))
+      setSaveMessage(`“${source.title}” is saved to your reading list.`)
+      try { sessionStorage.removeItem(PENDING_SOURCE_STORAGE_KEY) } catch { /* The source is already saved in the account. */ }
+    } catch (err) { setSaveError(err instanceof Error ? err.message : 'Could not save this source. Please try again.') }
+    finally {
+      setSavingKeys(previous => { const next = new Set(previous); next.delete(key); return next })
+    }
+  }
+
+  useEffect(() => {
+    let active = true
+    async function loadSavedKeys() {
+      try {
+        const response = await fetch('/api/saved-sources?summary=1', { cache: 'no-store' })
+        if (!active || response.status === 401) return
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.error || 'Could not check your saved sources.')
+        setSavedKeys(new Set(data.sources.map((saved: { source_key: string }) => saved.source_key)))
+        let pending: string | null = null
+        try { pending = sessionStorage.getItem(PENDING_SOURCE_STORAGE_KEY) } catch { /* Optional temporary selection. */ }
+        if (pending && !pendingStarted.current) {
+          pendingStarted.current = true
+          try {
+            const selected: ResearchSource = JSON.parse(pending)
+            researchSourceKey(selected)
+            setResults([selected]); setSearched(true); setTopic(selected.title); setSubmittedTopic(selected.title)
+            await saveSource(selected)
+          }
+          catch { sessionStorage.removeItem(PENDING_SOURCE_STORAGE_KEY) }
+        }
+      } catch (err) {
+        if (active) setSaveError(err instanceof Error ? err.message : 'Could not check your saved sources. You can still search and try saving again.')
+      }
+    }
+    void loadSavedKeys()
+    return () => { active = false }
+    // Only restore a selected paper when returning to this page after sign-in.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const fetchQuota = async () => {
     try {
@@ -65,6 +131,14 @@ export default function ResearchFinderClient() {
         </div>
       </section>
       <div className="container-narrow py-12 space-y-6">
+        <div className="flex flex-wrap justify-between items-center gap-3 text-sm">
+          <p className="text-[#6B7280]">Sign in to keep useful papers in your reading list.</p>
+          <Link href="/dashboard/saved-sources" className="font-semibold text-[#1B2E4B] underline">My saved sources</Link>
+        </div>
+        <div aria-live="polite" className="space-y-2">
+          {saveError && <p role="alert" className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-800">{saveError}</p>}
+          {saveMessage && <div role="status" className="bg-[#FDFAF6] border border-[#E8E2D9] rounded-xl p-4 text-sm text-[#1B2E4B]">{saveMessage} {needsSignIn ? <Link href="/login?next=%2Fresources%2Fresearch-finder" className="font-bold underline">Sign in / create account</Link> : <Link href="/dashboard/saved-sources" className="font-bold underline">View saved sources</Link>}</div>}
+        </div>
         <form onSubmit={handleSearch} className="bg-white rounded-2xl border border-[#E8E2D9] p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <label htmlFor="research-topic" className="text-sm font-bold text-[#1B2E4B]">Enter your research topic</label>
@@ -97,6 +171,12 @@ export default function ResearchFinderClient() {
               <div className="flex flex-wrap gap-3">
                 {(result.pdfUrl || result.freeUrl) && <a href={result.pdfUrl || result.freeUrl} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-[#16A34A] hover:bg-[#15803D] text-white text-sm font-bold rounded-xl">{result.pdfUrl ? 'Free PDF' : 'Read free'}</a>}
                 <a href={result.url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 border border-[#E8E2D9] text-[#1B2E4B] text-sm font-semibold rounded-xl">View source</a>
+                <button
+                  onClick={() => void saveSource(result)}
+                  disabled={savedKeys.has(researchSourceKey(result)) || savingKeys.has(researchSourceKey(result))}
+                  aria-label={`${savedKeys.has(researchSourceKey(result)) ? 'Saved' : 'Save'} ${result.title}`}
+                  className="px-4 py-2 border border-[#E8E2D9] text-[#1B2E4B] text-sm font-semibold rounded-xl hover:bg-[#F5F0E8] disabled:opacity-60"
+                >{savedKeys.has(researchSourceKey(result)) ? '✓ Saved' : savingKeys.has(researchSourceKey(result)) ? 'Saving…' : 'Save source'}</button>
                 <a href={`/resources/reference-generator?lookup=${encodeURIComponent(result.doi || result.url)}`} className="px-4 py-2 bg-[#F5F0E8] text-[#1B2E4B] text-sm font-semibold rounded-xl">Cite this source</a>
               </div>
             </article>)}

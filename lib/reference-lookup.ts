@@ -3,15 +3,9 @@ import { isIP, BlockList } from 'node:net'
 import https from 'node:https'
 import http from 'node:http'
 import { parseDocument, DomUtils } from 'htmlparser2'
-import { academicJson, lookupDoi, normalizeDoi, normalizeIsbn, plainText, type ReferenceMetadata } from './academic-metadata'
+import { lookupDoi, normalizeDoi, normalizeIsbn, plainText, type ReferenceMetadata } from './academic-metadata'
 
-let nextLibrarySlot = 0
-async function libraryJson<T>(url: string): Promise<T> {
-  const slot = Math.max(Date.now(), nextLibrarySlot)
-  nextLibrarySlot = slot + 1100
-  if (slot > Date.now()) await new Promise(resolve => setTimeout(resolve, slot - Date.now()))
-  return academicJson<T>(url)
-}
+import { lookupBook } from './open-library'
 
 const blockedIPv6 = new BlockList()
 blockedIPv6.addSubnet('2001::', 23, 'ipv6')
@@ -106,6 +100,8 @@ export function webpageMetadata(html: string, url: string): ReferenceMetadata {
   return {
     type: journalName ? 'journal' : article?.['@type'] === 'Book' ? 'book' : 'website',
     title: title.slice(0, 1000), authors: authors.slice(0, 100), year,
+    publicationDate: (value('citation_publication_date', 'article:published_time', 'date', 'dc.date') || string(article?.datePublished)).match(/^\d{4}-\d{2}-\d{2}/)?.[0],
+    siteName: value('og:site_name') || named(article?.publisher),
     journalName, volume: value('citation_volume'), issue: value('citation_issue'),
     pageRange: [value('citation_firstpage'), value('citation_lastpage')].filter(Boolean).join('-'),
     doi: normalizeDoi(value('citation_doi', 'dc.identifier')) || undefined,
@@ -118,18 +114,7 @@ export async function lookupReference(input: string): Promise<{ metadata: Refere
   const doi = normalizeDoi(input)
   if (doi) return { metadata: await lookupDoi(doi), provider: 'Crossref' }
   const isbn = normalizeIsbn(input)
-  if (isbn) {
-    interface Edition { title?: string; authors?: { key: string }[]; publish_date?: string; publishers?: string[]; publish_places?: string[]; works?: { key: string }[] }
-    const edition = await libraryJson<Edition>(`https://openlibrary.org/isbn/${isbn}.json`)
-    let authorKeys = edition.authors || []
-    if (!authorKeys.length && edition.works?.[0]?.key && /^\/works\/OL\d+W$/.test(edition.works[0].key)) {
-      const work = await libraryJson<{ authors?: { author: { key: string } }[] }>(`https://openlibrary.org${edition.works[0].key}.json`)
-      authorKeys = (work.authors || []).map(a => a.author)
-    }
-    const authorResults = await Promise.allSettled(authorKeys.slice(0, 20).filter(a => /^\/authors\/OL\d+A$/.test(a.key)).map(a => libraryJson<{ name: string }>(`https://openlibrary.org${a.key}.json`)))
-    if (!edition.title) throw new Error('No book details were found for this ISBN.')
-    return { metadata: { type: 'book', title: edition.title, authors: authorResults.flatMap(a => a.status === 'fulfilled' && a.value.name ? [a.value.name] : []), year: edition.publish_date?.match(/\b(?:18|19|20)\d{2}\b/)?.[0] || '', publisher: edition.publishers?.join('; '), place: edition.publish_places?.join('; '), url: `https://openlibrary.org/isbn/${isbn}` }, provider: 'Open Library' }
-  }
+  if (isbn) return { metadata: await lookupBook(isbn), provider: 'Open Library' }
   if (!/^https?:\/\//i.test(input)) throw new Error('Paste a valid DOI, ISBN-10, ISBN-13, or HTTP/HTTPS webpage URL.')
   const page = await fetchPublicPage(input)
   const metadata = webpageMetadata(page.html, page.url)

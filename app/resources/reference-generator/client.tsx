@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import {
   formatCitation,
-  sortCitations,
-  resetVancouverCounter,
+  formatBibliography,
+  citationIdentity,
+  citationPlainText,
+  authorInitials,
   type CitationStyle,
   type SourceType,
   type CitationSource,
@@ -14,14 +16,16 @@ import {
   type JournalSource,
 } from '@/lib/citation-formatter'
 
+import BookTitleSearch from '@/components/resources-book-title-search'
+import { citationSourceSchema } from '@/lib/citation-source-validation'
 import type { ReferenceMetadata } from '@/lib/academic-metadata'
 
 const STYLES: { value: CitationStyle; label: string }[] = [
   { value: 'APA', label: 'APA 7th' },
-  { value: 'Harvard', label: 'Harvard' },
+  { value: 'Harvard', label: 'Harvard (Cite Them Right)' },
   { value: 'Vancouver', label: 'Vancouver' },
   { value: 'MLA', label: 'MLA 9th' },
-  { value: 'Chicago', label: 'Chicago' },
+  { value: 'Chicago', label: 'Chicago 18 (author–date)' },
 ]
 
 const SOURCE_TYPES: { value: SourceType; label: string; icon: string }[] = [
@@ -33,8 +37,18 @@ const SOURCE_TYPES: { value: SourceType; label: string; icon: string }[] = [
 export default function ReferenceGeneratorClient() {
   const [selectedStyle, setSelectedStyle] = useState<CitationStyle>('APA')
   const [sourceType, setSourceType] = useState<SourceType>('book')
-  const [generatedCitation, setGeneratedCitation] = useState<FormattedCitation | null>(null)
-  const [bibliography, setBibliography] = useState<FormattedCitation[]>([])
+  const [generatedSource, setGeneratedSource] = useState<CitationSource | null>(null)
+  const [bibliographySources, setBibliographySources] = useState<CitationSource[]>([])
+  const [legacyBibliography, setLegacyBibliography] = useState<FormattedCitation[]>([])
+  const [storageReady, setStorageReady] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [formError, setFormError] = useState('')
+  const [bibliographyMessage, setBibliographyMessage] = useState('')
+  const bibliography = useMemo(() => formatBibliography(bibliographySources, selectedStyle), [bibliographySources, selectedStyle])
+  const generatedCitation = useMemo(() => {
+    if (!generatedSource) return null
+    return formatBibliography([...bibliographySources, generatedSource], selectedStyle).find(c => c.source && citationIdentity(c.source) === citationIdentity(generatedSource)) || formatCitation(generatedSource, selectedStyle)
+  }, [generatedSource, bibliographySources, selectedStyle])
   const [copySuccess, setCopySuccess] = useState(false)
   const [copiedInText, setCopiedInText] = useState(false)
   const [copiedFullRef, setCopiedFullRef] = useState(false)
@@ -45,6 +59,8 @@ export default function ReferenceGeneratorClient() {
   const [bookYear, setBookYear] = useState('')
   const [bookPublisher, setBookPublisher] = useState('')
   const [bookPlace, setBookPlace] = useState('')
+  const [bookEdition, setBookEdition] = useState('')
+  const [bookIsbn, setBookIsbn] = useState('')
 
   // Website form state
   const [webAuthors, setWebAuthors] = useState('')
@@ -53,6 +69,10 @@ export default function ReferenceGeneratorClient() {
   const [webYear, setWebYear] = useState('')
   const [webUrl, setWebUrl] = useState('')
   const [webDateAccessed, setWebDateAccessed] = useState('')
+  const [webPublicationDate, setWebPublicationDate] = useState('')
+  const [webSiteName, setWebSiteName] = useState('')
+  const [webPlace, setWebPlace] = useState('')
+  const [webChangesOverTime, setWebChangesOverTime] = useState(false)
 
   // Journal form state
   const [journalAuthors, setJournalAuthors] = useState('')
@@ -63,13 +83,34 @@ export default function ReferenceGeneratorClient() {
   const [journalIssue, setJournalIssue] = useState('')
   const [journalPageRange, setJournalPageRange] = useState('')
   const [journalDoi, setJournalDoi] = useState('')
+  const [journalArticleNumber, setJournalArticleNumber] = useState('')
+  const [journalAbbreviation, setJournalAbbreviation] = useState('')
 
+  const [lookupMode, setLookupMode] = useState<'identifier' | 'book'>('identifier')
   const [lookupInput, setLookupInput] = useState('')
   const [lookupLoading, setLookupLoading] = useState(false)
   const [lookupMessage, setLookupMessage] = useState('')
   const [lookupError, setLookupError] = useState('')
   const lookupController = useRef<AbortController | null>(null)
   const handoffStarted = useRef(false)
+
+  function applyMetadata(metadata: ReferenceMetadata, provider: string) {
+    clearForm()
+    setSourceType(metadata.type)
+    if (metadata.type === 'book') {
+      setBookAuthors(metadata.authors.join('; ')); setBookTitle(metadata.title); setBookYear(metadata.year)
+      setBookPublisher(metadata.publisher || ''); setBookPlace(metadata.place || ''); setBookEdition(metadata.edition || ''); setBookIsbn(metadata.isbn || '')
+    } else if (metadata.type === 'journal') {
+      setJournalAuthors(metadata.authors.join('; ')); setJournalTitle(metadata.title); setJournalYear(metadata.year)
+      setJournalName(metadata.journalName || ''); setJournalVolume(metadata.volume || '')
+      setJournalIssue(metadata.issue || ''); setJournalPageRange(metadata.pageRange || ''); setJournalDoi(metadata.doi || ''); setJournalArticleNumber(metadata.articleNumber || '')
+    } else {
+      setWebAuthors(metadata.authors.join('; ')); setWebTitle(metadata.title); setWebYear(metadata.year)
+      setWebOrganisation(metadata.organisation || ''); setWebUrl(metadata.url || ''); setWebPublicationDate(metadata.publicationDate || ''); setWebSiteName(metadata.siteName || '')
+      setWebDateAccessed(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }))
+    }
+    setLookupMessage(`Details retrieved from ${provider}. Check the source type and every field below; fill in any missing details before generating your reference.`)
+  }
 
   async function retrieveReference(input: string) {
     lookupController.current?.abort()
@@ -83,22 +124,7 @@ export default function ReferenceGeneratorClient() {
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Lookup failed. Enter the details manually.')
-      const metadata: ReferenceMetadata = data.metadata
-      clearForm()
-      setSourceType(metadata.type)
-      if (metadata.type === 'book') {
-        setBookAuthors(metadata.authors.join('; ')); setBookTitle(metadata.title); setBookYear(metadata.year)
-        setBookPublisher(metadata.publisher || ''); setBookPlace(metadata.place || '')
-      } else if (metadata.type === 'journal') {
-        setJournalAuthors(metadata.authors.join('; ')); setJournalTitle(metadata.title); setJournalYear(metadata.year)
-        setJournalName(metadata.journalName || ''); setJournalVolume(metadata.volume || '')
-        setJournalIssue(metadata.issue || ''); setJournalPageRange(metadata.pageRange || ''); setJournalDoi(metadata.doi || '')
-      } else {
-        setWebAuthors(metadata.authors.join('; ')); setWebTitle(metadata.title); setWebYear(metadata.year)
-        setWebOrganisation(metadata.organisation || ''); setWebUrl(metadata.url || input)
-        setWebDateAccessed(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }))
-      }
-      setLookupMessage(`Details retrieved from ${data.provider}. Check the source type and every field below; fill in any missing details before generating your reference.`)
+      applyMetadata(data.metadata, data.provider)
     } catch (error) {
       if (!controller.signal.aborted) setLookupError(error instanceof Error ? error.message : 'Lookup failed. Enter the details manually.')
     } finally {
@@ -117,42 +143,27 @@ export default function ReferenceGeneratorClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Load bibliography from sessionStorage on mount
   useEffect(() => {
-    const saved = sessionStorage.getItem('gpg_bibliography')
-    if (saved) {
-      try {
-        setBibliography(JSON.parse(saved))
-      } catch (e) {
-        console.error('Failed to load bibliography:', e)
-      }
-    }
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('gpg_bibliography') || 'null')
+      if (saved?.version === 2 && STYLES.some(style => style.value === saved.style)) setSelectedStyle(saved.style)
+      const sources = saved?.version === 2 ? saved.sources : Array.isArray(saved) ? saved.flatMap((entry: FormattedCitation) => entry.source ? [entry.source] : []) : []
+      setBibliographySources((sources || []).flatMap((source: unknown) => { const parsed = citationSourceSchema.safeParse(source); return parsed.success ? [parsed.data] : [] }))
+      const legacy = saved?.version === 2 ? saved.legacy : Array.isArray(saved) ? saved.filter((entry: FormattedCitation) => !entry.source) : []
+      setLegacyBibliography((legacy || []).filter((entry: FormattedCitation) => typeof entry.fullReference === 'string' && STYLES.some(style => style.value === entry.style)))
+    } catch { /* An invalid browser draft must not prevent using the generator. */ }
+    setStorageReady(true)
   }, [])
-
-  // Save bibliography to sessionStorage whenever it changes
   useEffect(() => {
-    if (bibliography.length > 0) {
-      sessionStorage.setItem('gpg_bibliography', JSON.stringify(bibliography))
-    } else {
-      sessionStorage.removeItem('gpg_bibliography')
-    }
-  }, [bibliography])
+    if (!storageReady) return
+    try {
+      if (bibliographySources.length || legacyBibliography.length) sessionStorage.setItem('gpg_bibliography', JSON.stringify({ version: 2, style: selectedStyle, sources: bibliographySources, legacy: legacyBibliography }))
+      else sessionStorage.removeItem('gpg_bibliography')
+    } catch { setBibliographyMessage('Browser storage is unavailable. Download your bibliography to keep a copy.') }
+  }, [bibliographySources, legacyBibliography, storageReady, selectedStyle])
 
-  const capitalizeNamePart = (name: string): string => {
-    if (!name) return name
-
-    // Handle hyphenated names (Smith-Jones), apostrophes (O'Brien), and spaces
-    return name
-      .split(/([-' ])/) // Split on hyphens, apostrophes, and spaces, keeping delimiters
-      .map(part => {
-        if (part === '-' || part === "'" || part === ' ') return part
-        if (!part) return part
-
-        // Capitalize first letter, lowercase rest
-        return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
-      })
-      .join('')
-  }
+  // Preserve the spelling and capitalization of names entered or retrieved.
+  const capitalizeNamePart = (name: string) => name
 
   const parseAuthor = (input: string): { surname: string; firstName: string; formatted: string } | null => {
     const trimmed = input.trim()
@@ -201,36 +212,17 @@ export default function ReferenceGeneratorClient() {
       })
   }
 
-  const getAuthorPreview = (input: string): string => {
-    if (!input.trim()) return ''
-
-    const parsed = input.split(';')
-      .map(author => parseAuthor(author))
-      .filter((parsed): parsed is NonNullable<typeof parsed> => parsed !== null)
-
-    if (parsed.length === 0) return ''
-
-    // Show how it will appear in citation (APA/Harvard style with "and" or "et al.")
-    if (parsed.length === 1) {
-      return parsed[0].surname + (parsed[0].firstName ? `, ${parsed[0].firstName.charAt(0).toUpperCase()}.` : '')
-    } else if (parsed.length === 2) {
-      const first = parsed[0].surname + (parsed[0].firstName ? `, ${parsed[0].firstName.charAt(0).toUpperCase()}.` : '')
-      const second = parsed[1].surname + (parsed[1].firstName ? `, ${parsed[1].firstName.charAt(0).toUpperCase()}.` : '')
-      return `${first} and ${second}`
-    } else {
-      const first = parsed[0].surname + (parsed[0].firstName ? `, ${parsed[0].firstName.charAt(0).toUpperCase()}.` : '')
-      return `${first} et al.`
-    }
-  }
+  const getAuthorPreview = (input: string) => parseAuthors(input).map(authorInitials).join('; ')
 
   const handleGenerate = () => {
+    setFormError('')
     try {
       let source: CitationSource
 
       if (sourceType === 'book') {
         const authors = parseAuthors(bookAuthors)
-        if (authors.length === 0 || !bookTitle || !bookYear) {
-          alert('Please fill in at least authors, title, and year')
+        if (authors.length === 0 || !bookTitle) {
+          setFormError('Please fill in authors and title.')
           return
         }
 
@@ -239,17 +231,19 @@ export default function ReferenceGeneratorClient() {
           authors,
           title: bookTitle,
           year: bookYear,
-          publisher: bookPublisher || 'Unknown Publisher',
-          place: bookPlace || 'Unknown',
+          publisher: bookPublisher,
+          place: bookPlace,
+          edition: bookEdition || undefined,
+          isbn: bookIsbn || undefined,
         } as BookSource
       } else if (sourceType === 'website') {
         const authors = webAuthors ? parseAuthors(webAuthors) : undefined
         if ((!authors || authors.length === 0) && !webOrganisation) {
-          alert('Please provide either authors or organisation name')
+          setFormError('Please provide an author or organisation.')
           return
         }
-        if (!webTitle || !webYear || !webUrl) {
-          alert('Please fill in title, year, and URL')
+        if (!webTitle || !webUrl) {
+          setFormError('Please fill in the title and URL.')
           return
         }
 
@@ -260,12 +254,16 @@ export default function ReferenceGeneratorClient() {
           title: webTitle,
           year: webYear,
           url: webUrl,
+          publicationDate: webPublicationDate || undefined,
+          siteName: webSiteName || undefined,
+          changesOverTime: webChangesOverTime,
+          place: webPlace || undefined,
           dateAccessed: webDateAccessed || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
         } as WebsiteSource
       } else {
         const authors = parseAuthors(journalAuthors)
-        if (authors.length === 0 || !journalTitle || !journalName || !journalYear) {
-          alert('Please fill in authors, article title, journal name, and year')
+        if (authors.length === 0 || !journalTitle || !journalName) {
+          setFormError('Please fill in authors, article title, and journal name.')
           return
         }
 
@@ -279,41 +277,47 @@ export default function ReferenceGeneratorClient() {
           issue: journalIssue || undefined,
           pageRange: journalPageRange,
           doi: journalDoi || undefined,
+          articleNumber: journalArticleNumber || undefined,
+          journalAbbreviation: journalAbbreviation || undefined,
         } as JournalSource
       }
 
-      if (selectedStyle === 'Vancouver') {
-        resetVancouverCounter()
-        const vancouverBib = bibliography.filter(c => c.style === 'Vancouver')
-        vancouverBib.forEach((_, idx) => {
-          vancouverBib[idx] = formatCitation(
-            source,
-            'Vancouver'
-          )
-        })
-      }
-
-      const citation = formatCitation(source, selectedStyle)
-      setGeneratedCitation(citation)
+      const validated = citationSourceSchema.safeParse(source)
+      if (!validated.success) { setFormError(validated.error.issues[0]?.message || 'Check your source details.'); return }
+      setGeneratedSource(validated.data)
     } catch (error) {
       console.error('Citation generation error:', error)
-      alert('Failed to generate citation. Please check your input.')
+      setFormError('Failed to generate citation. Please check your input.')
     }
   }
 
   const handleAddToBibliography = () => {
-    if (!generatedCitation) return
-
-    setBibliography(prev => {
-      const updated = [...prev, generatedCitation]
-      return sortCitations(updated)
-    })
-
-    alert('Added to bibliography!')
+    if (!generatedSource) return
+    if (bibliographySources.some(source => citationIdentity(source) === citationIdentity(generatedSource))) {
+      setBibliographySources(prev => prev.map(source => citationIdentity(source) === citationIdentity(generatedSource) ? generatedSource : source))
+      setBibliographyMessage('Bibliography entry updated.'); return
+    }
+    if (bibliographySources.length >= 200) { setBibliographyMessage('Download this bibliography before starting another (maximum 200 sources).'); return }
+    setBibliographySources(prev => [...prev, generatedSource])
+    setBibliographyMessage('Added to bibliography.')
   }
-
   const handleRemoveFromBibliography = (index: number) => {
-    setBibliography(prev => prev.filter((_, i) => i !== index))
+    const identity = bibliography[index].source && citationIdentity(bibliography[index].source!)
+    setBibliographySources(prev => prev.filter(source => citationIdentity(source) !== identity))
+  }
+  const handleDownloadBibliography = async () => {
+    setExporting(true); setBibliographyMessage('')
+    try {
+      const response = await fetch('/api/resources/bibliography', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ style: selectedStyle, sources: bibliographySources }) })
+      if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Could not export the bibliography.') }
+      const url = URL.createObjectURL(await response.blob())
+      const link = document.createElement('a')
+      link.href = url; link.download = `bibliography-${selectedStyle.toLowerCase()}.docx`
+      document.body.appendChild(link); link.click(); link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 10000)
+      setBibliographyMessage('Your Word bibliography is ready.')
+    } catch (error) { setBibliographyMessage(error instanceof Error ? error.message : 'Could not download the bibliography. Please try again.') }
+    finally { setExporting(false) }
   }
 
   const stripMarkdown = (text: string): string => {
@@ -327,7 +331,7 @@ export default function ReferenceGeneratorClient() {
       return
     }
 
-    const text = bibliography.map(c => stripMarkdown(c.fullReference)).join('\n\n')
+    const text = bibliography.map(c => citationPlainText(c)).join('\n\n')
 
     try {
       await navigator.clipboard.writeText(text)
@@ -356,7 +360,7 @@ export default function ReferenceGeneratorClient() {
     if (!generatedCitation) return
 
     try {
-      await navigator.clipboard.writeText(stripMarkdown(generatedCitation.fullReference))
+      await navigator.clipboard.writeText(citationPlainText(generatedCitation))
       setCopiedFullRef(true)
       setTimeout(() => setCopiedFullRef(false), 2000)
     } catch (err) {
@@ -372,13 +376,13 @@ export default function ReferenceGeneratorClient() {
     setBookTitle('')
     setBookYear('')
     setBookPublisher('')
-    setBookPlace('')
+    setBookPlace(''); setBookEdition(''); setBookIsbn('')
     setWebAuthors('')
     setWebOrganisation('')
     setWebTitle('')
     setWebYear('')
     setWebUrl('')
-    setWebDateAccessed('')
+    setWebDateAccessed(''); setWebPublicationDate(''); setWebSiteName(''); setWebChangesOverTime(false); setWebPlace('')
     setJournalAuthors('')
     setJournalTitle('')
     setJournalName('')
@@ -386,8 +390,8 @@ export default function ReferenceGeneratorClient() {
     setJournalVolume('')
     setJournalIssue('')
     setJournalPageRange('')
-    setJournalDoi('')
-    setGeneratedCitation(null)
+    setJournalDoi(''); setJournalArticleNumber(''); setJournalAbbreviation('')
+    setGeneratedSource(null); setFormError('')
   }
 
   return (
@@ -404,18 +408,25 @@ export default function ReferenceGeneratorClient() {
       </section>
 
       <div className="container-narrow py-12 space-y-8">
-        <form onSubmit={event => { event.preventDefault(); void retrieveReference(lookupInput.trim()) }} className="bg-white rounded-2xl border border-[#E8E2D9] p-6 space-y-3">
-          <label htmlFor="reference-lookup" className="block text-lg font-bold text-[#1B2E4B]">Find reference details automatically</label>
+        <div className="bg-white rounded-2xl border border-[#E8E2D9] p-6 space-y-3">
+          <h2 className="block text-lg font-bold text-[#1B2E4B]">Find reference details automatically</h2>
+          <div className="flex flex-wrap gap-2">
+            <button disabled={lookupLoading} onClick={() => setLookupMode('identifier')} aria-pressed={lookupMode === 'identifier'} className={`px-4 py-2 text-sm font-semibold rounded-xl ${lookupMode === 'identifier' ? 'bg-[#E8A020] text-white' : 'bg-[#F5F0E8] text-[#1B2E4B]'}`}>DOI, ISBN or link</button>
+            <button disabled={lookupLoading} onClick={() => setLookupMode('book')} aria-pressed={lookupMode === 'book'} className={`px-4 py-2 text-sm font-semibold rounded-xl ${lookupMode === 'book' ? 'bg-[#E8A020] text-white' : 'bg-[#F5F0E8] text-[#1B2E4B]'}`}>Search by book title</button>
+          </div>
+          {lookupMode === 'identifier' ? <form onSubmit={event => { event.preventDefault(); void retrieveReference(lookupInput.trim()) }} className="space-y-3">
+          <label htmlFor="reference-lookup" className="sr-only">DOI, ISBN or webpage URL</label>
           <p className="text-sm text-[#6B7280]">Paste a DOI, ISBN-10, ISBN-13, or public webpage link.</p>
           <div className="flex flex-col sm:flex-row gap-3">
             <input id="reference-lookup" value={lookupInput} onChange={event => setLookupInput(event.target.value)} placeholder="DOI, ISBN, or https://…" required maxLength={2000} disabled={lookupLoading} className="min-w-0 flex-1 px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30" />
             <button disabled={lookupLoading || !lookupInput.trim()} className="px-5 py-3 bg-[#1B2E4B] text-white font-bold rounded-xl disabled:opacity-50">{lookupLoading ? 'Finding details…' : 'Find reference'}</button>
           </div>
           <p className="text-xs text-[#6B7280]">Some websites block automatic access or omit citation details. You can always complete the form manually.</p>
-          {lookupLoading && <p role="status" className="text-sm text-[#6B7280]">Retrieving source details…</p>}
+          </form> : <BookTitleSearch onSelect={applyMetadata} onBusyChange={setLookupLoading} />}
+          {lookupLoading && lookupMode === 'identifier' && <p role="status" className="text-sm text-[#6B7280]">Retrieving source details…</p>}
           {lookupError && <p role="alert" className="text-sm text-red-700">{lookupError}</p>}
           {lookupMessage && <p role="status" className="text-sm text-green-700">{lookupMessage}</p>}
-        </form>
+        </div>
 
         {/* Style Selection */}
         <div>
@@ -437,6 +448,8 @@ export default function ReferenceGeneratorClient() {
           </div>
         </div>
 
+        <p className="text-xs text-[#6B7280]">APA 7; Harvard Cite Them Right; Vancouver ICMJE; MLA 9; Chicago 18 author–date. Check title capitalization, missing details, and any page locator against your source and university guidance.</p>
+        {bibliographyMessage && <p role="status" className="text-sm text-[#1B2E4B]">{bibliographyMessage}</p>}
         {/* Source Type Selection */}
         <div>
           <label className="block text-sm font-bold text-[#1B2E4B] mb-3">Source Type</label>
@@ -517,7 +530,7 @@ export default function ReferenceGeneratorClient() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-[#1B2E4B] mb-2">
-                    Year <span className="text-red-500">*</span>
+                    Year (blank if undated)
                   </label>
                   <input
                     type="text"
@@ -528,7 +541,7 @@ export default function ReferenceGeneratorClient() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-[#1B2E4B] mb-2">Place of Publication</label>
+                  <label className="block text-sm font-semibold text-[#1B2E4B] mb-2">Place of publication (Vancouver)</label>
                   <input
                     type="text"
                     value={bookPlace}
@@ -548,6 +561,9 @@ export default function ReferenceGeneratorClient() {
                   className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
                 />
               </div>
+              <label className="block text-sm font-semibold text-[#1B2E4B]">Edition (if later than first)
+                <input value={bookEdition} onChange={e => setBookEdition(e.target.value)} placeholder="e.g., 2nd" className="w-full mt-2 px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm" />
+              </label>
             </div>
           )}
 
@@ -601,12 +617,12 @@ export default function ReferenceGeneratorClient() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-[#1B2E4B] mb-2">
-                    Year <span className="text-red-500">*</span>
+                    Year (blank if undated)
                   </label>
                   <input
                     type="text"
                     value={webYear}
-                    onChange={(e) => setWebYear(e.target.value)}
+                    onChange={(e) => { setWebYear(e.target.value); setWebPublicationDate('') }}
                     placeholder="2023"
                     className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
                   />
@@ -635,6 +651,12 @@ export default function ReferenceGeneratorClient() {
                   className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
                 />
               </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <label className="text-sm font-semibold text-[#1B2E4B]">Publication date (if known)<input type="date" value={webPublicationDate} onChange={e => { setWebPublicationDate(e.target.value); if (e.target.value) setWebYear(e.target.value.slice(0, 4)) }} className="w-full mt-2 px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm" /></label>
+                <label className="text-sm font-semibold text-[#1B2E4B]">Website name (if different from author)<input value={webSiteName} onChange={e => setWebSiteName(e.target.value)} className="w-full mt-2 px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm" /></label>
+              </div>
+              {selectedStyle === 'Vancouver' && <label className="block text-sm font-semibold text-[#1B2E4B]">Publisher location (if known)<input value={webPlace} onChange={e => setWebPlace(e.target.value)} className="w-full mt-2 px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm" /></label>}
+              <label className="flex gap-2 items-center text-sm text-[#6B7280]"><input type="checkbox" checked={webChangesOverTime} onChange={e => setWebChangesOverTime(e.target.checked)} />Content changes over time (include an APA retrieval date)</label>
             </div>
           )}
 
@@ -688,7 +710,7 @@ export default function ReferenceGeneratorClient() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-[#1B2E4B] mb-2">
-                    Year <span className="text-red-500">*</span>
+                    Year (blank if undated)
                   </label>
                   <input
                     type="text"
@@ -724,7 +746,7 @@ export default function ReferenceGeneratorClient() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-[#1B2E4B] mb-2">
-                    Pages / article number (if available)
+                    Page range (if available)
                   </label>
                   <input
                     type="text"
@@ -745,9 +767,12 @@ export default function ReferenceGeneratorClient() {
                   className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
                 />
               </div>
+              <label className="block text-sm font-semibold text-[#1B2E4B]">Article number (if used instead of pages)<input value={journalArticleNumber} onChange={e => setJournalArticleNumber(e.target.value)} placeholder="e.g., e0123456" className="w-full mt-2 px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm" /></label>
+              {selectedStyle === 'Vancouver' && <label className="block text-sm font-semibold text-[#1B2E4B]">Verified journal abbreviation (optional)<input value={journalAbbreviation} onChange={e => setJournalAbbreviation(e.target.value)} placeholder="e.g., N Engl J Med" className="w-full mt-2 px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm" /><span className="block mt-1 text-xs font-normal text-[#6B7280]">Use the journal’s official NLM abbreviation; otherwise its full name is retained.</span></label>}
             </div>
           )}
 
+          {formError && <p role="alert" className="text-sm text-red-700 mt-4">{formError}</p>}
           <button
             disabled={lookupLoading}
             onClick={handleGenerate}
@@ -816,7 +841,7 @@ export default function ReferenceGeneratorClient() {
                   </button>
                 </div>
                 <div className="bg-[#F5F0E8] rounded-xl p-4">
-                  <p className="text-sm text-[#1B2E4B]" dangerouslySetInnerHTML={{ __html: generatedCitation.fullReference.replace(/\*/g, '') }} />
+                  <p className="text-sm text-[#1B2E4B] break-words"><CitationText citation={generatedCitation} /></p>
                 </div>
               </div>
 
@@ -824,7 +849,7 @@ export default function ReferenceGeneratorClient() {
                 onClick={handleAddToBibliography}
                 className="w-full bg-[#16A34A] hover:bg-[#15803D] text-white font-bold py-3 rounded-xl transition-colors"
               >
-                + Add to Bibliography
+                {generatedSource && bibliographySources.some(source => citationIdentity(source) === citationIdentity(generatedSource)) ? 'Update Bibliography Entry' : '+ Add to Bibliography'}
               </button>
             </div>
           </div>
@@ -833,10 +858,12 @@ export default function ReferenceGeneratorClient() {
         {/* Bibliography */}
         {bibliography.length > 0 && (
           <div className="bg-white rounded-2xl border border-[#E8E2D9] p-6" style={{ boxShadow: '0 2px 8px -2px rgba(26,26,46,0.07)' }}>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
               <h2 className="text-lg font-bold text-[#1B2E4B]">
                 Bibliography ({bibliography.length})
               </h2>
+              <div className="flex flex-wrap gap-2">
+              <button onClick={() => void handleDownloadBibliography()} disabled={exporting} className="px-4 py-2 bg-[#1B2E4B] text-white font-bold text-sm rounded-xl disabled:opacity-50">{exporting ? 'Preparing Word…' : 'Download Word (.docx)'}</button>
               <button
                 onClick={handleCopyBibliography}
                 className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
@@ -847,13 +874,15 @@ export default function ReferenceGeneratorClient() {
               >
                 {copySuccess ? '✓ Copied!' : 'Copy All'}
               </button>
+              </div>
             </div>
 
+            {selectedStyle === 'Vancouver' && <p className="text-xs text-[#6B7280] mb-3">Numbers follow the order you add sources. If you remove or reorder entries, update any in-text numbers already copied into your document.</p>}
             <div className="space-y-3">
               {bibliography.map((citation, index) => (
                 <div key={index} className="flex items-start gap-3 p-4 bg-[#F5F0E8] rounded-xl">
                   <div className="flex-1">
-                    <p className="text-sm text-[#1B2E4B]" dangerouslySetInnerHTML={{ __html: citation.fullReference.replace(/\*/g, '') }} />
+                    <p className="text-sm text-[#1B2E4B] break-words"><CitationText citation={citation} /></p>
                   </div>
                   <button
                     onClick={() => handleRemoveFromBibliography(index)}
@@ -866,7 +895,16 @@ export default function ReferenceGeneratorClient() {
             </div>
           </div>
         )}
+        {legacyBibliography.length > 0 && <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 space-y-3">
+          <h2 className="font-bold text-[#1B2E4B]">Earlier references (original formatting)</h2>
+          <p className="text-sm text-[#6B7280]">These older entries have no saved source details. They remain here for copying; add them again to include them in a corrected Word export.</p>
+          {legacyBibliography.map((citation, index) => <div key={index} className="bg-[#F5F0E8] rounded-xl p-4 space-y-2"><p className="text-xs text-[#6B7280]">{citation.style}</p><p className="text-sm text-[#1B2E4B] break-words">{citationPlainText(citation)}</p><button onClick={() => setLegacyBibliography(prev => prev.filter((_, i) => i !== index))} className="text-sm font-semibold text-red-700">Remove earlier reference</button></div>)}
+        </div>}
       </div>
     </main>
   )
+}
+
+function CitationText({ citation }: { citation: FormattedCitation }) {
+  return citation.runs ? <>{citation.runs.map((run, index) => run.italic ? <em key={index}>{run.text}</em> : <span key={index}>{run.text}</span>)}</> : <>{citationPlainText(citation)}</>
 }

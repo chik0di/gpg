@@ -1,7 +1,7 @@
 {
   "name": "getprimegrade",
   "version": "0.1.0",
-  "description": "Academic support platform \u2014 custom study material for UK students",
+  "description": "Academic support platform — custom study material for UK students",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -10,7 +10,10 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "generate:favicons": "node scripts/generate-favicons.mjs",
-    "test:academic-tools": "node scripts/test-academic-tools.cjs"
+    "test:academic-tools": "node scripts/test-academic-tools.cjs",
+    "test:saved-sources": "node scripts/test-saved-sources.cjs",
+    "test:references": "node scripts/test-references.cjs",
+    "test:reference-tools": "node scripts/test-reference-tools.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
@@ -19,6 +22,7 @@
     "@stripe/stripe-js": "^9.7.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
+    "docx": "^9.9.0",
     "dotenv": "^17.4.2",
     "htmlparser2": "^12.0.0",
     "mammoth": "^1.12.0",

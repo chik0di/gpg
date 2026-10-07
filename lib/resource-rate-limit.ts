@@ -33,7 +33,9 @@ export function getClientIP(request: NextRequest): string {
   return fallback
 }
 
-export async function checkRateLimit(ip: string): Promise<RateLimitResult> {
+export async function checkRateLimit(ip: string, options: { count?: number; spacingMs?: number } = {}): Promise<RateLimitResult> {
+  const limitCount = options.count ?? RATE_LIMIT_COUNT
+  const minSpacing = options.spacingMs ?? MIN_REQUEST_SPACING
   const now = Date.now()
   const supabase = createServerClient()
 
@@ -49,7 +51,7 @@ export async function checkRateLimit(ip: string): Promise<RateLimitResult> {
       // PGRST116 = no rows found, which is fine
       console.error('[Rate Limit] Database fetch error:', fetchError)
       // Fail open - allow request if database is down
-      return { allowed: true, remaining: RATE_LIMIT_COUNT - 1 }
+      return { allowed: true, remaining: limitCount - 1 }
     }
 
     const windowStart = now - RATE_LIMIT_WINDOW
@@ -67,12 +69,12 @@ export async function checkRateLimit(ip: string): Promise<RateLimitResult> {
 
       if (insertError) {
         console.error('[Rate Limit] Insert error:', insertError)
-        return { allowed: true, remaining: RATE_LIMIT_COUNT - 1 }
+        return { allowed: true, remaining: limitCount - 1 }
       }
 
       return {
         allowed: true,
-        remaining: RATE_LIMIT_COUNT - 1,
+        remaining: limitCount - 1,
         resetAt: now + RATE_LIMIT_WINDOW
       }
     }
@@ -82,11 +84,11 @@ export async function checkRateLimit(ip: string): Promise<RateLimitResult> {
     const recordWindowStart = new Date(existing.window_start).getTime()
 
     // CHECK 1: Minimum spacing between requests (3 seconds)
-    if (timeSinceLastRequest < MIN_REQUEST_SPACING) {
-      const waitTime = Math.ceil((MIN_REQUEST_SPACING - timeSinceLastRequest) / 1000)
+    if (timeSinceLastRequest < minSpacing) {
+      const waitTime = Math.ceil((minSpacing - timeSinceLastRequest) / 1000)
       return {
         allowed: false,
-        remaining: Math.max(0, RATE_LIMIT_COUNT - existing.request_count),
+        remaining: Math.max(0, limitCount - existing.request_count),
         error: `Please wait ${waitTime} second${waitTime > 1 ? 's' : ''} before searching again.`
       }
     }
@@ -105,18 +107,18 @@ export async function checkRateLimit(ip: string): Promise<RateLimitResult> {
 
       if (updateError) {
         console.error('[Rate Limit] Reset update error:', updateError)
-        return { allowed: true, remaining: RATE_LIMIT_COUNT - 1 }
+        return { allowed: true, remaining: limitCount - 1 }
       }
 
       return {
         allowed: true,
-        remaining: RATE_LIMIT_COUNT - 1,
+        remaining: limitCount - 1,
         resetAt: now + RATE_LIMIT_WINDOW
       }
     }
 
     // CHECK 2: Total count limit (20 per hour)
-    if (existing.request_count >= RATE_LIMIT_COUNT) {
+    if (existing.request_count >= limitCount) {
       const resetIn = Math.ceil((recordWindowStart + RATE_LIMIT_WINDOW - now) / 1000 / 60)
       return {
         allowed: false,
@@ -145,14 +147,14 @@ export async function checkRateLimit(ip: string): Promise<RateLimitResult> {
 
     return {
       allowed: true,
-      remaining: RATE_LIMIT_COUNT - newCount,
+      remaining: limitCount - newCount,
       resetAt: recordWindowStart + RATE_LIMIT_WINDOW
     }
 
   } catch (error) {
     console.error('[Rate Limit] Unexpected error:', error)
     // Fail open - allow request if something goes wrong
-    return { allowed: true, remaining: RATE_LIMIT_COUNT - 1 }
+    return { allowed: true, remaining: limitCount - 1 }
   }
 }
 
