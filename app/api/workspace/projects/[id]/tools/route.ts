@@ -23,6 +23,12 @@ async function handle(request: Request, projectId: string) {
   try { const raw = await request.text(); body = raw.length <= 600000 ? JSON.parse(raw) : null } catch { body = null }
   const parsed = projectToolsSchema.safeParse(body?.content)
   if (!parsed.success) return fail('Check task titles, dates, source details and word budgets.', 400)
+  // Older browser tabs omit this field; keep the account checklist on their saves.
+  if (!Object.prototype.hasOwnProperty.call(body.content, 'submission') && existing) {
+    const previous = projectToolsSchema.safeParse(existing.content)
+    if (previous.success) parsed.data.submission = previous.data.submission
+    if (!projectToolsSchema.safeParse(parsed.data).success) return fail('This project plan is too large to save with its existing checklist.', 400)
+  }
   if (body.version !== (existing?.updated_at || null)) return fail('This plan changed on another device. Reload the account version before saving.', 409)
   const ids = toolsSourceIds(parsed.data)
   if (ids.length) {

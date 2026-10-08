@@ -10,13 +10,14 @@ export const projectToolsDraftSchema = z.object({
   tasks: z.array(z.object({ id, title: z.string().trim().max(200), due_date: day, completed: z.boolean() })).max(100),
   matrix: z.array(z.object({ id, source_id: id.nullable(), source_title: z.string().trim().min(1).max(1000), question: text, methods: text, findings: text, limitations: text, relevance: text })).max(200),
   outline: z.array(z.object({ id, heading: z.string().trim().max(200), word_budget: z.number().int().min(-100000).max(1000000), notes: text, source_ids: z.array(id).max(50) })).max(100),
+  submission: z.array(z.object({ id, title: z.string().trim().max(300), notes: z.string().max(2000), completed: z.boolean() })).max(100).default([]),
   word_target: z.number().int().min(-100000).max(1000000),
 }).refine(value => JSON.stringify(value).length <= 500000, 'This project plan is too large.')
-  .refine(value => [value.tasks, value.matrix, value.outline].every(rows => new Set(rows.map(row => row.id)).size === rows.length), 'Each entry must have a unique identifier.')
+  .refine(value => [value.tasks, value.matrix, value.outline, value.submission].every(rows => new Set(rows.map(row => row.id)).size === rows.length), 'Each entry must have a unique identifier.')
   .refine(value => toolsSourceIds(value).length <= 500, 'Link at most 500 different readings.')
-export const projectToolsSchema = projectToolsDraftSchema.refine(value => value.tasks.every(task => task.title.length > 0) && value.outline.every(section => section.heading.length > 0 && section.word_budget >= 0 && section.word_budget <= 100000) && value.word_target >= 0 && value.word_target <= 100000, 'Provide titles and word budgets between 0 and 100,000.')
+export const projectToolsSchema = projectToolsDraftSchema.refine(value => value.tasks.every(task => task.title.length > 0) && value.submission.every(check => check.title.length > 0) && value.outline.every(section => section.heading.length > 0 && section.word_budget >= 0 && section.word_budget <= 100000) && value.word_target >= 0 && value.word_target <= 100000, 'Provide titles and word budgets between 0 and 100,000.')
 export type ProjectTools = z.infer<typeof projectToolsSchema>
-export const emptyProjectTools: ProjectTools = { tasks: [], matrix: [], outline: [], word_target: 0 }
+export const emptyProjectTools: ProjectTools = { tasks: [], matrix: [], outline: [], submission: [], word_target: 0 }
 
 // Calendar days rather than elapsed hours keep plans stable across daylight-saving changes.
 export function suggestTasks(deadline: string | null, today: string, makeId: () => string): ProjectTools['tasks'] {
@@ -45,4 +46,16 @@ export function matrixCsv(tools: ProjectTools) {
 }
 export function outlineText(tools: ProjectTools, title: string) {
   return `${title}\nWord target: ${tools.word_target || 'Not set'}\n\n` + tools.outline.map((row, i) => `${i + 1}. ${row.heading} (${row.word_budget} words)\n${row.notes}`).join('\n\n')
+}
+
+export function standardSubmissionChecks(makeId: () => string): ProjectTools['submission'] {
+  return [
+    'Every part of the assignment brief addressed',
+    'Word count checked against the brief',
+    'Claims supported by relevant evidence',
+    'In-text citations matched to the bibliography',
+    'Quotations and page numbers checked against sources',
+    'Formatting and file name checked',
+    'Required attachments included',
+  ].map(title => ({ id: makeId(), title, notes: '', completed: false }))
 }

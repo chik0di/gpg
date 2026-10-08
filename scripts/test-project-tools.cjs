@@ -1,7 +1,7 @@
 const fs = require('node:fs'), path = require('node:path'), Module = require('node:module'), assert = require('node:assert/strict'), ts = require('typescript')
 const root = path.resolve(__dirname, '..')
 require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText, filename)
-const { suggestTasks, projectToolsSchema, emptyProjectTools, matrixCsv, outlineText } = require('../lib/project-tools.ts')
+const { suggestTasks, projectToolsSchema, emptyProjectTools, matrixCsv, outlineText, standardSubmissionChecks } = require('../lib/project-tools.ts')
 const uid = '11111111-1111-4111-8111-111111111111', other = '22222222-2222-4222-8222-222222222222', pid = '33333333-3333-4333-8333-333333333333', sid = '44444444-4444-4444-8444-444444444444', id = '55555555-5555-4555-8555-555555555555'
 let seq = 0
 const makeId = () => `${String(++seq).padStart(8, '0')}-1111-4111-8111-111111111111`
@@ -13,6 +13,14 @@ for (const [today, deadline] of [['2026-10-08', '2026-10-31'], ['2026-12-31','20
 }
 for (const deadline of [null,'2026-10-07','invalid']) assert.ok(suggestTasks(deadline,'2026-10-08',makeId).every(t=>t.due_date===null))
 assert.throws(()=>suggestTasks(null,'invalid',makeId))
+const submission = standardSubmissionChecks(makeId)
+assert.equal(submission.length,7);assert.ok(submission.every(check=>!check.completed))
+const legacy = { tasks: [], matrix: [], outline: [], word_target: 0 }
+assert.deepEqual(projectToolsSchema.parse(legacy).submission,[])
+assert.equal(projectToolsSchema.safeParse({...emptyProjectTools,submission:[{...submission[0],title:''}]}).success,false)
+assert.equal(projectToolsSchema.safeParse({...emptyProjectTools,submission:[submission[0],submission[0]]}).success,false)
+assert.equal(projectToolsSchema.safeParse({...emptyProjectTools,submission:Array(101).fill(submission[0])}).success,false)
+
 const task = {id,title:'Research',due_date:'2026-10-09',completed:false}
 assert.equal(projectToolsSchema.safeParse({...emptyProjectTools,tasks:[task,{...task}]}).success,false)
 assert.equal(projectToolsSchema.safeParse({...emptyProjectTools,tasks:[{...task,due_date:'2027-02-29'}]}).success,false)
@@ -53,6 +61,16 @@ async function main(){
  assert.equal((await api.PUT(req('PUT',{content:plan,version}),ctx)).status,200)
  assert.equal(existing.content.matrix[0].source_id,null);assert.equal(existing.content.matrix[0].findings,row.findings);assert.deepEqual(existing.content.outline[0].source_ids,[])
  assert.ok(lastWrite.filters.some(([k,v])=>k==='updated_at'&&v===version));assert.ok(lastWrite.filters.some(([k,v])=>k==='user_id'&&v===uid))
+ existing.content.submission=[{...submission[0],completed:true,notes:'Checked against the brief'}]
+ const olderContent={...existing.content};delete olderContent.submission
+ assert.equal((await api.PUT(req('PUT',{content:olderContent,version:existing.updated_at}),ctx)).status,200)
+ assert.equal(existing.content.submission[0].completed,true);assert.equal(existing.content.submission[0].notes,'Checked against the brief')
+ assert.equal((await api.PUT(req('PUT',{content:{...existing.content,submission:[]},version:existing.updated_at}),ctx)).status,200)
+ assert.deepEqual(existing.content.submission,[])
+ existing.content.submission=Array.from({length:100},()=>({...submission[0],id:makeId(),notes:'x'.repeat(2000)}))
+ const largeLegacy={...emptyProjectTools,matrix:Array.from({length:90},()=>({...row,id:makeId(),source_id:null,question:'x'.repeat(5000)}))};delete largeLegacy.submission
+ assert.equal((await api.PUT(req('PUT',{content:largeLegacy,version:existing.updated_at}),ctx)).status,400)
+ existing.content.submission=[]
  loseRace=true;assert.equal((await api.PUT(req('PUT',{content:emptyProjectTools,version:existing.updated_at}),ctx)).status,409);loseRace=false
  existing=null;writeError='23505';assert.equal((await api.PUT(req('PUT',{content:emptyProjectTools,version:null}),ctx)).status,409)
  console.log('Project tools checks passed: short/no/past deadlines, calendar boundaries, validation, CSV safety, account ownership, foreign-source rejection, preserved comparison notes, and concurrent-save protection.')

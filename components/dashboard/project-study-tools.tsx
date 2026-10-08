@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react'
 import type { StudyProject } from '@/lib/workspace'
 import type { SavedSource } from '@/lib/saved-sources'
 import { workspaceRequest } from '@/lib/workspace-client'
-import { downloadTextFile, emptyProjectTools, localDay, matrixCsv, outlineText, projectToolsDraftSchema, projectToolsSchema, suggestTasks, type ProjectTools } from '@/lib/project-tools'
+import { downloadTextFile, emptyProjectTools, localDay, matrixCsv, outlineText, projectToolsDraftSchema, projectToolsSchema, standardSubmissionChecks, suggestTasks, type ProjectTools } from '@/lib/project-tools'
 
-type Tab = 'planner' | 'matrix' | 'outline'
+type Tab = 'planner' | 'matrix' | 'outline' | 'submission'
 const matrixFields = [
   ['question', 'Research question'], ['methods', 'Methods / sample'], ['findings', 'Main findings'],
   ['limitations', 'Limitations'], ['relevance', 'Relevance to your assignment'],
@@ -101,7 +101,7 @@ export default function ProjectStudyTools({ project }: { project: StudyProject }
 
   return <section className="ui-card p-4 sm:p-6 space-y-5 text-[#1B2E4B]">
     <div className="flex flex-wrap justify-between items-start gap-3">
-      <div><h2 className="text-lg font-semibold">Project tools</h2><p className="text-sm text-[#64748B] mt-1">Plan your work, compare evidence and shape your outline.</p></div>
+      <div><h2 className="text-lg font-semibold">Project tools</h2><p className="text-sm text-[#64748B] mt-1">Plan your work, compare evidence, shape your outline and check your submission.</p></div>
       <button className="ui-button-primary" disabled={loading || busy || !ready || !dirty} onClick={() => void save()}>{busy ? 'Saving…' : 'Save project tools'}</button>
     </div>
     {loading && <p role="status">Loading project tools…</p>}
@@ -116,7 +116,7 @@ export default function ProjectStudyTools({ project }: { project: StudyProject }
       </div>
       {confirmReload && <div className="text-sm space-y-2"><p>Discard your unsaved changes and reload the account plan? You can download your draft first.</p><button className="ui-button-secondary" disabled={busy} onClick={() => void load(true)}>Discard and reload</button> <button className="ui-button-secondary" disabled={busy} onClick={() => setConfirmReload(false)}>Keep editing</button></div>}
       <div className="flex flex-wrap gap-2" aria-label="Project tools">
-        {([['planner', 'Assignment planner'], ['matrix', 'Literature review matrix'], ['outline', 'Outline builder']] as const).map(([key, label]) => <button key={key} className="ui-choice" aria-pressed={tab === key} onClick={() => setTab(key)}>{label}</button>)}
+        {([['planner', 'Assignment planner'], ['matrix', 'Literature review matrix'], ['outline', 'Outline builder'], ['submission', 'Submission checklist']] as const).map(([key, label]) => <button key={key} className="ui-choice" aria-pressed={tab === key} onClick={() => setTab(key)}>{label}</button>)}
       </div>
       <fieldset disabled={busy} className="min-w-0 space-y-4">
       {tab === 'planner' && <>
@@ -180,6 +180,30 @@ export default function ProjectStudyTools({ project }: { project: StudyProject }
           <details><summary className="text-sm cursor-pointer font-semibold">Link readings ({section.source_ids.length})</summary><div className="space-y-3 mt-3">{sources.map(source => <div key={source.id} className="text-sm"><label className="flex items-start gap-2"><input type="checkbox" checked={section.source_ids.includes(source.id)} disabled={!section.source_ids.includes(source.id) && section.source_ids.length >= 50} onChange={e => edit({ ...content, outline: content.outline.map(s => s.id === section.id ? { ...s, source_ids: e.target.checked ? [...s.source_ids, source.id] : s.source_ids.filter(id => id !== source.id) } : s) })} /><span className="min-w-0 break-words">{source.source_data.title}</span></label>{section.source_ids.includes(source.id) && <div className="pl-5 text-[#64748B] whitespace-pre-wrap break-words">{source.notes && <p>Your notes: {source.notes}</p>}{source.quotation && <p>Quotation: “{source.quotation}” {source.page_numbers}</p>}</div>}</div>)}{section.source_ids.some(id => !sources.some(source => source.id === id)) && <p className="text-xs text-[#64748B]">Some linked readings have moved or been removed. Removed reading links are cleared on save.</p>}</div></details>
           <div className="flex flex-wrap gap-3"><button className="ui-button-secondary" disabled={index === 0} aria-label={`Move section ${index + 1} up`} onClick={() => moveSection(index, -1)}>Move up</button><button className="ui-button-secondary" disabled={index === content.outline.length - 1} aria-label={`Move section ${index + 1} down`} onClick={() => moveSection(index, 1)}>Move down</button><button className="text-sm text-red-700" aria-label={`Remove section ${index + 1}`} onClick={() => edit({ ...content, outline: content.outline.filter(s => s.id !== section.id) })}>Remove section</button></div>
         </article>)}
+      </>}
+      {tab === 'submission' && <>
+        <p className="text-sm text-[#64748B]">Tick each item after checking your work yourself. Add requirements from your assignment brief or university guidance.</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <button className="ui-button-secondary" disabled={content.submission.length > 93} onClick={() => {
+            const checks = standardSubmissionChecks(newId).filter(check => !content.submission.some(item => item.title.toLowerCase() === check.title.toLowerCase()))
+            edit({ ...content, submission: [...content.submission, ...checks] })
+            setMessage(checks.length ? 'Standard checks added. Your existing items and progress were kept.' : 'Standard checks are already in your checklist.')
+          }}>Add standard checks</button>
+          <button className="ui-button-secondary" disabled={content.submission.length >= 100} onClick={() => edit({ ...content, submission: [...content.submission, { id: newId(), title: 'New check', notes: '', completed: false }] })}>Add custom check</button>
+          <span className="text-sm">{content.submission.filter(item => item.completed).length} of {content.submission.length} checked</span>
+        </div>
+        {content.submission.length === 0 && <p className="text-sm text-[#64748B]">Start with standard checks or add your own.</p>}
+        {content.submission.length > 0 && <progress aria-label="Submission checklist progress" className="w-full accent-[#1B2E4B]" max={content.submission.length} value={content.submission.filter(item => item.completed).length} />}
+        {content.submission.map((item, index) => <article key={item.id} className="border border-[#E8E2D9] rounded-lg p-3 space-y-3">
+          <div className="flex flex-wrap gap-3 items-center">
+            <input type="checkbox" className="w-5 h-5 accent-[#1B2E4B]" checked={item.completed} aria-label={`Check ${item.title}`} onChange={e => edit({ ...content, submission: content.submission.map(check => check.id === item.id ? { ...check, completed: e.target.checked } : check) })} />
+            <input className="ui-input flex-1 min-w-0 basis-48" aria-label={`Submission check ${index + 1} title`} maxLength={300} value={item.title} onChange={e => edit({ ...content, submission: content.submission.map(check => check.id === item.id ? { ...check, title: e.target.value } : check) })} />
+            <button className="text-sm text-red-700" aria-label={`Remove submission check ${index + 1}`} onClick={() => edit({ ...content, submission: content.submission.filter(check => check.id !== item.id) })}>Remove</button>
+          </div>
+          <label className="block text-sm">Your notes (optional)<textarea className="ui-input w-full mt-1 p-2" rows={2} maxLength={2000} aria-label={`Submission check ${index + 1} notes`} value={item.notes} onChange={e => edit({ ...content, submission: content.submission.map(check => check.id === item.id ? { ...check, notes: e.target.value } : check) })} placeholder="Specific guidance, file requirements or anything still to check" /></label>
+        </article>)}
+        {content.submission.length > 0 && content.submission.every(item => item.completed) && <p role="status" className="text-sm text-[#21633D]">All your checklist items are ticked. Review the assignment brief once more before submitting.</p>}
+        <p className="text-xs text-[#64748B]">Ticking these items records your own checks. Save project tools to keep your progress in your account.</p>
       </>}
       </fieldset>
     </>}
