@@ -63,7 +63,7 @@ export default function ReviewPopup({ orderId, moduleName, onClose, onSubmit }: 
       onClick={handleDismiss}
     >
       <div
-        className="relative w-full max-w-md bg-[#FDFAF6] rounded-3xl border border-[#E8E2D9] p-8 shadow-2xl"
+        className="relative w-full max-w-md bg-[#FDFAF6] rounded-2xl border border-[#E8E2D9] p-8 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}
@@ -79,7 +79,7 @@ export default function ReviewPopup({ orderId, moduleName, onClose, onSubmit }: 
 
         {/* Header */}
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-extrabold text-[#1B2E4B] mb-2">
+          <h2 className="text-2xl font-semibold text-[#1B2E4B] mb-2">
             How was your experience?
           </h2>
           <p className="text-sm text-[#6B7280]">
@@ -126,7 +126,7 @@ export default function ReviewPopup({ orderId, moduleName, onClose, onSubmit }: 
             className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm text-[#1B2E4B] placeholder-[#9CA3AF] bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30 focus:border-[#E8A020] resize-none"
           />
           <div className="flex justify-end mt-1">
-            <span className="text-xs text-[#9CA3AF]">
+            <span className="text-xs text-[#64748B]">
               {reviewText.length}/{MAX_REVIEW_LENGTH}
             </span>
           </div>
@@ -176,7 +176,7 @@ export default function ReviewPopup({ orderId, moduleName, onClose, onSubmit }: 
           <button
             onClick={handleSubmit}
             disabled={rating === 0 || isSubmitting}
-            className="px-6 py-2.5 bg-[#E8A020] text-white font-bold text-sm rounded-xl hover:bg-[#C4861A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="ui-button-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? 'Submitting...' : 'Submit review'}
           </button>

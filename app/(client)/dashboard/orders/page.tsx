@@ -15,10 +15,10 @@ export default async function OrdersPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-extrabold text-[#1B2E4B]">My Orders</h1>
+        <h1 className="text-2xl font-bold text-[#1B2E4B]">My Orders</h1>
         <Link
           href="/order"
-          className="inline-flex items-center gap-2 bg-[#E8A020] hover:bg-[#C4861A] text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors"
+          className="ui-button-primary "
         >
           New order
         </Link>
@@ -36,7 +36,7 @@ export default async function OrdersPage() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-[#E8E2D9] py-20 text-center">
-          <p className="text-sm text-[#9CA3AF]">No orders yet.</p>
+          <p className="text-sm text-[#64748B]">No orders yet.</p>
         </div>
       )}
     </div>

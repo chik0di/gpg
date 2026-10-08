@@ -56,3 +56,53 @@ body {
     padding-inline: 2rem;
   }
 }
+
+/* Shared visual language for the public site and client workspace. */
+@layer base {
+  h1, h2 { letter-spacing: -0.025em; }
+  button, input, select, textarea { font: inherit; }
+  button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
+  :where(a, button, input, select, textarea, summary):focus-visible {
+    outline: 2px solid #1B2E4B;
+    outline-offset: 3px;
+  }
+}
+
+@layer components {
+  .section-eyebrow { color: #926314; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+  .ui-card { background: white; border: 1px solid #E8E2D9; border-radius: 12px; }
+  .ui-status { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.3rem 0.65rem; border: 1px solid; border-radius: 6px; font-size: 0.75rem; font-weight: 500; line-height: 1.4; white-space: nowrap; }
+  .ui-link { color: #1B2E4B; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+  .ui-link:hover { color: #14233B; }
+  .page-heading {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-weight: 500;
+    letter-spacing: -0.035em;
+    line-height: 1.15;
+  }
+  .ui-button-primary, .ui-button-secondary {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    min-height: 44px; padding: 0.65rem 1.25rem; border-radius: 8px;
+    font-size: 0.875rem; font-weight: 600; line-height: 1.4;
+    transition: background-color 150ms, border-color 150ms, color 150ms;
+  }
+  .ui-button-primary { background: #1B2E4B; color: white; border: 1px solid #1B2E4B; }
+  .ui-button-primary:hover:not(:disabled) { background: #14233B; }
+  .ui-button-secondary { background: white; color: #1B2E4B; border: 1px solid #CBD2DB; }
+  .ui-button-secondary:hover:not(:disabled) { background: #F0F3F7; }
+  .ui-button-primary:disabled, .ui-button-secondary:disabled { opacity: 0.55; cursor: not-allowed; }
+  .ui-choice {
+    min-height: 44px; padding: 0.625rem 1rem; border-radius: 8px;
+    border: 1px solid #CBD2DB; background: white; color: #475569;
+    font-size: 0.875rem; font-weight: 500; transition: background-color 150ms, border-color 150ms;
+  }
+  .ui-choice:hover:not(:disabled) { border-color: #1B2E4B; }
+  .ui-choice[aria-pressed="true"] { background: #EBF0F6; color: #1B2E4B; border-color: #1B2E4B; font-weight: 600; }
+  .ui-choice:disabled { opacity: 0.55; cursor: not-allowed; }
+  .ui-input {
+    min-height: 44px; width: 100%; min-width: 0; padding: 0.65rem 0.875rem;
+    border: 1px solid #CBD2DB; border-radius: 8px; background: white;
+    color: #1B2E4B; font-size: 0.875rem;
+  }
+  .ui-input::placeholder { color: #64748B; }
+}

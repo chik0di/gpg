@@ -176,7 +176,7 @@ function SuccessContent() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
-        <h2 className="text-xl font-bold text-[#1B2E4B] mb-2">Something went wrong</h2>
+        <h2 className="text-xl font-semibold text-[#1B2E4B] mb-2">Something went wrong</h2>
         <p className="text-sm text-[#6B7280] mb-6 max-w-sm mx-auto">{errMsg}</p>
         <a
           href="mailto:admin@getprimegrade.com"
@@ -201,14 +201,14 @@ function SuccessContent() {
         </svg>
       </div>
 
-      <h1 className="text-2xl font-extrabold text-[#1B2E4B] mb-2">Order confirmed!</h1>
+      <h1 className="text-2xl font-bold text-[#1B2E4B] mb-2">Order confirmed!</h1>
       <p className="text-[#6B7280] text-sm leading-relaxed mb-2 max-w-sm mx-auto">
         Your payment was successful and your order is now with our team.
         We&apos;ll get to work right away.
       </p>
 
       {orderId && (
-        <p className="text-xs text-[#9CA3AF] mb-8 font-mono">
+        <p className="text-xs text-[#64748B] mb-8 font-mono">
           Order #{orderId.slice(0, 8).toUpperCase()}
         </p>
       )}
@@ -218,7 +218,7 @@ function SuccessContent() {
         className="text-left rounded-2xl border border-[#E8E2D9] p-5 mb-6 space-y-3"
         style={{ background: '#F5F0E8' }}
       >
-        <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide mb-3">What happens next</p>
+        <p className="text-xs font-bold text-[#64748B] uppercase tracking-wide mb-3">What happens next</p>
         {[
           { step: '1', text: 'Our team reviews your brief and begins work immediately.' },
           { step: '2', text: 'You\'ll receive an email update when your work is ready to download.' },
@@ -226,7 +226,7 @@ function SuccessContent() {
         ].map(({ step, text }) => (
           <div key={step} className="flex items-start gap-3">
             <span
-              className="w-5 h-5 rounded-full flex items-center justify-center text-[0.6rem] font-extrabold text-white shrink-0 mt-0.5"
+              className="w-5 h-5 rounded-full flex items-center justify-center text-[0.6rem] font-bold text-white shrink-0 mt-0.5"
               style={{ background: '#E8A020' }}
             >
               {step}
@@ -245,13 +245,13 @@ function SuccessContent() {
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
         <Link
           href="/dashboard/orders"
-          className="inline-flex items-center gap-2 bg-[#1B2E4B] hover:bg-[#16253d] text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors"
+          className="ui-button-primary hover:bg-[#16253d]"
         >
           View my orders
         </Link>
         <Link
           href="/order"
-          className="text-sm font-semibold text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors"
+          className="text-sm font-semibold text-[#64748B] hover:text-[#1B2E4B] transition-colors"
         >
           Place another order
         </Link>
@@ -275,12 +275,12 @@ export default function CheckoutSuccessPage() {
               className="w-10 h-10"
               priority
             />
-            <span className="font-extrabold text-lg tracking-tight text-[#1B2E4B]">GetPrimeGrade</span>
+            <span className="font-bold text-lg tracking-tight text-[#1B2E4B]">GetPrimeGrade</span>
           </Link>
         </div>
 
         <div
-          className="bg-white rounded-3xl border border-[#E8E2D9] p-8"
+          className="bg-white rounded-2xl border border-[#E8E2D9] p-8"
           style={{ boxShadow: '0 8px 32px -4px rgba(26,26,46,0.10)' }}
         >
           <Suspense fallback={

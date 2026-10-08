@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import AcademicIcon from '@/components/shared/academic-icon'
 import { useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
@@ -13,8 +14,8 @@ const NAV_LINKS = [
 ]
 
 const RESOURCE_LINKS = [
-  { href: '/resources/reference-generator', label: 'Reference Generator', icon: '📝' },
-  { href: '/resources/research-finder', label: 'Research Finder', icon: '🔍' },
+  { href: '/resources/reference-generator', label: 'Reference generator', icon: 'reference' as const },
+  { href: '/resources/research-finder', label: 'Research finder', icon: 'search' as const },
 ]
 
 export default function Navbar() {
@@ -51,7 +52,7 @@ export default function Navbar() {
               className="w-10 h-10"
               priority
             />
-            <span className="font-extrabold text-lg tracking-tight text-[#1B2E4B]">
+            <span className="font-bold text-lg tracking-tight text-[#1B2E4B]">
               GetPrimeGrade
             </span>
           </Link>
@@ -84,7 +85,7 @@ export default function Navbar() {
                         onClick={() => setResourcesOpen(false)}
                         className="flex items-center gap-3 px-4 py-3 hover:bg-[#F5F0E8] transition-colors"
                       >
-                        <span className="text-xl">{icon}</span>
+                        <AcademicIcon name={icon} className="w-5 h-5 shrink-0 text-[#1B2E4B]" />
                         <span className="text-sm font-medium text-[#1B2E4B]">{label}</span>
                       </Link>
                     ))}
@@ -109,23 +110,23 @@ export default function Navbar() {
             {user ? (
               <Link
                 href="/dashboard"
-                className="text-sm font-semibold text-[#1B2E4B] hover:text-[#E8A020] transition-colors"
+                className="text-sm font-semibold text-[#1B2E4B] hover:text-[#14233B] transition-colors"
               >
-                My Dashboard
+                My dashboard
               </Link>
             ) : (
               <Link
                 href="/login"
-                className="text-sm font-semibold text-[#1B2E4B] hover:text-[#E8A020] transition-colors"
+                className="text-sm font-semibold text-[#1B2E4B] hover:text-[#14233B] transition-colors"
               >
                 Sign in
               </Link>
             )}
             <Link
               href="/order"
-              className="inline-flex items-center gap-1.5 bg-[#E8A020] hover:bg-[#C4861A] text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors shadow-sm"
+              className="ui-button-primary"
             >
-              Get Started
+              Get started
             </Link>
           </div>
 
@@ -153,7 +154,7 @@ export default function Navbar() {
           <div className="mb-2">
             <button
               onClick={() => setResourcesOpen(!resourcesOpen)}
-              className="flex items-center justify-between w-full py-2.5 text-sm font-medium text-[#1A1A2E] hover:text-[#E8A020] transition-colors"
+              className="flex items-center justify-between w-full py-2.5 text-sm font-medium text-[#1A1A2E] hover:text-[#14233B] transition-colors"
             >
               Resources
               <svg className={`w-4 h-4 transition-transform ${resourcesOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -170,9 +171,9 @@ export default function Navbar() {
                       setOpen(false)
                       setResourcesOpen(false)
                     }}
-                    className="flex items-center gap-2 py-2 text-sm text-[#6B7280] hover:text-[#E8A020] transition-colors"
+                    className="flex items-center gap-2 py-2 text-sm text-[#6B7280] hover:text-[#14233B] transition-colors"
                   >
-                    <span>{icon}</span>
+                    <AcademicIcon name={icon} className="w-4 h-4 shrink-0" />
                     <span>{label}</span>
                   </Link>
                 ))}
@@ -185,7 +186,7 @@ export default function Navbar() {
               key={href}
               href={href}
               onClick={() => setOpen(false)}
-              className="block py-2.5 text-sm font-medium text-[#1A1A2E] hover:text-[#E8A020] transition-colors"
+              className="block py-2.5 text-sm font-medium text-[#1A1A2E] hover:text-[#14233B] transition-colors"
             >
               {label}
             </Link>
@@ -197,7 +198,7 @@ export default function Navbar() {
                 className="block text-sm font-semibold text-[#1B2E4B]"
                 onClick={() => setOpen(false)}
               >
-                My Dashboard
+                My dashboard
               </Link>
             ) : (
               <Link
@@ -211,9 +212,9 @@ export default function Navbar() {
             <Link
               href="/order"
               onClick={() => setOpen(false)}
-              className="block w-full text-center bg-[#E8A020] hover:bg-[#C4861A] text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors"
+              className="ui-button-primary w-full"
             >
-              Get Started
+              Get started
             </Link>
           </div>
         </div>

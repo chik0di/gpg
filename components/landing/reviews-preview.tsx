@@ -1,183 +1,31 @@
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
-
-interface Review {
-  id: string
-  rating: number
-  review_text: string | null
-  display_name: string | null
-  created_at: string
-}
-
-function StarRating({ rating }: { rating: number }) {
-  return (
-    <div className="flex gap-1">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <svg
-          key={star}
-          className="w-4 h-4"
-          fill={star <= rating ? '#E8A020' : 'none'}
-          stroke={star <= rating ? '#E8A020' : '#D1D5DB'}
-          strokeWidth={2}
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-          />
-        </svg>
-      ))}
-    </div>
-  )
-}
+import ReviewCard, { ReviewStars } from '@/components/reviews/review-card'
+import { publicReviewSummary } from '@/lib/public-review-summary'
 
 export default async function ReviewsPreview() {
-  console.log('========================================')
-  console.log('[Reviews Preview] 🔍 FETCHING APPROVED REVIEWS')
-  console.log('[Reviews Preview] Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-  console.log('[Reviews Preview] Anon key exists:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-  console.log('[Reviews Preview] Anon key length:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.length)
-  console.log('========================================')
-
-  // ============================================================================
-  // CRITICAL: Reviews RLS Policy Required for Public Access
-  // ============================================================================
-  // This component displays reviews on the PUBLIC landing page (no auth).
-  // Uses ANON key to query reviews table.
-  //
-  // RECURRING BUG: This has broken 3 times - approved reviews don't appear.
-  // ROOT CAUSE: Missing RLS policy "Anyone can read approved reviews"
-  //
-  // REQUIRED POLICY:
-  // CREATE POLICY 'Anyone can read approved reviews' ON reviews
-  // FOR SELECT TO anon, authenticated USING (is_approved = true);
-  //
-  // If reviews stop appearing here, run migration 021 or check RLS policies!
-  // ============================================================================
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
-  const { data: reviews, error } = await supabase
-    .from('reviews')
-    .select('id, rating, review_text, display_name, created_at, is_approved')
-    .eq('is_approved', true)
-    .order('created_at', { ascending: false })
-    .limit(4)
-
-  console.log('========================================')
-  console.log('[Reviews Preview] 📊 QUERY RESULT')
-  console.log('[Reviews Preview] Error:', error)
-  console.log('[Reviews Preview] Error message:', error?.message)
-  console.log('[Reviews Preview] Error details:', error?.details)
-  console.log('[Reviews Preview] Error hint:', error?.hint)
-  console.log('[Reviews Preview] Error code:', error?.code)
-  console.log('[Reviews Preview] Reviews count:', reviews?.length ?? 0)
-  console.log('[Reviews Preview] Reviews data:', reviews)
-  if (reviews && reviews.length > 0) {
-    console.log('[Reviews Preview] First review sample:', reviews[0])
-  }
-  console.log('========================================')
-
-  // If no reviews exist, don't render this section at all
-  if (!reviews || reviews.length === 0) {
-    return null
-  }
-
-  // Aggregate stats include ALL approved reviews (with or without text)
-  const totalReviews = reviews.length
-  const averageRating = reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
-
-  // Filter for card display: only reviews with actual text content (not null, not empty, not whitespace)
-  const reviewsWithText = reviews.filter(review =>
-    review.review_text && review.review_text.trim().length > 0
-  )
-
-  // If no reviews with text, don't render this section
-  if (reviewsWithText.length === 0) {
-    return null
-  }
-
-  // Limit to 4 reviews with text for preview
-  const previewReviews = reviewsWithText.slice(0, 4)
-
-  return (
-    <section className="py-20 md:py-28 bg-[#FDFAF6]">
-      <div className="container-narrow">
-        {/* Header */}
-        <div className="text-center max-w-xl mx-auto mb-12">
-          <p className="text-xs font-bold text-[#E8A020] uppercase tracking-widest mb-3">
-            Reviews
-          </p>
-          <h2 className="font-extrabold text-[#1B2E4B] text-3xl md:text-4xl leading-tight mb-4">
-            Trusted by students like you
-          </h2>
-
-          {/* Overall rating */}
-          <div className="flex items-center justify-center gap-3 mt-6">
-            <span className="text-2xl font-extrabold text-[#E8A020]">
-              {averageRating.toFixed(1)}
-            </span>
-            <div className="flex gap-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <svg
-                  key={star}
-                  className="w-6 h-6"
-                  fill={star <= Math.round(averageRating) ? '#E8A020' : 'none'}
-                  stroke={star <= Math.round(averageRating) ? '#E8A020' : '#D1D5DB'}
-                  strokeWidth={2}
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-                  />
-                </svg>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Reviews grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {previewReviews.map((review) => (
-            <div
-              key={review.id}
-              className="bg-white border border-[#E8E2D9] rounded-2xl p-6 hover:border-[#E8A020]/30 transition-colors"
-              style={{ boxShadow: '0 2px 8px -2px rgba(26,26,46,0.07)' }}
-            >
-              <div className="mb-3">
-                <StarRating rating={review.rating} />
-              </div>
-
-              <p className="text-sm text-[#6B7280] leading-relaxed mb-4">
-                "{review.review_text}"
-              </p>
-
-              <p className="text-sm font-semibold text-[#1B2E4B]">
-                {review.display_name || 'Anonymous'}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        {/* See all link */}
-        <div className="text-center">
-          <Link
-            href="/reviews"
-            className="inline-flex items-center gap-2 text-[#E8A020] hover:text-[#C4861A] font-bold text-sm transition-colors"
-          >
-            See all reviews
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-            </svg>
-          </Link>
-        </div>
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+  // Public reads use the anon client and the approved-review RLS policy (migration 021).
+  const [summary, { data, error }] = await Promise.all([
+    publicReviewSummary(supabase),
+    supabase.from('reviews').select('id, rating, review_text, display_name, created_at')
+      .eq('is_approved', true).not('review_text', 'is', null).neq('review_text', '')
+      .order('created_at', { ascending: false }).limit(20),
+  ])
+  const reviews = (data || []).filter(review => review.review_text?.trim()).slice(0, 4)
+  if (error || (!reviews.length && !summary?.total)) return null
+  return <section id="student-reviews" className="bg-white border-b border-[#E8E2D9] py-12 sm:py-16">
+    <div className="container-narrow grid lg:grid-cols-[0.8fr_1.6fr] gap-8 lg:gap-12 items-start">
+      <div>
+        <p className="section-eyebrow mb-3">Student reviews</p>
+        <h2 className="page-heading text-3xl sm:text-4xl text-[#1B2E4B] mb-4">In our clients’ words</h2>
+        {summary && summary.total > 0 && <div className="mb-5">
+          <div className="flex items-center gap-3"><span className="text-3xl font-semibold text-[#1B2E4B] tabular-nums">{summary.average.toFixed(1)}<span className="text-sm font-normal text-[#64748B]"> / 5</span></span><ReviewStars rating={Math.round(summary.average)} /></div>
+          <p className="text-sm text-[#64748B] mt-2">Based on {summary.total} {summary.total === 1 ? 'review' : 'reviews'}</p>
+        </div>}
+        <Link href="/reviews" className="ui-button-secondary">Read all reviews <span aria-hidden="true">→</span></Link>
       </div>
-    </section>
-  )
+      {reviews.length > 0 && <div className="grid sm:grid-cols-2 gap-4">{reviews.map(review => <ReviewCard key={review.id} review={review} />)}</div>}
+    </div>
+  </section>
 }

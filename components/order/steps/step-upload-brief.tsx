@@ -79,7 +79,7 @@ export default function StepUploadBrief({
   return (
     <div className="space-y-7">
       <div>
-        <h2 className="text-xl font-bold text-[#1B2E4B] mb-1">Upload your brief</h2>
+        <h2 className="text-xl font-semibold text-[#1B2E4B] mb-1">Upload your brief</h2>
         <p className="text-sm text-[#6B7280]">
           Let our AI read your assignment brief and extract the requirements automatically
         </p>
@@ -94,7 +94,7 @@ export default function StepUploadBrief({
           </div>
           <div className="text-center">
             <p className="text-base font-semibold text-[#1B2E4B]">Reading your brief...</p>
-            <p className="text-sm text-[#9CA3AF] mt-1">
+            <p className="text-sm text-[#64748B] mt-1">
               Our AI is analyzing {selectedFile.name}
             </p>
           </div>
@@ -137,7 +137,7 @@ export default function StepUploadBrief({
                 onDrop={onDrop}
                 className="relative flex flex-col items-center justify-center gap-3 px-6 py-12 border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-150"
                 style={{
-                  borderColor: dragging ? '#E8A020' : '#E8E2D9',
+                  borderColor: dragging ? '#1B2E4B' : '#E8E2D9',
                   background: dragging ? '#FDF3DC' : '#FDFAF6',
                 }}
               >
@@ -145,7 +145,7 @@ export default function StepUploadBrief({
                   className="w-12 h-12 rounded-xl flex items-center justify-center"
                   style={{ background: '#F5F0E8' }}
                 >
-                  <svg className="w-6 h-6 text-[#9CA3AF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 text-[#64748B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
                       d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
@@ -155,7 +155,7 @@ export default function StepUploadBrief({
                     Drop your assignment brief here, or{' '}
                     <span className="text-[#E8A020]">browse</span>
                   </p>
-                  <p className="text-xs text-[#9CA3AF] mt-1">
+                  <p className="text-xs text-[#64748B] mt-1">
                     PDF, Word, or image files (JPG, PNG) — max {MAX_MB} MB
                   </p>
                 </div>
@@ -184,7 +184,7 @@ export default function StepUploadBrief({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-[#1B2E4B] truncate">{selectedFile.name}</p>
-                  <p className="text-xs text-[#9CA3AF] mt-0.5">{formatBytes(selectedFile.size)}</p>
+                  <p className="text-xs text-[#64748B] mt-0.5">{formatBytes(selectedFile.size)}</p>
                 </div>
                 <button
                   type="button"
@@ -192,7 +192,7 @@ export default function StepUploadBrief({
                     setSelectedFile(null)
                     if (inputRef.current) inputRef.current.value = ''
                   }}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-[#9CA3AF] hover:bg-red-50 hover:text-red-400 transition-colors"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-[#64748B] hover:bg-red-50 hover:text-red-400 transition-colors"
                   aria-label="Remove file"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -202,14 +202,14 @@ export default function StepUploadBrief({
               </div>
             )}
 
-            <p className="mt-2 text-xs text-[#9CA3AF]">
+            <p className="mt-2 text-xs text-[#64748B]">
               We'll extract deliverables, deadline, and other requirements automatically
             </p>
           </div>
 
           {/* Help text */}
           <div className="flex items-center justify-center pt-4 border-t border-[#E8E2D9]">
-            <p className="text-xs text-[#9CA3AF]">
+            <p className="text-xs text-[#64748B]">
               Don't have a brief?{' '}
               <a
                 href="https://wa.me/447880213838"

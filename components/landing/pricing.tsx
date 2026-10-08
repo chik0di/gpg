@@ -35,7 +35,7 @@ export default function Pricing() {
     <section id="pricing" className="py-20 px-4 bg-white">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-14">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">Simple, transparent pricing</h2>
+          <h2 className="text-3xl sm:text-4xl font-semibold text-gray-900">Simple, transparent pricing</h2>
           <p className="mt-3 text-gray-500">No hidden fees. Pricing is based on word count × deadline tier.</p>
         </div>
 
@@ -56,7 +56,7 @@ export default function Pricing() {
                 {tier.description}
               </p>
               <div className="mb-6">
-                <span className="text-4xl font-extrabold">{tier.price}</span>
+                <span className="text-4xl font-bold">{tier.price}</span>
                 <span className={`text-sm ml-1 ${tier.highlighted ? 'text-brand-200' : 'text-gray-400'}`}>
                   {tier.unit}
                 </span>

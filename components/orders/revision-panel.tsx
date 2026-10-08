@@ -2,7 +2,8 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { revisionEligibility, formatRevisionDate, REVISION_STATUS_LABELS, type OrderRevision } from '@/lib/revisions'
+import StatusBadge from '@/components/shared/status-badge'
+import { revisionEligibility, formatRevisionDate, type OrderRevision } from '@/lib/revisions'
 
 interface Props {
   orderId: string
@@ -12,8 +13,8 @@ interface Props {
   admin?: boolean
 }
 
-const buttonClass = 'px-4 py-2.5 rounded-xl bg-[#1B2E4B] text-white text-sm font-semibold disabled:opacity-50'
-const inputClass = 'w-full border border-[#E8E2D9] rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]'
+const buttonClass = 'ui-button-primary'
+const inputClass = 'ui-input'
 
 function RevisionActions({ orderId, revision, admin }: { orderId: string; revision: OrderRevision; admin: boolean }) {
   const [response, setResponse] = useState('')
@@ -73,9 +74,9 @@ function RevisionActions({ orderId, revision, admin }: { orderId: string; revisi
         <div className="flex flex-wrap gap-2">
           {revision.status === 'requested' && <button className={buttonClass} disabled={busy} onClick={() => act('in_progress')}>Start revision</button>}
           {revision.status === 'in_progress' && <button className={buttonClass} disabled={busy || !file} onClick={() => act('delivered')}>Deliver revised work</button>}
-          <button className={buttonClass} disabled={busy || response.trim().length < 10} onClick={() => act('declined')}>Decline with explanation</button>
+          <button className="ui-button-secondary" disabled={busy || response.trim().length < 10} onClick={() => act('declined')}>Decline with explanation</button>
         </div>
-      </> : revision.status === 'requested' ? <button className={buttonClass} disabled={busy} onClick={() => act('cancelled')}>Cancel request</button> : <p className="text-sm text-[#6B7280]">We are working on your changes.</p>}
+      </> : revision.status === 'requested' ? <button className="ui-button-secondary" disabled={busy} onClick={() => act('cancelled')}>Cancel request</button> : <p className="text-sm text-[#6B7280]">We are working on your changes.</p>}
       {busy && <p role="status" className="text-sm">Saving…</p>}
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
     </div>
@@ -110,8 +111,8 @@ export default function RevisionPanel({ orderId, orderStatus, firstDeliveredAt, 
     finally { setBusy(false) }
   }
   return (
-    <section className="bg-white rounded-2xl border border-[#E8E2D9] p-5 space-y-4">
-      <h2 className="text-lg font-bold text-[#1B2E4B]">Revisions</h2>
+    <section className="ui-card p-5 space-y-4">
+      <h2 className="text-lg font-semibold text-[#1B2E4B]">Revisions</h2>
       {revisions === null ? <p role="alert" className="text-sm text-[#6B7280]">Revision requests are temporarily unavailable. Please contact support.</p> : <>
         <p className="text-sm font-semibold">{eligibility.remaining} of 3 free revisions remaining</p>
         {eligibility.expiresAt && <p className="text-sm text-[#6B7280]">Request changes by {formatRevisionDate(eligibility.expiresAt)}. Requests submitted in time remain valid while we complete them.</p>}
@@ -145,7 +146,7 @@ export default function RevisionPanel({ orderId, orderStatus, firstDeliveredAt, 
         </form>)}
         {message && <p role="status" className="text-sm">{message}</p>}
         {revisions.map((r, index) => <article key={r.id} className="border-t border-[#E8E2D9] pt-4 space-y-2">
-          <div className="flex justify-between gap-3"><h3 className="text-sm font-bold">Request {revisions.length - index}</h3><span className="text-sm font-semibold text-[#1B2E4B]">{REVISION_STATUS_LABELS[r.status]}</span></div>
+          <div className="flex justify-between gap-3"><h3 className="text-sm font-semibold">Request {revisions.length - index}</h3><StatusBadge status={r.status} kind="revision" /></div>
           <p className="text-xs text-[#6B7280]">{formatRevisionDate(r.created_at)}</p>
           <p className="text-sm whitespace-pre-wrap break-words">{r.instructions}</p>
           {r.attachment_url && <a className="block text-sm text-[#1B2E4B] underline" href={r.attachment_url} target="_blank" rel="noopener noreferrer">Download feedback: {r.attachment_name}</a>}

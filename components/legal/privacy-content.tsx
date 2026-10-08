@@ -2,7 +2,7 @@ export default function PrivacyContent() {
   return (
     <div className="space-y-8 text-sm text-[#4B5563] leading-relaxed">
       <div>
-        <h3 className="text-base font-bold text-[#1B2E4B] mb-3">1. Data we collect</h3>
+        <h3 className="text-base font-semibold text-[#1B2E4B] mb-3">1. Data we collect</h3>
         <p>
           When you create an account or place an order we collect your name, email address, and
           order details (subject, academic level, deadline, and deliverables). We do not collect or
@@ -11,7 +11,7 @@ export default function PrivacyContent() {
       </div>
 
       <div>
-        <h3 className="text-base font-bold text-[#1B2E4B] mb-3">2. How we use your data</h3>
+        <h3 className="text-base font-semibold text-[#1B2E4B] mb-3">2. How we use your data</h3>
         <p>
           Your data is used to fulfil your orders, send order confirmation and delivery
           notifications, and to contact you regarding your account. We do not use your data for
@@ -20,7 +20,7 @@ export default function PrivacyContent() {
       </div>
 
       <div>
-        <h3 className="text-base font-bold text-[#1B2E4B] mb-3">3. Third-party sharing</h3>
+        <h3 className="text-base font-semibold text-[#1B2E4B] mb-3">3. Third-party sharing</h3>
         <p>
           Your personal data is never sold to or shared with third parties for marketing purposes.
           We share data only where strictly necessary to deliver the service — for example, with
@@ -30,7 +30,7 @@ export default function PrivacyContent() {
       </div>
 
       <div>
-        <h3 className="text-base font-bold text-[#1B2E4B] mb-3">4. Cookies</h3>
+        <h3 className="text-base font-semibold text-[#1B2E4B] mb-3">4. Cookies</h3>
         <p>
           We use essential cookies to maintain your authenticated session. No third-party tracking
           or advertising cookies are used. You can disable cookies in your browser settings, but
@@ -39,7 +39,7 @@ export default function PrivacyContent() {
       </div>
 
       <div>
-        <h3 className="text-base font-bold text-[#1B2E4B] mb-3">5. GDPR &amp; UK data protection</h3>
+        <h3 className="text-base font-semibold text-[#1B2E4B] mb-3">5. GDPR &amp; UK data protection</h3>
         <p>
           For users in the European Union or United Kingdom, we process your personal data under
           the lawful basis of contract performance (to deliver the service you have purchased) and
@@ -49,7 +49,7 @@ export default function PrivacyContent() {
       </div>
 
       <div>
-        <h3 className="text-base font-bold text-[#1B2E4B] mb-3">6. Data requests &amp; contact</h3>
+        <h3 className="text-base font-semibold text-[#1B2E4B] mb-3">6. Data requests &amp; contact</h3>
         <p>
           To request a copy of your data, ask for corrections, or request deletion of your account,
           please contact us at{' '}

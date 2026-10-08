@@ -1,14 +1,14 @@
 // Status values match the Supabase orders.status column
 export const ORDER_STATUS_LABELS = {
   pending:     'Pending',
-  in_progress: 'In Progress',
+  in_progress: 'In progress',
   completed:   'Completed',
 } as const
 
 export const ORDER_STATUS_COLORS = {
-  pending:     'bg-[#FDF3DC] text-[#C4861A]',
-  in_progress: 'bg-[#EFF6FF] text-[#3B82F6]',
-  completed:   'bg-[#F0FDF4] text-[#16A34A]',
+  pending:     'bg-[#FDF3DC] text-[#815812] border-[#E8D4AB]',
+  in_progress: 'bg-[#EBF0F6] text-[#1B2E4B] border-[#CBD5E1]',
+  completed:   'bg-[#EFF8F2] text-[#21633D] border-[#BCDCC7]',
 } as const
 
 export type OrderStatus = keyof typeof ORDER_STATUS_LABELS

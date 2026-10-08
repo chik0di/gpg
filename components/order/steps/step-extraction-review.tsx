@@ -459,7 +459,7 @@ export default function StepExtractionReview({
   return (
     <div className="space-y-7">
       <div>
-        <h2 className="text-xl font-bold text-[#1B2E4B] mb-1">Review & confirm</h2>
+        <h2 className="text-xl font-semibold text-[#1B2E4B] mb-1">Review & confirm</h2>
         <p className="text-sm text-[#6B7280]">
           Check the information we extracted from your brief
         </p>
@@ -480,7 +480,7 @@ export default function StepExtractionReview({
               {moduleName ? (
                 <span className="text-sm text-[#1B2E4B] font-medium">{moduleName}</span>
               ) : (
-                <span className="text-sm text-[#9CA3AF] italic">Not found in brief</span>
+                <span className="text-sm text-[#64748B] italic">Not found in brief</span>
               )}
             </div>
           </div>
@@ -734,7 +734,7 @@ export default function StepExtractionReview({
 
                     {/* Show regular quantity for written/presentation (non-editable cases) */}
                     {d.type !== 'technical' && !(d.type === 'presentation' && d.confidence === 'low') && d.quantity && d.quantity > 0 && (
-                      <p className="text-xs text-[#9CA3AF] mt-1">
+                      <p className="text-xs text-[#64748B] mt-1">
                         {d.quantity} {d.quantity_type}
                       </p>
                     )}
@@ -762,7 +762,7 @@ export default function StepExtractionReview({
                   <button
                     type="button"
                     onClick={() => removeDeliverable(idx)}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-[#9CA3AF] hover:bg-red-50 hover:text-red-400 transition-colors"
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-[#64748B] hover:bg-red-50 hover:text-red-400 transition-colors"
                     aria-label="Remove deliverable"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -780,7 +780,7 @@ export default function StepExtractionReview({
           <button
             type="button"
             onClick={() => setShowAddDeliverable(true)}
-            className="w-full py-3 px-4 border-2 border-dashed border-[#E8E2D9] rounded-xl text-sm font-semibold text-[#6B7280] hover:border-[#E8A020] hover:text-[#E8A020] hover:bg-[#FDF3DC] transition-all"
+            className="w-full py-3 px-4 border-2 border-dashed border-[#E8E2D9] rounded-xl text-sm font-semibold text-[#6B7280] hover:border-[#E8A020] hover:text-[#14233B] hover:bg-[#FDF3DC] transition-all"
           >
             + Add another deliverable
           </button>
@@ -803,9 +803,9 @@ export default function StepExtractionReview({
                     onClick={() => setNewDeliverableType(key as any)}
                     className="px-4 py-2 rounded-lg text-sm font-semibold transition-all"
                     style={{
-                      background: newDeliverableType === key ? '#E8A020' : '#fff',
+                      background: newDeliverableType === key ? '#1B2E4B' : '#fff',
                       color: newDeliverableType === key ? '#fff' : '#1B2E4B',
-                      border: `2px solid ${newDeliverableType === key ? '#E8A020' : '#E8E2D9'}`,
+                      border: `2px solid ${newDeliverableType === key ? '#1B2E4B' : '#E8E2D9'}`,
                     }}
                   >
                     {label}
@@ -822,7 +822,7 @@ export default function StepExtractionReview({
                     type="button"
                     onClick={() => setNewDeliverableSizeMode('pages')}
                     className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold ${
-                      newDeliverableSizeMode === 'pages' ? 'bg-[#E8A020] text-white' : 'bg-white text-[#6B7280] border border-[#E8E2D9]'
+                      newDeliverableSizeMode === 'pages' ? 'bg-[#1B2E4B] text-white' : 'bg-white text-[#6B7280] border border-[#E8E2D9]'
                     }`}
                   >
                     Pages
@@ -831,7 +831,7 @@ export default function StepExtractionReview({
                     type="button"
                     onClick={() => setNewDeliverableSizeMode('words')}
                     className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold ${
-                      newDeliverableSizeMode === 'words' ? 'bg-[#E8A020] text-white' : 'bg-white text-[#6B7280] border border-[#E8E2D9]'
+                      newDeliverableSizeMode === 'words' ? 'bg-[#1B2E4B] text-white' : 'bg-white text-[#6B7280] border border-[#E8E2D9]'
                     }`}
                   >
                     Words
@@ -897,7 +897,7 @@ export default function StepExtractionReview({
                 type="button"
                 onClick={handleAddDeliverable}
                 disabled={!newDeliverableType || (newDeliverableType === 'written' && !newDeliverableQuantity) || (newDeliverableType === 'presentation' && !newDeliverableSlideCount) || (newDeliverableType === 'practical' && !newDeliverablePracticalKey)}
-                className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#E8A020] hover:bg-[#C4861A] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="ui-button-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Add
               </button>
@@ -910,7 +910,7 @@ export default function StepExtractionReview({
       <div>
         <label className="block text-sm font-semibold text-[#1B2E4B] mb-1.5">
           Additional instructions
-          <span className="ml-2 text-xs font-normal text-[#9CA3AF]">optional</span>
+          <span className="ml-2 text-xs font-normal text-[#64748B]">optional</span>
         </label>
         <textarea
           rows={4}
@@ -936,7 +936,7 @@ export default function StepExtractionReview({
           disabled={isButtonDisabled}
           className="flex-1 py-3 px-6 rounded-xl text-sm font-semibold text-white transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           style={{
-            background: !isButtonDisabled ? '#E8A020' : '#9CA3AF',
+            background: !isButtonDisabled ? '#1B2E4B' : '#9CA3AF',
           }}
           onMouseEnter={(e) => {
             if (!isButtonDisabled) {

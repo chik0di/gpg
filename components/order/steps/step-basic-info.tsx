@@ -94,7 +94,7 @@ export default function StepBasicInfo({ data, errors, onChange, onCurrencyChange
   return (
     <div className="space-y-7">
       <div>
-        <h2 className="text-xl font-bold text-[#1B2E4B] mb-1">Basic information</h2>
+        <h2 className="text-xl font-semibold text-[#1B2E4B] mb-1">Basic information</h2>
         <p className="text-sm text-[#6B7280]">Tell us about the assignment and when you need it.</p>
       </div>
 
@@ -103,7 +103,7 @@ export default function StepBasicInfo({ data, errors, onChange, onCurrencyChange
         <label className="block text-sm font-semibold text-[#1B2E4B] mb-1.5">
           Subject / Field
         </label>
-        <p className="text-xs text-[#9CA3AF] mb-2">
+        <p className="text-xs text-[#64748B] mb-2">
           Select your field — related subjects are welcome
         </p>
         <select
@@ -155,7 +155,7 @@ export default function StepBasicInfo({ data, errors, onChange, onCurrencyChange
           )}
         </div>
         {loadingCurrency && (
-          <p className="mt-1.5 text-xs text-[#9CA3AF]">Fetching live exchange rate…</p>
+          <p className="mt-1.5 text-xs text-[#64748B]">Fetching live exchange rate…</p>
         )}
       </div>
 
@@ -174,8 +174,8 @@ export default function StepBasicInfo({ data, errors, onChange, onCurrencyChange
                 onClick={() => onChange('academicLevel', label)}
                 className="p-4 rounded-xl border-2 text-left transition-all duration-150"
                 style={{
-                  borderColor: selected ? '#E8A020' : '#E8E2D9',
-                  background:  selected ? '#FDF3DC' : '#fff',
+                  borderColor: selected ? '#1B2E4B' : '#E8E2D9',
+                  background:  selected ? '#EBF0F6' : '#fff',
                 }}
               >
                 <span
@@ -197,7 +197,7 @@ export default function StepBasicInfo({ data, errors, onChange, onCurrencyChange
       <div>
         <label className="block text-sm font-semibold text-[#1B2E4B] mb-1.5">
           Deadline
-          <span className="ml-2 text-xs font-normal text-[#9CA3AF]">minimum 2 days from today</span>
+          <span className="ml-2 text-xs font-normal text-[#64748B]">minimum 2 days from today</span>
         </label>
         <input
           type="date"
@@ -207,7 +207,7 @@ export default function StepBasicInfo({ data, errors, onChange, onCurrencyChange
           className={selectClass}
           style={{ borderColor: errors.deadline ? '#EF4444' : '#E8E2D9' }}
         />
-        <p className="mt-1.5 text-xs text-[#9CA3AF]">
+        <p className="mt-1.5 text-xs text-[#64748B]">
           We require a minimum of 2 days to ensure quality work. Need it sooner?{' '}
           <a
             href="https://wa.me/447880213838"

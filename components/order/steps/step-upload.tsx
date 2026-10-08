@@ -48,7 +48,7 @@ export default function StepUpload({
   return (
     <div className="space-y-7">
       <div>
-        <h2 className="text-xl font-bold text-[#1B2E4B] mb-1">Upload &amp; instructions</h2>
+        <h2 className="text-xl font-semibold text-[#1B2E4B] mb-1">Upload &amp; instructions</h2>
         <p className="text-sm text-[#6B7280]">
           Share your assignment brief so we can match it exactly.
         </p>
@@ -69,7 +69,7 @@ export default function StepUpload({
             onDrop={onDrop}
             className="relative flex flex-col items-center justify-center gap-3 px-6 py-12 border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-150"
             style={{
-              borderColor: dragging ? '#E8A020' : errors.file ? '#FCA5A5' : '#E8E2D9',
+              borderColor: dragging ? '#1B2E4B' : errors.file ? '#FCA5A5' : '#E8E2D9',
               background: dragging ? '#FDF3DC' : '#FDFAF6',
             }}
           >
@@ -77,7 +77,7 @@ export default function StepUpload({
               className="w-12 h-12 rounded-xl flex items-center justify-center"
               style={{ background: '#F5F0E8' }}
             >
-              <svg className="w-6 h-6 text-[#9CA3AF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-[#64748B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
                   d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
@@ -87,7 +87,7 @@ export default function StepUpload({
                 Drop your file here, or{' '}
                 <span className="text-[#E8A020]">browse</span>
               </p>
-              <p className="text-xs text-[#9CA3AF] mt-1">
+              <p className="text-xs text-[#64748B] mt-1">
                 PDF, Word, PowerPoint, Excel, ZIP — max {MAX_MB} MB
               </p>
             </div>
@@ -116,12 +116,12 @@ export default function StepUpload({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-[#1B2E4B] truncate">{file.name}</p>
-              <p className="text-xs text-[#9CA3AF] mt-0.5">{formatBytes(file.size)}</p>
+              <p className="text-xs text-[#64748B] mt-0.5">{formatBytes(file.size)}</p>
             </div>
             <button
               type="button"
               onClick={() => { onFileChange(null); if (inputRef.current) inputRef.current.value = '' }}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-[#9CA3AF] hover:bg-red-50 hover:text-red-400 transition-colors"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-[#64748B] hover:bg-red-50 hover:text-red-400 transition-colors"
               aria-label="Remove file"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -135,7 +135,7 @@ export default function StepUpload({
           <p className="mt-1.5 text-xs text-red-500">{errors.file}</p>
         )}
 
-        <p className="mt-2 text-xs text-[#9CA3AF]">
+        <p className="mt-2 text-xs text-[#64748B]">
           Your file will be renamed to include your name and order number upon upload.
         </p>
       </div>
@@ -144,7 +144,7 @@ export default function StepUpload({
       <div>
         <label className="block text-sm font-semibold text-[#1B2E4B] mb-1.5">
           Additional instructions
-          <span className="ml-2 text-xs font-normal text-[#9CA3AF]">optional</span>
+          <span className="ml-2 text-xs font-normal text-[#64748B]">optional</span>
         </label>
         <textarea
           rows={5}

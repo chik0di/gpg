@@ -33,7 +33,7 @@ export default function OrderPage() {
 
           {/* Page header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-extrabold text-[#1B2E4B] mb-2">
+            <h1 className="text-3xl font-bold text-[#1B2E4B] mb-2">
               Place your order
             </h1>
             <p className="text-[#6B7280] text-base">
@@ -44,7 +44,7 @@ export default function OrderPage() {
           <OrderForm />
 
           {/* Reassurance strip */}
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-[#9CA3AF]">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-[#64748B]">
             {[
               '3 free revisions',
               'Money-back guarantee',

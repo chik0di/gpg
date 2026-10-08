@@ -53,11 +53,11 @@ export default function ResetPasswordPage() {
   }
 
   const inputClass =
-    'w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/40 focus:border-[#E8A020] transition-all text-[#1A1A2E] placeholder:text-[#C4C0B8]'
+    'w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/40 focus:border-[#E8A020] transition-all text-[#1A1A2E] placeholder:text-[#64748B]'
 
   return (
     <div
-      className="bg-white rounded-3xl border border-[#E8E2D9] p-7 sm:p-8"
+      className="bg-white rounded-2xl border border-[#E8E2D9] p-7 sm:p-8"
       style={{ boxShadow: '0 8px 32px -4px rgba(26,26,46,0.10)' }}
     >
       {success ? (
@@ -111,7 +111,7 @@ export default function ResetPasswordPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#1B2E4B] transition-colors"
                 >
                   {showPassword ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,7 +139,7 @@ export default function ResetPasswordPage() {
                   </div>
                 ) : null
               })()}
-              <p className="text-xs text-[#9CA3AF] mt-2">
+              <p className="text-xs text-[#64748B] mt-2">
                 Must contain uppercase, lowercase, number, and special character
               </p>
             </div>
@@ -162,7 +162,7 @@ export default function ResetPasswordPage() {
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#1B2E4B] transition-colors"
                 >
                   {showConfirmPassword ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -181,7 +181,7 @@ export default function ResetPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-[#1B2E4B] hover:bg-[#16253d] text-white font-bold py-3.5 rounded-xl text-sm transition-colors disabled:opacity-60"
+              className="ui-button-primary w-full hover:bg-[#16253d] disabled:opacity-60"
             >
               {loading && (
                 <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -193,7 +193,7 @@ export default function ResetPasswordPage() {
             </button>
           </form>
 
-          <p className="mt-5 text-center text-sm text-[#9CA3AF]">
+          <p className="mt-5 text-center text-sm text-[#64748B]">
             <Link href="/login" className="font-semibold text-[#6B7280] hover:text-[#1B2E4B] transition-colors">
               ← Back to sign in
             </Link>

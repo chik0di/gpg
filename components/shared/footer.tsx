@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import ShareButton from '@/components/shared/share-button'
 
 const FOOTER_LINKS = {
   Services: [
@@ -40,7 +41,7 @@ export default function Footer() {
                 height={32}
                 className="w-8 h-8"
               />
-              <span className="font-extrabold text-white text-lg tracking-tight">GetPrimeGrade</span>
+              <span className="font-bold text-white text-lg tracking-tight">GetPrimeGrade</span>
             </Link>
             <p className="text-sm leading-relaxed mb-6">
               Expert model answers and study materials for university and college students worldwide.
@@ -101,6 +102,8 @@ export default function Footer() {
             All content provided is for educational reference purposes only. GetPrimeGrade does not condone academic misconduct.
           </p>
         </div>
+
+        <div className="mt-6"><ShareButton variant="link" className="text-white/75 hover:text-white" /></div>
 
         {/* Age notice */}
         <div className="mt-6 text-center">

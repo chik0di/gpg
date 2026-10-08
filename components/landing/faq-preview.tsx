@@ -22,16 +22,16 @@ export default function FAQPreview() {
   const [open, setOpen] = useState<number | null>(0)
 
   return (
-    <section id="faq" className="py-20 md:py-28 bg-[#F5F0E8]">
+    <section id="faq" className="py-12 sm:py-16 lg:py-20 bg-[#F5F0E8]">
       <div className="container-narrow">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-start">
 
           {/* Left heading */}
           <div className="lg:col-span-2">
-            <p className="text-xs font-bold text-[#E8A020] uppercase tracking-widest mb-3">
+            <p className="section-eyebrow mb-3">
               FAQ
             </p>
-            <h2 className="font-extrabold text-[#1B2E4B] text-3xl md:text-4xl leading-tight mb-6">
+            <h2 className="page-heading text-[#1B2E4B] text-3xl md:text-4xl leading-tight mb-6">
               Common questions, straight answers
             </h2>
             <p className="text-[#6B7280] text-base leading-relaxed mb-8">
@@ -40,7 +40,7 @@ export default function FAQPreview() {
             <div className="flex flex-col sm:flex-row lg:flex-col gap-3">
               <Link
                 href="/faq"
-                className="inline-flex items-center gap-2 border-2 border-[#1B2E4B] text-[#1B2E4B] font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-[#1B2E4B] hover:text-white transition-colors"
+                className="ui-button-secondary"
               >
                 See all FAQs
               </Link>
@@ -74,7 +74,7 @@ export default function FAQPreview() {
                     </span>
                     <span
                       className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
-                        isOpen ? 'bg-[#E8A020] text-white' : 'bg-[#F5F0E8] text-[#6B7280]'
+                        isOpen ? 'bg-[#1B2E4B] text-white' : 'bg-[#F5F0E8] text-[#6B7280]'
                       }`}
                     >
                       <svg

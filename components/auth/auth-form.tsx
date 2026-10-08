@@ -25,7 +25,7 @@ function GoogleIcon() {
 }
 
 const inputClass =
-  'w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/40 focus:border-[#E8A020] transition-all text-[#1A1A2E] placeholder:text-[#C4C0B8]'
+  'w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/40 focus:border-[#E8A020] transition-all text-[#1A1A2E] placeholder:text-[#64748B]'
 
 export default function AuthForm({ next, initialMode }: Props) {
   const [mode, setMode] = useState<Mode>(initialMode)
@@ -326,7 +326,7 @@ export default function AuthForm({ next, initialMode }: Props) {
 
   return (
     <div
-      className="bg-white rounded-3xl border border-[#E8E2D9] p-7 sm:p-8"
+      className="bg-white rounded-2xl border border-[#E8E2D9] p-7 sm:p-8"
       style={{ boxShadow: '0 8px 32px -4px rgba(26,26,46,0.10)' }}
     >
       {/* Context banner — shown when coming from order flow */}
@@ -370,7 +370,7 @@ export default function AuthForm({ next, initialMode }: Props) {
         className="w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-[#E8E2D9] rounded-xl bg-white hover:border-[#1B2E4B] hover:bg-[#FDFAF6] text-sm font-semibold text-[#1A1A2E] transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {googleLoading ? (
-          <svg className="w-5 h-5 animate-spin text-[#9CA3AF]" fill="none" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 animate-spin text-[#64748B]" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
@@ -383,7 +383,7 @@ export default function AuthForm({ next, initialMode }: Props) {
       {/* Divider */}
       <div className="flex items-center gap-3 my-5">
         <div className="flex-1 h-px bg-[#E8E2D9]" />
-        <span className="text-xs font-medium text-[#9CA3AF]">or continue with email</span>
+        <span className="text-xs font-medium text-[#64748B]">or continue with email</span>
         <div className="flex-1 h-px bg-[#E8E2D9]" />
       </div>
 
@@ -446,7 +446,7 @@ export default function AuthForm({ next, initialMode }: Props) {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#1B2E4B] transition-colors"
               >
                 {showPassword ? (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -478,7 +478,7 @@ export default function AuthForm({ next, initialMode }: Props) {
           <button
             type="submit"
             disabled={loading || googleLoading}
-            className="w-full flex items-center justify-center gap-2 bg-[#1B2E4B] hover:bg-[#16253d] text-white font-bold py-3.5 rounded-xl text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+            className="ui-button-primary w-full hover:bg-[#16253d] disabled:opacity-60 disabled:cursor-not-allowed mt-2"
           >
             {loading && (
               <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -558,7 +558,7 @@ export default function AuthForm({ next, initialMode }: Props) {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#1B2E4B] transition-colors"
               >
                 {showPassword ? (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -586,7 +586,7 @@ export default function AuthForm({ next, initialMode }: Props) {
                 </div>
               ) : null
             })()}
-            <p className="text-xs text-[#9CA3AF] mt-2">
+            <p className="text-xs text-[#64748B] mt-2">
               Must contain uppercase, lowercase, number, and special character
             </p>
           </div>
@@ -594,7 +594,7 @@ export default function AuthForm({ next, initialMode }: Props) {
           <button
             type="submit"
             disabled={loading || googleLoading}
-            className="w-full flex items-center justify-center gap-2 bg-[#E8A020] hover:bg-[#C4861A] text-white font-bold py-3.5 rounded-xl text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+            className="ui-button-primary w-full disabled:opacity-60 disabled:cursor-not-allowed mt-2"
           >
             {loading && (
               <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -605,7 +605,7 @@ export default function AuthForm({ next, initialMode }: Props) {
             {loading ? 'Creating account…' : 'Create account'}
           </button>
 
-          <p className="text-xs text-[#9CA3AF] text-center pt-1">
+          <p className="text-xs text-[#64748B] text-center pt-1">
             By creating an account you agree to our{' '}
             <Link href="/terms" className="text-[#6B7280] underline underline-offset-2 hover:text-[#1B2E4B]">
               Terms &amp; Conditions

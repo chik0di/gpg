@@ -23,11 +23,10 @@ export default function StatsCards({ orders }: { orders: Order[] }) {
       {stats.map(({ label, value }) => (
         <div
           key={label}
-          className="bg-white rounded-2xl border border-[#E8E2D9] px-5 py-5"
-          style={{ boxShadow: '0 1px 4px rgba(26,26,46,0.05)' }}
+          className="ui-card px-4 sm:px-5 py-5"
         >
-          <p className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-wide mb-2">{label}</p>
-          <p className="text-2xl font-extrabold text-[#1B2E4B]">{value}</p>
+          <p className="text-sm text-[#64748B] mb-2">{label}</p>
+          <p className="text-3xl font-semibold tabular-nums text-[#1B2E4B]">{value}</p>
         </div>
       ))}
     </div>

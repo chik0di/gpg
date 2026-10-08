@@ -1,66 +1,40 @@
 import Link from 'next/link'
-import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/types/order'
+import type { ReactNode } from 'react'
+import StatusBadge from '@/components/shared/status-badge'
 
-interface Props {
-  order: {
-    id: string
-    subject_field: string
-    academic_level: string
-    deadline: string
-    status: string
-    total_amount: number
-    created_at: string
-  }
+export interface OrderCardData {
+  id: string
+  subject_field: string
+  academic_level: string
+  deadline: string
+  status: string
+  total_amount: number
+  created_at: string
+  module_name?: string | null
 }
 
-export default function OrderCard({ order }: Props) {
-  const label = ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS] ?? order.status
-  const color = ORDER_STATUS_COLORS[order.status as keyof typeof ORDER_STATUS_COLORS] ?? 'bg-gray-100 text-gray-600'
-
-  const deadline = new Date(order.deadline).toLocaleDateString('en-GB', { dateStyle: 'medium' })
-  const placed   = new Date(order.created_at).toLocaleDateString('en-GB', { dateStyle: 'medium' })
-  const total    = `£${order.total_amount % 1 === 0 ? order.total_amount : order.total_amount.toFixed(2)}`
-
-  return (
-    <Link href={`/dashboard/orders/${order.id}`} className="block group">
-      <div
-        className="bg-white rounded-2xl border border-[#E8E2D9] px-5 py-4 flex items-center gap-4 group-hover:border-[#E8A020]/40 group-hover:shadow-[0_4px_16px_-2px_rgba(26,26,46,0.08)] transition-all duration-200"
-      >
-        {/* Status dot */}
-        <div
-          className="w-2.5 h-2.5 rounded-full shrink-0 mt-0.5"
-          style={{
-            background:
-              order.status === 'completed' ? '#16A34A'
-              : order.status === 'in_progress' ? '#3B82F6'
-              : '#E8A020',
-          }}
-        />
-
-        {/* Main info */}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-[#1B2E4B] truncate">
-            {order.subject_field}
-            <span className="font-normal text-[#9CA3AF] ml-2">· {order.academic_level}</span>
-          </p>
-          <p className="text-xs text-[#9CA3AF] mt-0.5">
-            Placed {placed} · Due {deadline}
-          </p>
+export default function OrderCard({ order, children }: { order: OrderCardData; children?: ReactNode }) {
+  const deadline = new Date(order.deadline).toLocaleDateString('en-GB', { dateStyle: 'medium', timeZone: 'UTC' })
+  const placed = new Date(order.created_at).toLocaleDateString('en-GB', { dateStyle: 'medium', timeZone: 'UTC' })
+  const total = `£${order.total_amount % 1 === 0 ? order.total_amount : order.total_amount.toFixed(2)}`
+  return <article className="ui-card overflow-hidden">
+    <Link href={`/dashboard/orders/${order.id}`} className="group block p-4 sm:p-5 hover:bg-[#FAFBFD] transition-colors">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <span className="text-xs text-[#64748B] font-mono">Order #{order.id.slice(0, 8).toUpperCase()}</span>
+        <StatusBadge status={order.status} />
+      </div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h3 className="text-base font-semibold text-[#1B2E4B] break-words">{order.module_name || order.subject_field}</h3>
+          <p className="text-sm text-[#64748B] mt-1">{order.academic_level}</p>
         </div>
-
-        {/* Right */}
-        <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <span className="text-sm font-extrabold text-[#1B2E4B]">{total}</span>
-          <span className={`px-2.5 py-0.5 rounded-full text-[0.7rem] font-bold ${color}`}>
-            {label}
-          </span>
-        </div>
-
-        {/* Arrow */}
-        <svg className="w-4 h-4 text-[#D1D5DB] group-hover:text-[#E8A020] transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
+        <span className="text-base font-semibold text-[#1B2E4B] tabular-nums shrink-0">{total}</span>
+      </div>
+      <div className="mt-4 pt-3 border-t border-[#E8E2D9] flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-xs text-[#64748B]">
+        <p>Placed {placed} <span className="mx-1" aria-hidden="true">·</span> Due {deadline}</p>
+        <span className="text-[#1B2E4B] font-semibold inline-flex items-center gap-2">View order <span aria-hidden="true">→</span></span>
       </div>
     </Link>
-  )
+    {children && <div className="px-4 sm:px-5 py-3 border-t border-[#E8E2D9]">{children}</div>}
+  </article>
 }

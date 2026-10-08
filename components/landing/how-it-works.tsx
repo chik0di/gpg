@@ -1,7 +1,7 @@
 const STEPS = [
   {
     number: '01',
-    title: 'Place Your Order',
+    title: 'Place your order',
     description:
       'Choose your subject, academic level and deadline. Tell us exactly what you need (takes under 3 minutes).',
     icon: (
@@ -13,7 +13,7 @@ const STEPS = [
   },
   {
     number: '02',
-    title: 'We Get to Work',
+    title: 'We get to work',
     description:
       'A subject expert crafts your model answer or study material, built specifically around your brief and academic level.',
     icon: (
@@ -25,7 +25,7 @@ const STEPS = [
   },
   {
     number: '03',
-    title: 'Download Your Work',
+    title: 'Download your work',
     description:
       'Your model answer lands in your dashboard before the deadline. Download, study it and tackle your assessment with confidence.',
     icon: (
@@ -39,15 +39,15 @@ const STEPS = [
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-20 md:py-28 bg-[#F5F0E8]">
+    <section id="how-it-works" className="py-12 sm:py-16 lg:py-20 bg-[#F5F0E8]">
       <div className="container-narrow">
 
         {/* Header */}
-        <div className="text-center max-w-xl mx-auto mb-16">
-          <p className="text-xs font-bold text-[#E8A020] uppercase tracking-widest mb-3">
+        <div className="max-w-2xl mb-8 sm:mb-10">
+          <p className="section-eyebrow mb-3">
             Simple process
           </p>
-          <h2 className="font-extrabold text-[#1B2E4B] text-3xl md:text-4xl leading-tight mb-4">
+          <h2 className="page-heading text-[#1B2E4B] text-3xl md:text-4xl leading-tight mb-4">
             From order to download in three steps
           </h2>
           <p className="text-[#6B7280] text-base leading-relaxed">
@@ -58,26 +58,20 @@ export default function HowItWorks() {
         {/* Steps */}
         <div className="relative grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-10">
 
-          {/* Connector line (desktop only) */}
-          <div
-            aria-hidden
-            className="hidden md:block absolute top-10 left-[calc(16.7%+2rem)] right-[calc(16.7%+2rem)] h-px border-t-2 border-dashed border-[#E8A020]/40 z-0"
-          />
-
           {STEPS.map((step) => (
-            <div key={step.number} className="relative z-10 flex flex-col items-center text-center">
+            <div key={step.number} className="border-t border-[#D9D2C8] pt-6">
               {/* Icon circle */}
-              <div className="w-20 h-20 rounded-2xl bg-white border border-[#E8E2D9] flex items-center justify-center mb-6 shadow-[0_4px_16px_-2px_rgba(26,26,46,0.10)] text-[#1B2E4B]">
+              <div className="w-10 h-10 flex items-center text-[#1B2E4B] mb-3">
                 {step.icon}
               </div>
 
               {/* Step number */}
-              <span className="text-xs font-bold text-[#E8A020] uppercase tracking-widest mb-2">
+              <span className="section-eyebrow block mb-2">
                 Step {step.number}
               </span>
 
-              <h3 className="font-bold text-[#1B2E4B] text-xl mb-3">{step.title}</h3>
-              <p className="text-[#6B7280] text-sm leading-relaxed max-w-xs mx-auto">
+              <h3 className="font-semibold text-[#1B2E4B] text-xl mb-3">{step.title}</h3>
+              <p className="text-[#6B7280] text-sm leading-relaxed max-w-sm">
                 {step.description}
               </p>
             </div>

@@ -90,7 +90,7 @@ export default function StepSummary({ data, file, proceeding = false, onToggleRe
     <div className="space-y-6">
       <div>
         <div className="flex items-start justify-between gap-3 mb-1">
-          <h2 className="text-xl font-bold text-[#1B2E4B]">Order summary</h2>
+          <h2 className="text-xl font-semibold text-[#1B2E4B]">Order summary</h2>
           {selectedCurrency !== 'GBP' && (
             <span className="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -120,7 +120,7 @@ export default function StepSummary({ data, file, proceeding = false, onToggleRe
           { label: 'File', value: file ? file.name : (data.briefFileName || 'None uploaded') },
         ].map(({ label, value }) => (
           <div key={label} className="bg-[#F5F0E8] rounded-xl px-3 py-2">
-            <p className="text-[0.65rem] font-bold text-[#9CA3AF] uppercase tracking-wide">{label}</p>
+            <p className="text-[0.65rem] font-bold text-[#64748B] uppercase tracking-wide">{label}</p>
             <p className="text-xs font-semibold text-[#1B2E4B] mt-0.5 truncate max-w-[140px]">{value}</p>
           </div>
         ))}
@@ -156,7 +156,7 @@ export default function StepSummary({ data, file, proceeding = false, onToggleRe
         onClick={() => onToggleReport(!data.includeOriginalityReport)}
         className="w-full flex items-center justify-between p-5 border-2 rounded-2xl transition-all duration-150"
         style={{
-          borderColor: data.includeOriginalityReport ? '#E8A020' : '#E8E2D9',
+          borderColor: data.includeOriginalityReport ? '#1B2E4B' : '#E8E2D9',
           background: data.includeOriginalityReport ? '#FDF3DC' : '#FDFAF6',
         }}
       >
@@ -164,8 +164,8 @@ export default function StepSummary({ data, file, proceeding = false, onToggleRe
           <div
             className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all"
             style={{
-              borderColor: data.includeOriginalityReport ? '#E8A020' : '#D1D5DB',
-              background: data.includeOriginalityReport ? '#E8A020' : 'transparent',
+              borderColor: data.includeOriginalityReport ? '#1B2E4B' : '#D1D5DB',
+              background: data.includeOriginalityReport ? '#1B2E4B' : 'transparent',
             }}
           >
             {data.includeOriginalityReport && (
@@ -178,7 +178,7 @@ export default function StepSummary({ data, file, proceeding = false, onToggleRe
             <p className="text-sm font-semibold text-[#1B2E4B]">
               Add Originality &amp; AI Detection Report
             </p>
-            <p className="text-xs text-[#9CA3AF] mt-0.5">
+            <p className="text-xs text-[#64748B] mt-0.5">
               Includes a detailed plagiarism and AI content check
             </p>
           </div>
@@ -204,7 +204,7 @@ export default function StepSummary({ data, file, proceeding = false, onToggleRe
               : 'Secure payment via Stripe (GBP)'}
           </p>
         </div>
-        <p className="text-2xl sm:text-3xl font-extrabold text-white shrink-0">{fmt(grandTotal)}</p>
+        <p className="text-2xl sm:text-3xl font-bold text-white shrink-0">{fmt(grandTotal)}</p>
       </div>
 
       {/* Nav row — Back left, Proceed right */}
@@ -225,7 +225,7 @@ export default function StepSummary({ data, file, proceeding = false, onToggleRe
           type="button"
           onClick={onProceed}
           disabled={proceeding}
-          className="flex items-center justify-center gap-2 bg-[#E8A020] hover:bg-[#C4861A] text-white font-bold text-base px-7 py-4 rounded-2xl transition-colors shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+          className="ui-button-primary disabled:opacity-70 disabled:cursor-not-allowed"
         >
           {proceeding ? (
             <>

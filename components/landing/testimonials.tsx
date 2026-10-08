@@ -27,7 +27,7 @@ export default function Testimonials() {
     <section className="py-20 px-4 bg-gray-50">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-14">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">What students say</h2>
+          <h2 className="text-3xl sm:text-4xl font-semibold text-gray-900">What students say</h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

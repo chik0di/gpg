@@ -35,7 +35,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           height={32}
           className="w-8 h-8"
         />
-        <span className="font-extrabold text-lg tracking-tight text-[#1B2E4B]">
+        <span className="font-bold text-lg tracking-tight text-[#1B2E4B]">
           GetPrimeGrade
         </span>
       </Link>

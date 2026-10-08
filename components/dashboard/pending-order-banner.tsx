@@ -46,7 +46,7 @@ export default function PendingOrderBanner() {
       </div>
 
       <div className="flex-1">
-        <h3 className="font-bold text-amber-900 text-sm mb-1">
+        <h3 className="font-semibold text-amber-900 text-sm mb-1">
           You have an order in progress
         </h3>
         <p className="text-sm text-amber-700 mb-3">

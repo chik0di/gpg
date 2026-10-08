@@ -140,7 +140,7 @@ function DeliverableCard({
           <button
             type="button"
             onClick={onRemove}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-[#9CA3AF] hover:bg-red-50 hover:text-red-400 transition-colors"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-[#64748B] hover:bg-red-50 hover:text-red-400 transition-colors"
             aria-label="Remove deliverable"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,7 +167,7 @@ function DeliverableCard({
                 onClick={() => handleTypeChange(t)}
                 className="py-2 px-2 rounded-xl border-2 text-xs font-semibold text-center transition-all duration-150"
                 style={{
-                  borderColor: d.type === t ? '#E8A020' : '#E8E2D9',
+                  borderColor: d.type === t ? '#1B2E4B' : '#E8E2D9',
                   background: d.type === t ? '#FDF3DC' : '#FDFAF6',
                   color: d.type === t ? '#C4861A' : '#6B7280',
                 }}
@@ -210,12 +210,12 @@ function DeliverableCard({
                 placeholder={d.sizeMode === 'pages' ? 'e.g. 5' : 'e.g. 1375'}
                 className={inputBase}
               />
-              <span className="text-xs text-[#9CA3AF] whitespace-nowrap">
+              <span className="text-xs text-[#64748B] whitespace-nowrap">
                 {d.sizeMode === 'pages' ? 'pages' : 'words'}
               </span>
             </div>
             {d.quantity > 0 && (
-              <p className="mt-1.5 text-xs text-[#9CA3AF]">
+              <p className="mt-1.5 text-xs text-[#64748B]">
                 {d.sizeMode === 'words'
                   ? `≈ ${writtenPages} page${writtenPages !== 1 ? 's' : ''} · `
                   : ''}
@@ -285,7 +285,7 @@ function DeliverableCard({
           {/* Live price preview */}
           {((d.slideInputMode === 'exact' && d.slideCount > 0) ||
             (d.slideInputMode === 'between' && d.slideMax > 0)) && (
-            <p className="text-xs text-[#9CA3AF]">
+            <p className="text-xs text-[#64748B]">
               {d.slideInputMode === 'exact'
                 ? presentationLabel(d.slideCount)
                 : `${d.slideMin}–${d.slideMax} slides × £2.50 (charged at ${d.slideMax})`}
@@ -314,9 +314,9 @@ function DeliverableCard({
       {/* Price */}
       {d.type && (
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#E8E2D9]">
-          <span className="text-xs font-medium text-[#9CA3AF]">Base price</span>
+          <span className="text-xs font-medium text-[#64748B]">Base price</span>
           <span
-            className="text-base font-extrabold"
+            className="text-base font-bold"
             style={{ color: price > 0 ? '#1B2E4B' : '#D1D5DB' }}
           >
             {fmt(price)}
@@ -353,7 +353,7 @@ export default function StepDeliverables({ deliverables, errors, onChange, selec
     <div className="space-y-5">
       <div>
         <div className="flex items-start justify-between gap-3 mb-1">
-          <h2 className="text-xl font-bold text-[#1B2E4B]">Deliverables</h2>
+          <h2 className="text-xl font-semibold text-[#1B2E4B]">Deliverables</h2>
           {selectedCurrency !== 'GBP' && (
             <span className="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -390,7 +390,7 @@ export default function StepDeliverables({ deliverables, errors, onChange, selec
         <button
           type="button"
           onClick={addDeliverable}
-          className="w-full flex items-center justify-center gap-2 py-3.5 border-2 border-dashed border-[#E8E2D9] rounded-2xl text-sm font-semibold text-[#9CA3AF] hover:border-[#E8A020] hover:text-[#E8A020] transition-all duration-150"
+          className="w-full flex items-center justify-center gap-2 py-3.5 border-2 border-dashed border-[#E8E2D9] rounded-2xl text-sm font-semibold text-[#64748B] hover:border-[#E8A020] hover:text-[#14233B] transition-all duration-150"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -412,10 +412,10 @@ export default function StepDeliverables({ deliverables, errors, onChange, selec
         style={{ background: '#F5F0E8' }}
       >
         <div>
-          <p className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-wide">Subtotal</p>
-          <p className="text-xs text-[#9CA3AF] mt-0.5">Before academic level &amp; deadline adjustments</p>
+          <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide">Subtotal</p>
+          <p className="text-xs text-[#64748B] mt-0.5">Before academic level &amp; deadline adjustments</p>
         </div>
-        <p className="text-2xl font-extrabold text-[#1B2E4B]">
+        <p className="text-2xl font-bold text-[#1B2E4B]">
           {subtotal > 0 ? fmtInCurrency(subtotal, exchangeRate, selectedCurrency) : '—'}
         </p>
       </div>

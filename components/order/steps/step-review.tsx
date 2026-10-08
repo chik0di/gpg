@@ -48,7 +48,7 @@ export default function StepReview({ getValues, isSubmitting }: Props) {
         <div className="flex justify-between items-center">
           <div>
             <p className="text-brand-200 text-sm">Total price</p>
-            <p className="text-3xl font-extrabold mt-1">£{totalPrice}</p>
+            <p className="text-3xl font-bold mt-1">£{totalPrice}</p>
             <p className="text-brand-300 text-xs mt-1">{wordCount} words · {values.deadline_tier} tier</p>
           </div>
           <div className="text-right text-sm text-brand-200">

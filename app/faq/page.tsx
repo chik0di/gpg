@@ -55,7 +55,7 @@ function AccordionItem({ q, a, index }: { q: string; a: string; index: number })
       >
         <div className="flex items-center gap-4">
           <span
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-extrabold text-white shrink-0"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0"
             style={{ background: '#1B2E4B' }}
           >
             {index + 1}
@@ -63,7 +63,7 @@ function AccordionItem({ q, a, index }: { q: string; a: string; index: number })
           <span className="text-sm font-semibold text-[#1B2E4B]">{q}</span>
         </div>
         <svg
-          className="w-4 h-4 shrink-0 text-[#9CA3AF] transition-transform duration-200"
+          className="w-4 h-4 shrink-0 text-[#64748B] transition-transform duration-200"
           style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
           fill="none" stroke="currentColor" viewBox="0 0 24 24"
         >
@@ -91,7 +91,7 @@ export default function FAQPage() {
             <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[#E8A020] mb-4">
               Support
             </span>
-            <h1 className="text-4xl sm:text-5xl font-extrabold text-[#1B2E4B] mb-4">
+            <h1 className="page-heading text-4xl sm:text-5xl text-[#1B2E4B] mb-4">
               Frequently asked questions
             </h1>
             <p className="text-[#6B7280] text-lg max-w-xl mx-auto leading-relaxed">
@@ -110,7 +110,7 @@ export default function FAQPage() {
 
           {/* Still have questions CTA */}
           <div
-            className="max-w-2xl mx-auto mt-12 rounded-3xl border border-[#E8E2D9] p-8 text-center"
+            className="max-w-2xl mx-auto mt-12 rounded-2xl border border-[#E8E2D9] p-8 text-center"
             style={{ background: '#FFFFFF' }}
           >
             <div
@@ -122,14 +122,14 @@ export default function FAQPage() {
                   d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </div>
-            <h2 className="text-lg font-bold text-[#1B2E4B] mb-2">Still have questions?</h2>
+            <h2 className="page-heading text-lg text-[#1B2E4B] mb-2">Still have questions?</h2>
             <p className="text-sm text-[#6B7280] mb-6 leading-relaxed">
               Our team typically responds within a few hours. Reach out and we&apos;ll be happy to help.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
                 href="/contact"
-                className="inline-flex items-center gap-2 bg-[#1B2E4B] hover:bg-[#16253d] text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors"
+                className="ui-button-primary hover:bg-[#16253d]"
               >
                 Contact us
               </Link>

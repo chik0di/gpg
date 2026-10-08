@@ -5,16 +5,15 @@ export default function WhatsAppButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with us on WhatsApp"
-      className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50 flex items-center gap-2.5 shadow-lg hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5"
+      className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50 flex items-center gap-2 p-3 sm:px-4 sm:py-2.5 shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5"
       style={{
         background: '#25D366',
         borderRadius: '999px',
-        padding: '12px 20px 12px 14px',
       }}
     >
       {/* WhatsApp icon */}
       <svg
-        className="w-6 h-6 shrink-0 text-white"
+        className="w-5 h-5 shrink-0 text-white"
         viewBox="0 0 24 24"
         fill="currentColor"
         aria-hidden
@@ -24,7 +23,7 @@ export default function WhatsAppButton() {
       </svg>
 
       {/* Label — hidden on mobile, shown on desktop */}
-      <span className="hidden sm:block text-white text-sm font-bold leading-none">
+      <span className="hidden sm:block text-white text-sm font-semibold leading-none">
         Chat with us
       </span>
     </a>

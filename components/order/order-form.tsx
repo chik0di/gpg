@@ -376,7 +376,7 @@ export default function OrderForm() {
     <div ref={topRef}>
       {/* Form card */}
       <div
-        className="bg-white rounded-3xl border border-[#E8E2D9] p-6 sm:p-8"
+        className="ui-card p-6 sm:p-8"
         style={{ boxShadow: '0 8px 32px -4px rgba(26,26,46,0.10)' }}
       >
         <StepIndicator steps={steps} current={currentStepIndex} />
@@ -491,7 +491,7 @@ export default function OrderForm() {
                 <button
                   type="button"
                   onClick={advance}
-                  className="flex items-center gap-2 bg-[#1B2E4B] hover:bg-[#16253d] text-white font-bold text-sm px-7 py-3 rounded-xl transition-colors"
+                  className="ui-button-primary hover:bg-[#16253d]"
                 >
                   Continue
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -41,7 +41,7 @@ export default function ShareButton({ variant = 'button', className = '' }: Shar
     return (
       <button
         onClick={handleShare}
-        className={`inline-flex items-center gap-1.5 text-sm font-semibold text-[#1B2E4B] hover:text-[#E8A020] transition-colors ${className}`}
+        className={`inline-flex items-center gap-1.5 text-sm font-semibold transition-colors ${className || 'text-[#1B2E4B] hover:text-[#14233B]'}`}
       >
         {isCopied ? (
           <>
@@ -66,7 +66,7 @@ export default function ShareButton({ variant = 'button', className = '' }: Shar
   return (
     <button
       onClick={handleShare}
-      className={`inline-flex items-center gap-2 bg-transparent border-2 border-[#E8A020] text-[#E8A020] hover:bg-[#E8A020] hover:text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors ${className}`}
+      className={`ui-button-secondary ${className}`}
     >
       {isCopied ? (
         <>

@@ -199,11 +199,11 @@ export default function SettingsPage() {
   }
 
   const inputClass =
-    'w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/40 focus:border-[#E8A020] transition-all text-[#1A1A2E] placeholder:text-[#C4C0B8] disabled:bg-[#F5F0E8] disabled:text-[#9CA3AF] disabled:cursor-not-allowed'
+    'w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/40 focus:border-[#E8A020] transition-all text-[#1A1A2E] placeholder:text-[#64748B] disabled:bg-[#F5F0E8] disabled:text-[#64748B] disabled:cursor-not-allowed'
 
   return (
     <div className="max-w-lg space-y-8">
-      <h1 className="text-2xl font-extrabold text-[#1B2E4B]">Account Settings</h1>
+      <h1 className="text-2xl font-bold text-[#1B2E4B]">Account Settings</h1>
 
       {/* Email Updated Success Banner */}
       {showEmailUpdatedBanner && (
@@ -232,7 +232,7 @@ export default function SettingsPage() {
         className="bg-white rounded-2xl border border-[#E8E2D9] p-6"
         style={{ boxShadow: '0 2px 8px -2px rgba(26,26,46,0.07)' }}
       >
-        <h2 className="text-base font-bold text-[#1B2E4B] mb-2">Email Address</h2>
+        <h2 className="text-base font-semibold text-[#1B2E4B] mb-2">Email Address</h2>
         <p className="text-sm text-[#6B7280] mb-5">
           Current email: <strong className="text-[#1A1A2E]">{currentEmail}</strong>
         </p>
@@ -253,7 +253,7 @@ export default function SettingsPage() {
           <button
             onClick={handleStartEmailChange}
             disabled={emailLoading}
-            className="flex items-center gap-2 bg-[#1B2E4B] hover:bg-[#16253d] text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors disabled:opacity-60"
+            className="ui-button-primary hover:bg-[#16253d] disabled:opacity-60"
           >
             Change email address
           </button>
@@ -291,14 +291,14 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={emailLoading}
-                className="flex items-center gap-2 bg-[#1B2E4B] hover:bg-[#16253d] text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors disabled:opacity-60"
+                className="ui-button-primary hover:bg-[#16253d] disabled:opacity-60"
               >
                 {emailLoading ? 'Updating…' : 'Update email'}
               </button>
               <button
                 type="button"
                 onClick={cancelEmailChange}
-                className="text-sm font-semibold text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors px-4"
+                className="text-sm font-semibold text-[#64748B] hover:text-[#1B2E4B] transition-colors px-4"
               >
                 Cancel
               </button>
@@ -312,7 +312,7 @@ export default function SettingsPage() {
         className="bg-white rounded-2xl border border-[#E8E2D9] p-6"
         style={{ boxShadow: '0 2px 8px -2px rgba(26,26,46,0.07)' }}
       >
-        <h2 className="text-base font-bold text-[#1B2E4B] mb-5">Change Password</h2>
+        <h2 className="text-base font-semibold text-[#1B2E4B] mb-5">Change Password</h2>
 
         {pwMsg && (
           <div
@@ -365,7 +365,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={() => setShowCurrentPw(!showCurrentPw)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#1B2E4B] transition-colors"
               >
                 {showCurrentPw ? (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -398,7 +398,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={() => setShowNewPw(!showNewPw)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#1B2E4B] transition-colors"
               >
                 {showNewPw ? (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -426,7 +426,7 @@ export default function SettingsPage() {
                 </div>
               ) : null
             })()}
-            <p className="text-xs text-[#9CA3AF] mt-2">
+            <p className="text-xs text-[#64748B] mt-2">
               Must contain uppercase, lowercase, number, and special character
             </p>
           </div>
@@ -434,7 +434,7 @@ export default function SettingsPage() {
           <button
             type="submit"
             disabled={pwLoading}
-            className="flex items-center gap-2 bg-[#1B2E4B] hover:bg-[#16253d] text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors disabled:opacity-60"
+            className="ui-button-primary hover:bg-[#16253d] disabled:opacity-60"
           >
             {pwLoading ? 'Updating…' : 'Update password'}
           </button>
@@ -443,8 +443,8 @@ export default function SettingsPage() {
 
       {/* Danger zone */}
       <div className="bg-white rounded-2xl border border-red-100 p-6">
-        <h2 className="text-base font-bold text-[#1B2E4B] mb-2">Sign out everywhere</h2>
-        <p className="text-sm text-[#9CA3AF] mb-4">
+        <h2 className="text-base font-semibold text-[#1B2E4B] mb-2">Sign out everywhere</h2>
+        <p className="text-sm text-[#64748B] mb-4">
           Sign out of all active sessions on all devices.
         </p>
         <button

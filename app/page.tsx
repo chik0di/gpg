@@ -40,10 +40,10 @@ export default function LandingPage() {
       <Navbar />
       <main>
         <Hero />
+        <ReviewsPreview />
         <HowItWorks />
         <WhatWeOffer />
         <WhyChooseUs />
-        <ReviewsPreview />
         <FAQPreview />
       </main>
       <Footer />

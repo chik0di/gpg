@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/types/order'
+import StatusBadge from '@/components/shared/status-badge'
 import type { Deliverable, OrderFile } from '@/types/order'
 import DownloadWithReview from '@/components/orders/download-with-review'
 
@@ -18,7 +18,7 @@ interface Props { params: { id: string } }
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 py-3 border-b border-[#E8E2D9] last:border-0">
-      <span className="text-sm text-[#9CA3AF] shrink-0">{label}</span>
+      <span className="text-sm text-[#64748B] shrink-0">{label}</span>
       <span className="text-sm font-semibold text-[#1B2E4B] text-right">{value}</span>
     </div>
   )
@@ -50,8 +50,6 @@ export default async function OrderDetailPage({ params }: Props) {
   console.log('[OrderDetailPage] Status (trimmed) === "completed":', order.status?.trim() === 'completed')
   console.log('========================================')
 
-  const label  = ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS] ?? order.status
-  const color  = ORDER_STATUS_COLORS[order.status as keyof typeof ORDER_STATUS_COLORS] ?? 'bg-gray-100 text-gray-600'
   const total  = `£${order.total_amount % 1 === 0 ? order.total_amount : order.total_amount.toFixed(2)}`
   const deliverables: Deliverable[] = order.deliverables ?? []
   const files: OrderFile[]          = order.order_files ?? []
@@ -85,7 +83,7 @@ export default async function OrderDetailPage({ params }: Props) {
       {/* Back */}
       <Link
         href="/dashboard/orders"
-        className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#64748B] hover:text-[#1B2E4B] transition-colors"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -96,14 +94,14 @@ export default async function OrderDetailPage({ params }: Props) {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-[#1B2E4B]">
+          <h1 className="text-2xl font-bold text-[#1B2E4B]">
             Order <span className="font-mono text-lg">#{order.id.slice(0, 8).toUpperCase()}</span>
           </h1>
-          <p className="text-sm text-[#9CA3AF] mt-1">
+          <p className="text-sm text-[#64748B] mt-1">
             Placed {new Date(order.created_at).toLocaleDateString('en-GB', { dateStyle: 'long' })}
           </p>
         </div>
-        <span className={`px-3 py-1.5 rounded-full text-xs font-bold shrink-0 ${color}`}>{label}</span>
+        <StatusBadge status={order.status} />
       </div>
 
       {/* Download completed work - with review trigger on click */}
@@ -123,22 +121,22 @@ export default async function OrderDetailPage({ params }: Props) {
         <a
           href={assignUrl}
           download
-          className="flex items-center gap-3 bg-[#F0F9FF] border border-[#93C5FD] rounded-2xl px-5 py-4 hover:bg-[#E0F2FE] transition-colors"
+          className="flex items-center gap-3 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-5 py-4 hover:bg-[#EBF0F6] transition-colors"
         >
-          <svg className="w-5 h-5 text-[#3B82F6] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-[#1B2E4B] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           <div>
-            <p className="text-sm font-bold text-[#3B82F6]">Download your assignment brief</p>
-            <p className="text-xs text-[#60A5FA] mt-0.5">View the file you uploaded</p>
+            <p className="text-sm font-bold text-[#1B2E4B]">Download your assignment brief</p>
+            <p className="text-xs text-[#64748B] mt-0.5">View the file you uploaded</p>
           </div>
         </a>
       )}
 
       {/* Order summary card */}
-      <div className="bg-white rounded-2xl border border-[#E8E2D9]" style={{ boxShadow: '0 2px 8px -2px rgba(26,26,46,0.07)' }}>
-        <div className="px-5 py-3 bg-[#F5F0E8] rounded-t-2xl border-b border-[#E8E2D9]">
-          <p className="text-xs font-bold text-[#6B7280] uppercase tracking-wide">Order details</p>
+      <div className="ui-card">
+        <div className="px-5 py-4 border-b border-[#E8E2D9]">
+          <p className="text-sm font-semibold text-[#1B2E4B]">Order details</p>
         </div>
         <div className="px-5">
           <Row label="Subject" value={order.module_name || order.subject_field} />
@@ -151,9 +149,9 @@ export default async function OrderDetailPage({ params }: Props) {
 
       {/* Deliverables */}
       {deliverables.length > 0 && (
-        <div className="bg-white rounded-2xl border border-[#E8E2D9]" style={{ boxShadow: '0 2px 8px -2px rgba(26,26,46,0.07)' }}>
-          <div className="px-5 py-3 bg-[#F5F0E8] rounded-t-2xl border-b border-[#E8E2D9]">
-            <p className="text-xs font-bold text-[#6B7280] uppercase tracking-wide">
+        <div className="ui-card">
+          <div className="px-5 py-4 border-b border-[#E8E2D9]">
+            <p className="text-sm font-semibold text-[#1B2E4B]">
               Deliverables ({deliverables.length})
             </p>
           </div>
@@ -162,8 +160,8 @@ export default async function OrderDetailPage({ params }: Props) {
               <div key={d.id} className="flex items-center justify-between px-5 py-3.5">
                 <div>
                   <p className="text-sm font-semibold text-[#1B2E4B] capitalize">{d.type}</p>
-                  {d.subtype && <p className="text-xs text-[#9CA3AF] mt-0.5">{d.subtype}</p>}
-                  {d.size_band && <p className="text-xs text-[#9CA3AF] mt-0.5">{d.size_band} pages</p>}
+                  {d.subtype && <p className="text-xs text-[#64748B] mt-0.5">{d.subtype}</p>}
+                  {d.size_band && <p className="text-xs text-[#64748B] mt-0.5">{d.size_band} pages</p>}
                 </div>
                 <span className="text-sm font-bold text-[#1B2E4B]">
                   £{d.price % 1 === 0 ? d.price : d.price.toFixed(2)}
@@ -176,8 +174,8 @@ export default async function OrderDetailPage({ params }: Props) {
 
       {/* Instructions */}
       {order.additional_instructions && (
-        <div className="bg-white rounded-2xl border border-[#E8E2D9] p-5">
-          <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide mb-2">Instructions</p>
+        <div className="ui-card p-5">
+          <p className="text-sm font-semibold text-[#1B2E4B] mb-2">Instructions</p>
           <p className="text-sm text-[#6B7280] leading-relaxed whitespace-pre-wrap">
             {order.additional_instructions}
           </p>

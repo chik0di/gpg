@@ -17,7 +17,7 @@ export default function StepIndicator({ steps, current }: StepIndicatorProps) {
               <div
                 className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-200 shrink-0"
                 style={{
-                  background: done ? '#1B2E4B' : active ? '#E8A020' : '#E8E2D9',
+                  background: done ? '#1B2E4B' : active ? '#1B2E4B' : '#E8E2D9',
                   color: done || active ? '#fff' : '#9CA3AF',
                 }}
               >
@@ -31,7 +31,7 @@ export default function StepIndicator({ steps, current }: StepIndicatorProps) {
               </div>
               <span
                 className="mt-2 text-xs font-semibold text-center leading-tight hidden sm:block"
-                style={{ color: active ? '#E8A020' : done ? '#1B2E4B' : '#9CA3AF', maxWidth: '5rem' }}
+                style={{ color: active ? '#1B2E4B' : done ? '#1B2E4B' : '#9CA3AF', maxWidth: '5rem' }}
               >
                 {label}
               </span>

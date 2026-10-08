@@ -116,7 +116,7 @@ function StripeForm({ grandTotalGBP }: { grandTotalGBP: number }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="bg-white rounded-2xl border border-[#E8E2D9] p-6" style={{ boxShadow: '0 2px 8px -2px rgba(26,26,46,0.07)' }}>
-        <h2 className="text-base font-bold text-[#1B2E4B] mb-5">Payment details</h2>
+        <h2 className="text-base font-semibold text-[#1B2E4B] mb-5">Payment details</h2>
         <PaymentElement />
       </div>
 
@@ -132,7 +132,7 @@ function StripeForm({ grandTotalGBP }: { grandTotalGBP: number }) {
       <button
         type="submit"
         disabled={!stripe || processing}
-        className="w-full flex items-center justify-center gap-2 bg-[#E8A020] hover:bg-[#C4861A] text-white font-bold text-base py-4 rounded-2xl transition-colors shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+        className="ui-button-primary w-full disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {processing ? (
           <>
@@ -152,10 +152,10 @@ function StripeForm({ grandTotalGBP }: { grandTotalGBP: number }) {
         )}
       </button>
 
-      <p className="text-center text-xs text-[#9CA3AF] mt-2">Charged in GBP</p>
+      <p className="text-center text-xs text-[#64748B] mt-2">Charged in GBP</p>
 
-      <div className="flex items-center justify-center gap-2 text-xs text-[#9CA3AF]">
-        <svg className="w-3.5 h-3.5 text-[#9CA3AF]" fill="currentColor" viewBox="0 0 20 20">
+      <div className="flex items-center justify-center gap-2 text-xs text-[#64748B]">
+        <svg className="w-3.5 h-3.5 text-[#64748B]" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
         </svg>
         Secure payment processed by Stripe
@@ -229,10 +229,10 @@ function OrderSummary({ data }: {
           <div>
             <p className="text-sm font-bold text-[#1B2E4B]">Total</p>
             {selectedCurrency !== 'GBP' && (
-              <p className="text-[0.65rem] text-[#9CA3AF] mt-0.5">Approx. {selectedCurrency} equivalent</p>
+              <p className="text-[0.65rem] text-[#64748B] mt-0.5">Approx. {selectedCurrency} equivalent</p>
             )}
           </div>
-          <p className="text-xl font-extrabold text-[#1B2E4B]">{fmt(total)}</p>
+          <p className="text-xl font-bold text-[#1B2E4B]">{fmt(total)}</p>
         </div>
 
         {/* GBP charge amount for non-GBP currencies */}
@@ -241,7 +241,7 @@ function OrderSummary({ data }: {
             <p className="text-xs font-semibold text-[#1B2E4B]">
               You will be charged {fmtGBP(total)} GBP
             </p>
-            <p className="text-[0.65rem] text-[#9CA3AF] mt-0.5">
+            <p className="text-[0.65rem] text-[#64748B] mt-0.5">
               This is the amount that will appear on your bank statement
             </p>
           </div>
@@ -261,7 +261,7 @@ function OrderSummary({ data }: {
           },
         ].map(({ label, value }) => (
           <div key={label} className="flex items-center justify-between text-xs">
-            <span className="text-[#9CA3AF]">{label}</span>
+            <span className="text-[#64748B]">{label}</span>
             <span className="text-[#6B7280] font-medium">{value}</span>
           </div>
         ))}
@@ -525,12 +525,12 @@ export default function CheckoutPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <h2 className="text-xl font-bold text-[#1B2E4B] mb-2">Order Not Found</h2>
+              <h2 className="text-xl font-semibold text-[#1B2E4B] mb-2">Order Not Found</h2>
               <p className="text-sm text-[#6B7280] mb-6 max-w-md mx-auto">{initError}</p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link
                   href="/order"
-                  className="inline-flex items-center gap-2 bg-[#E8A020] hover:bg-[#C4861A] text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors"
+                  className="ui-button-primary "
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
@@ -588,12 +588,12 @@ export default function CheckoutPage() {
 
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <Link href="/order" className="text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors">
+          <Link href="/order" className="text-[#64748B] hover:text-[#1B2E4B] transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </Link>
-          <h1 className="text-2xl font-extrabold text-[#1B2E4B]">Complete your order</h1>
+          <h1 className="text-2xl font-bold text-[#1B2E4B]">Complete your order</h1>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

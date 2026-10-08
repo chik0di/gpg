@@ -16,6 +16,7 @@ import {
   type JournalSource,
 } from '@/lib/citation-formatter'
 
+import AcademicIcon from '@/components/shared/academic-icon'
 import BookTitleSearch from '@/components/resources-book-title-search'
 import { citationSourceSchema } from '@/lib/citation-source-validation'
 import type { ReferenceMetadata } from '@/lib/academic-metadata'
@@ -28,10 +29,10 @@ const STYLES: { value: CitationStyle; label: string }[] = [
   { value: 'Chicago', label: 'Chicago 18 (author–date)' },
 ]
 
-const SOURCE_TYPES: { value: SourceType; label: string; icon: string }[] = [
-  { value: 'book', label: 'Book', icon: '📚' },
-  { value: 'website', label: 'Website', icon: '🌐' },
-  { value: 'journal', label: 'Journal Article', icon: '📄' },
+const SOURCE_TYPES: { value: SourceType; label: string; icon: SourceType }[] = [
+  { value: 'book', label: 'Book', icon: 'book' },
+  { value: 'website', label: 'Website', icon: 'website' },
+  { value: 'journal', label: 'Journal article', icon: 'journal' },
 ]
 
 export default function ReferenceGeneratorClient() {
@@ -397,29 +398,29 @@ export default function ReferenceGeneratorClient() {
   return (
     <main className="min-h-screen" style={{ background: '#F5F0E8' }}>
       <section className="border-b border-[#E8E2D9]" style={{ background: '#FDFAF6' }}>
-        <div className="container-narrow py-16 text-center">
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-[#1B2E4B] mb-4">
+        <div className="container-narrow py-8 sm:py-10">
+          <h1 className="page-heading text-3xl sm:text-4xl text-[#1B2E4B] mb-3">
             Reference Generator
           </h1>
-          <p className="text-lg text-[#6B7280] max-w-2xl mx-auto">
+          <p className="text-base text-[#475569] max-w-2xl">
             Generate correctly formatted citations in APA, Harvard, Vancouver, MLA and Chicago styles.
           </p>
         </div>
       </section>
 
-      <div className="container-narrow py-12 space-y-8">
-        <div className="bg-white rounded-2xl border border-[#E8E2D9] p-6 space-y-3">
-          <h2 className="block text-lg font-bold text-[#1B2E4B]">Find reference details automatically</h2>
+      <div className="container-narrow py-8 space-y-6">
+        <div className="ui-card p-6 space-y-3">
+          <h2 className="block text-lg font-semibold text-[#1B2E4B]">Find reference details automatically</h2>
           <div className="flex flex-wrap gap-2">
-            <button disabled={lookupLoading} onClick={() => setLookupMode('identifier')} aria-pressed={lookupMode === 'identifier'} className={`px-4 py-2 text-sm font-semibold rounded-xl ${lookupMode === 'identifier' ? 'bg-[#E8A020] text-white' : 'bg-[#F5F0E8] text-[#1B2E4B]'}`}>DOI, ISBN or link</button>
-            <button disabled={lookupLoading} onClick={() => setLookupMode('book')} aria-pressed={lookupMode === 'book'} className={`px-4 py-2 text-sm font-semibold rounded-xl ${lookupMode === 'book' ? 'bg-[#E8A020] text-white' : 'bg-[#F5F0E8] text-[#1B2E4B]'}`}>Search by book title</button>
+            <button disabled={lookupLoading} onClick={() => setLookupMode('identifier')} aria-pressed={lookupMode === 'identifier'} className="ui-choice">DOI, ISBN or link</button>
+            <button disabled={lookupLoading} onClick={() => setLookupMode('book')} aria-pressed={lookupMode === 'book'} className="ui-choice">Search by book title</button>
           </div>
           {lookupMode === 'identifier' ? <form onSubmit={event => { event.preventDefault(); void retrieveReference(lookupInput.trim()) }} className="space-y-3">
           <label htmlFor="reference-lookup" className="sr-only">DOI, ISBN or webpage URL</label>
           <p className="text-sm text-[#6B7280]">Paste a DOI, ISBN-10, ISBN-13, or public webpage link.</p>
           <div className="flex flex-col sm:flex-row gap-3">
-            <input id="reference-lookup" value={lookupInput} onChange={event => setLookupInput(event.target.value)} placeholder="DOI, ISBN, or https://…" required maxLength={2000} disabled={lookupLoading} className="min-w-0 flex-1 px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30" />
-            <button disabled={lookupLoading || !lookupInput.trim()} className="px-5 py-3 bg-[#1B2E4B] text-white font-bold rounded-xl disabled:opacity-50">{lookupLoading ? 'Finding details…' : 'Find reference'}</button>
+            <input id="reference-lookup" value={lookupInput} onChange={event => setLookupInput(event.target.value)} placeholder="DOI, ISBN, or https://…" required maxLength={2000} disabled={lookupLoading} className="ui-input flex-1" />
+            <button disabled={lookupLoading || !lookupInput.trim()} className="ui-button-primary">{lookupLoading ? 'Finding details…' : 'Find reference'}</button>
           </div>
           <p className="text-xs text-[#6B7280]">Some websites block automatic access or omit citation details. You can always complete the form manually.</p>
           </form> : <BookTitleSearch onSelect={applyMetadata} onBusyChange={setLookupLoading} />}
@@ -430,17 +431,14 @@ export default function ReferenceGeneratorClient() {
 
         {/* Style Selection */}
         <div>
-          <label className="block text-sm font-bold text-[#1B2E4B] mb-3">Citation Style</label>
+          <label className="block text-sm font-semibold text-[#1B2E4B] mb-3">Citation style</label>
           <div className="flex flex-wrap gap-2">
             {STYLES.map(style => (
               <button
                 key={style.value}
                 onClick={() => setSelectedStyle(style.value)}
-                className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${
-                  selectedStyle === style.value
-                    ? 'bg-[#E8A020] text-white shadow-md'
-                    : 'bg-white text-[#6B7280] border border-[#E8E2D9] hover:border-[#E8A020]'
-                }`}
+                aria-pressed={selectedStyle === style.value}
+                className="ui-choice"
               >
                 {style.label}
               </button>
@@ -450,9 +448,9 @@ export default function ReferenceGeneratorClient() {
 
         <p className="text-xs text-[#6B7280]">APA 7; Harvard Cite Them Right; Vancouver ICMJE; MLA 9; Chicago 18 author–date. Check title capitalization, missing details, and any page locator against your source and university guidance.</p>
         {bibliographyMessage && <p role="status" className="text-sm text-[#1B2E4B]">{bibliographyMessage}</p>}
-        {/* Source Type Selection */}
+        {/* Source type Selection */}
         <div>
-          <label className="block text-sm font-bold text-[#1B2E4B] mb-3">Source Type</label>
+          <label className="block text-sm font-semibold text-[#1B2E4B] mb-3">Source type</label>
           <div className="grid grid-cols-3 gap-3">
             {SOURCE_TYPES.map(type => (
               <button
@@ -462,13 +460,10 @@ export default function ReferenceGeneratorClient() {
                   setSourceType(type.value)
                   clearForm()
                 }}
-                className={`p-4 rounded-xl font-semibold text-sm transition-all ${
-                  sourceType === type.value
-                    ? 'bg-[#E8A020] text-white shadow-md'
-                    : 'bg-white text-[#6B7280] border border-[#E8E2D9] hover:border-[#E8A020]'
-                }`}
+                aria-pressed={sourceType === type.value}
+                className="ui-choice flex flex-col sm:flex-row items-center justify-center gap-2"
               >
-                <div className="text-2xl mb-1">{type.icon}</div>
+                <AcademicIcon name={type.icon} className="w-5 h-5 shrink-0" />
                 {type.label}
               </button>
             ))}
@@ -476,18 +471,18 @@ export default function ReferenceGeneratorClient() {
         </div>
 
         {/* Input Form */}
-        <div className="bg-white rounded-2xl border border-[#E8E2D9] p-6" style={{ boxShadow: '0 2px 8px -2px rgba(26,26,46,0.07)' }}>
+        <div className="ui-card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-[#1B2E4B]">Enter Source Details</h2>
+            <h2 className="text-lg font-semibold text-[#1B2E4B]">Enter source details</h2>
             <button
               onClick={clearForm}
               disabled={lookupLoading}
-              className="flex items-center gap-1.5 text-sm font-semibold text-[#6B7280] hover:text-[#E8A020] transition-colors"
+              className="flex items-center gap-1.5 text-sm font-semibold text-[#6B7280] hover:text-[#14233B] transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-              Clear Form
+              Clear form
             </button>
           </div>
 
@@ -503,9 +498,9 @@ export default function ReferenceGeneratorClient() {
                   value={bookAuthors}
                   onChange={(e) => setBookAuthors(e.target.value)}
                   placeholder="Smith, John; Jones, Amara"
-                  className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                  className="ui-input"
                 />
-                <p className="text-xs text-[#9CA3AF] mt-1">
+                <p className="text-xs text-[#64748B] mt-1">
                   Recommended: Surname, Full First Name — separate multiple authors with semicolons (;)
                 </p>
                 {bookAuthors.trim() && (
@@ -517,14 +512,14 @@ export default function ReferenceGeneratorClient() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-[#1B2E4B] mb-2">
-                  Book Title <span className="text-red-500">*</span>
+                  Book title <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={bookTitle}
                   onChange={(e) => setBookTitle(e.target.value)}
                   placeholder="Machine Learning Fundamentals"
-                  className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                  className="ui-input"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -537,7 +532,7 @@ export default function ReferenceGeneratorClient() {
                     value={bookYear}
                     onChange={(e) => setBookYear(e.target.value)}
                     placeholder="2024"
-                    className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                    className="ui-input"
                   />
                 </div>
                 <div>
@@ -547,7 +542,7 @@ export default function ReferenceGeneratorClient() {
                     value={bookPlace}
                     onChange={(e) => setBookPlace(e.target.value)}
                     placeholder="London"
-                    className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                    className="ui-input"
                   />
                 </div>
               </div>
@@ -558,7 +553,7 @@ export default function ReferenceGeneratorClient() {
                   value={bookPublisher}
                   onChange={(e) => setBookPublisher(e.target.value)}
                   placeholder="Academic Press"
-                  className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                  className="ui-input"
                 />
               </div>
               <label className="block text-sm font-semibold text-[#1B2E4B]">Edition (if later than first)
@@ -578,9 +573,9 @@ export default function ReferenceGeneratorClient() {
                   value={webAuthors}
                   onChange={(e) => setWebAuthors(e.target.value)}
                   placeholder="Brown, Thomas; Smith, Jane"
-                  className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                  className="ui-input"
                 />
-                <p className="text-xs text-[#9CA3AF] mt-1">
+                <p className="text-xs text-[#64748B] mt-1">
                   Recommended: Surname, Full First Name — separate multiple authors with semicolons (;)
                 </p>
                 {webAuthors.trim() && (
@@ -599,19 +594,19 @@ export default function ReferenceGeneratorClient() {
                   value={webOrganisation}
                   onChange={(e) => setWebOrganisation(e.target.value)}
                   placeholder="OpenAI"
-                  className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                  className="ui-input"
                 />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-[#1B2E4B] mb-2">
-                  Page/Article Title <span className="text-red-500">*</span>
+                  Page/Article title <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={webTitle}
                   onChange={(e) => setWebTitle(e.target.value)}
                   placeholder="Introduction to Neural Networks"
-                  className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                  className="ui-input"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -624,19 +619,19 @@ export default function ReferenceGeneratorClient() {
                     value={webYear}
                     onChange={(e) => { setWebYear(e.target.value); setWebPublicationDate('') }}
                     placeholder="2023"
-                    className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                    className="ui-input"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-[#1B2E4B] mb-2">Date Accessed</label>
+                  <label className="block text-sm font-semibold text-[#1B2E4B] mb-2">Date accessed</label>
                   <input
                     type="text"
                     value={webDateAccessed}
                     onChange={(e) => setWebDateAccessed(e.target.value)}
                     placeholder="15 September 2024"
-                    className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                    className="ui-input"
                   />
-                  <p className="text-xs text-[#9CA3AF] mt-1">Format: DD Month YYYY</p>
+                  <p className="text-xs text-[#64748B] mt-1">Format: DD Month YYYY</p>
                 </div>
               </div>
               <div>
@@ -648,7 +643,7 @@ export default function ReferenceGeneratorClient() {
                   value={webUrl}
                   onChange={(e) => setWebUrl(e.target.value)}
                   placeholder="https://example.com/article"
-                  className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                  className="ui-input"
                 />
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
@@ -671,9 +666,9 @@ export default function ReferenceGeneratorClient() {
                   value={journalAuthors}
                   onChange={(e) => setJournalAuthors(e.target.value)}
                   placeholder="Wilson, Karen; Davis, Michael; Taylor, Rebecca"
-                  className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                  className="ui-input"
                 />
-                <p className="text-xs text-[#9CA3AF] mt-1">
+                <p className="text-xs text-[#64748B] mt-1">
                   Recommended: Surname, Full First Name — separate multiple authors with semicolons (;)
                 </p>
                 {journalAuthors.trim() && (
@@ -685,26 +680,26 @@ export default function ReferenceGeneratorClient() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-[#1B2E4B] mb-2">
-                  Article Title <span className="text-red-500">*</span>
+                  Article title <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={journalTitle}
                   onChange={(e) => setJournalTitle(e.target.value)}
                   placeholder="Advances in Deep Learning"
-                  className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                  className="ui-input"
                 />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-[#1B2E4B] mb-2">
-                  Journal Name <span className="text-red-500">*</span>
+                  Journal name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={journalName}
                   onChange={(e) => setJournalName(e.target.value)}
                   placeholder="Journal of AI Research"
-                  className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                  className="ui-input"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -717,7 +712,7 @@ export default function ReferenceGeneratorClient() {
                     value={journalYear}
                     onChange={(e) => setJournalYear(e.target.value)}
                     placeholder="2024"
-                    className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                    className="ui-input"
                   />
                 </div>
                 <div>
@@ -729,7 +724,7 @@ export default function ReferenceGeneratorClient() {
                     value={journalVolume}
                     onChange={(e) => setJournalVolume(e.target.value)}
                     placeholder="45"
-                    className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                    className="ui-input"
                   />
                 </div>
               </div>
@@ -741,7 +736,7 @@ export default function ReferenceGeneratorClient() {
                     value={journalIssue}
                     onChange={(e) => setJournalIssue(e.target.value)}
                     placeholder="3"
-                    className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                    className="ui-input"
                   />
                 </div>
                 <div>
@@ -753,7 +748,7 @@ export default function ReferenceGeneratorClient() {
                     value={journalPageRange}
                     onChange={(e) => setJournalPageRange(e.target.value)}
                     placeholder="123-145"
-                    className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                    className="ui-input"
                   />
                 </div>
               </div>
@@ -764,7 +759,7 @@ export default function ReferenceGeneratorClient() {
                   value={journalDoi}
                   onChange={(e) => setJournalDoi(e.target.value)}
                   placeholder="10.1234/jair.2024.123"
-                  className="w-full px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E8A020]/30"
+                  className="ui-input"
                 />
               </div>
               <label className="block text-sm font-semibold text-[#1B2E4B]">Article number (if used instead of pages)<input value={journalArticleNumber} onChange={e => setJournalArticleNumber(e.target.value)} placeholder="e.g., e0123456" className="w-full mt-2 px-4 py-3 border border-[#E8E2D9] rounded-xl text-sm" /></label>
@@ -776,30 +771,30 @@ export default function ReferenceGeneratorClient() {
           <button
             disabled={lookupLoading}
             onClick={handleGenerate}
-            className="w-full mt-6 bg-[#E8A020] hover:bg-[#C4861A] text-white font-bold py-3 rounded-xl transition-colors"
+            className="ui-button-primary w-full mt-6"
           >
-            Generate Citation
+            Generate citation
           </button>
           </fieldset>
         </div>
 
         {/* Generated Output */}
         {generatedCitation && (
-          <div className="bg-white rounded-2xl border border-[#E8E2D9] p-6" style={{ boxShadow: '0 2px 8px -2px rgba(26,26,46,0.07)' }}>
-            <h2 className="text-lg font-bold text-[#1B2E4B] mb-4">Generated Citation</h2>
+          <div className="ui-card p-6">
+            <h2 className="text-lg font-semibold text-[#1B2E4B] mb-4">Generated citation</h2>
 
             <div className="space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide">
-                    In-text Citation
+                  <label className="text-xs font-semibold text-[#64748B] uppercase tracking-wide">
+                    In-text citation
                   </label>
                   <button
                     onClick={handleCopyInText}
                     className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition-colors ${
                       copiedInText
                         ? 'bg-[#16A34A] text-white'
-                        : 'text-[#6B7280] hover:text-[#E8A020]'
+                        : 'text-[#6B7280] hover:text-[#14233B]'
                     }`}
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -819,15 +814,15 @@ export default function ReferenceGeneratorClient() {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide">
-                    Full Reference
+                  <label className="text-xs font-semibold text-[#64748B] uppercase tracking-wide">
+                    Full reference
                   </label>
                   <button
                     onClick={handleCopyFullRef}
                     className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition-colors ${
                       copiedFullRef
                         ? 'bg-[#16A34A] text-white'
-                        : 'text-[#6B7280] hover:text-[#E8A020]'
+                        : 'text-[#6B7280] hover:text-[#14233B]'
                     }`}
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -847,9 +842,9 @@ export default function ReferenceGeneratorClient() {
 
               <button
                 onClick={handleAddToBibliography}
-                className="w-full bg-[#16A34A] hover:bg-[#15803D] text-white font-bold py-3 rounded-xl transition-colors"
+                className="ui-button-primary w-full"
               >
-                {generatedSource && bibliographySources.some(source => citationIdentity(source) === citationIdentity(generatedSource)) ? 'Update Bibliography Entry' : '+ Add to Bibliography'}
+                {generatedSource && bibliographySources.some(source => citationIdentity(source) === citationIdentity(generatedSource)) ? 'Update bibliography entry' : 'Add to bibliography'}
               </button>
             </div>
           </div>
@@ -857,22 +852,18 @@ export default function ReferenceGeneratorClient() {
 
         {/* Bibliography */}
         {bibliography.length > 0 && (
-          <div className="bg-white rounded-2xl border border-[#E8E2D9] p-6" style={{ boxShadow: '0 2px 8px -2px rgba(26,26,46,0.07)' }}>
+          <div className="ui-card p-6">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <h2 className="text-lg font-bold text-[#1B2E4B]">
+              <h2 className="text-lg font-semibold text-[#1B2E4B]">
                 Bibliography ({bibliography.length})
               </h2>
               <div className="flex flex-wrap gap-2">
-              <button onClick={() => void handleDownloadBibliography()} disabled={exporting} className="px-4 py-2 bg-[#1B2E4B] text-white font-bold text-sm rounded-xl disabled:opacity-50">{exporting ? 'Preparing Word…' : 'Download Word (.docx)'}</button>
+              <button onClick={() => void handleDownloadBibliography()} disabled={exporting} className="ui-button-primary">{exporting ? 'Preparing Word…' : 'Download Word (.docx)'}</button>
               <button
                 onClick={handleCopyBibliography}
-                className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
-                  copySuccess
-                    ? 'bg-[#16A34A] text-white'
-                    : 'bg-[#E8A020] hover:bg-[#C4861A] text-white'
-                }`}
+                className="ui-button-secondary"
               >
-                {copySuccess ? '✓ Copied!' : 'Copy All'}
+                {copySuccess ? '✓ Copied!' : 'Copy all'}
               </button>
               </div>
             </div>
@@ -895,8 +886,8 @@ export default function ReferenceGeneratorClient() {
             </div>
           </div>
         )}
-        {legacyBibliography.length > 0 && <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 space-y-3">
-          <h2 className="font-bold text-[#1B2E4B]">Earlier references (original formatting)</h2>
+        {legacyBibliography.length > 0 && <div className="ui-card p-6 space-y-3">
+          <h2 className="font-semibold text-[#1B2E4B]">Earlier references (original formatting)</h2>
           <p className="text-sm text-[#6B7280]">These older entries have no saved source details. They remain here for copying; add them again to include them in a corrected Word export.</p>
           {legacyBibliography.map((citation, index) => <div key={index} className="bg-[#F5F0E8] rounded-xl p-4 space-y-2"><p className="text-xs text-[#6B7280]">{citation.style}</p><p className="text-sm text-[#1B2E4B] break-words">{citationPlainText(citation)}</p><button onClick={() => setLegacyBibliography(prev => prev.filter((_, i) => i !== index))} className="text-sm font-semibold text-red-700">Remove earlier reference</button></div>)}
         </div>}

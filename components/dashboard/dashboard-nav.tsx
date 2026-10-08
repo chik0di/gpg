@@ -2,14 +2,15 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import AcademicIcon from '@/components/shared/academic-icon'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { signOut } from '@/lib/auth/signout'
 
 const RESOURCE_LINKS = [
-  { href: '/resources/reference-generator', label: 'Reference Generator', icon: '📝' },
-  { href: '/resources/research-finder', label: 'Research Finder', icon: '🔍' },
+  { href: '/resources/reference-generator', label: 'Reference generator', icon: 'reference' as const },
+  { href: '/resources/research-finder', label: 'Research finder', icon: 'search' as const },
 ]
 
 interface Props {
@@ -41,7 +42,7 @@ export default function DashboardNav({ user, profile }: Props) {
               height={28}
               className="w-7 h-7"
             />
-            <span className="font-extrabold text-base tracking-tight text-[#1B2E4B]">
+            <span className="font-bold text-base tracking-tight text-[#1B2E4B]">
               GetPrimeGrade
             </span>
           </Link>
@@ -53,8 +54,8 @@ export default function DashboardNav({ user, profile }: Props) {
               href="/dashboard"
               className="px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150"
               style={{
-                background: pathname === '/dashboard' ? '#FDF3DC' : 'transparent',
-                color: pathname === '/dashboard' ? '#C4861A' : '#6B7280',
+                background: pathname === '/dashboard' ? '#EBF0F6' : 'transparent',
+                color: pathname === '/dashboard' ? '#1B2E4B' : '#6B7280',
               }}
             >
               Overview
@@ -63,7 +64,7 @@ export default function DashboardNav({ user, profile }: Props) {
             <Link
               href="/dashboard/saved-sources"
               className="px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150"
-              style={{ background: pathname === '/dashboard/saved-sources' ? '#FDF3DC' : 'transparent', color: pathname === '/dashboard/saved-sources' ? '#C4861A' : '#6B7280' }}
+              style={{ background: pathname === '/dashboard/saved-sources' ? '#EBF0F6' : 'transparent', color: pathname === '/dashboard/saved-sources' ? '#1B2E4B' : '#6B7280' }}
             >
               Saved sources
             </Link>
@@ -78,8 +79,8 @@ export default function DashboardNav({ user, profile }: Props) {
                 onClick={() => setResourcesOpen(!resourcesOpen)}
                 className="px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150 flex items-center gap-1"
                 style={{
-                  background: pathname.startsWith('/resources') ? '#FDF3DC' : 'transparent',
-                  color: pathname.startsWith('/resources') ? '#C4861A' : '#6B7280',
+                  background: pathname.startsWith('/resources') ? '#EBF0F6' : 'transparent',
+                  color: pathname.startsWith('/resources') ? '#1B2E4B' : '#6B7280',
                 }}
               >
                 Resources
@@ -98,7 +99,7 @@ export default function DashboardNav({ user, profile }: Props) {
                         onClick={() => setResourcesOpen(false)}
                         className="flex items-center gap-3 px-4 py-3 hover:bg-[#F5F0E8] transition-colors"
                       >
-                        <span className="text-xl">{icon}</span>
+                        <AcademicIcon name={icon} className="w-5 h-5 shrink-0 text-[#1B2E4B]" />
                         <span className="text-sm font-medium text-[#1B2E4B]">{label}</span>
                       </Link>
                     ))}
@@ -112,23 +113,23 @@ export default function DashboardNav({ user, profile }: Props) {
               href="/dashboard/settings"
               className="px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150"
               style={{
-                background: pathname === '/dashboard/settings' ? '#FDF3DC' : 'transparent',
-                color: pathname === '/dashboard/settings' ? '#C4861A' : '#6B7280',
+                background: pathname === '/dashboard/settings' ? '#EBF0F6' : 'transparent',
+                color: pathname === '/dashboard/settings' ? '#1B2E4B' : '#6B7280',
               }}
             >
               Settings
             </Link>
 
-            {/* My Orders */}
+            {/* My orders */}
             <Link
               href="/dashboard/orders"
               className="px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150"
               style={{
-                background: pathname === '/dashboard/orders' ? '#FDF3DC' : 'transparent',
-                color: pathname === '/dashboard/orders' ? '#C4861A' : '#6B7280',
+                background: pathname === '/dashboard/orders' ? '#EBF0F6' : 'transparent',
+                color: pathname === '/dashboard/orders' ? '#1B2E4B' : '#6B7280',
               }}
             >
-              My Orders
+              My orders
             </Link>
           </nav>
 
@@ -147,7 +148,7 @@ export default function DashboardNav({ user, profile }: Props) {
 
             <button
               onClick={() => signOut()}
-              className="text-sm font-semibold text-[#9CA3AF] hover:text-[#1B2E4B] transition-colors"
+              className="text-sm font-semibold text-[#64748B] hover:text-[#1B2E4B] transition-colors"
             >
               Sign out
             </button>
@@ -161,8 +162,8 @@ export default function DashboardNav({ user, profile }: Props) {
             href="/dashboard"
             className="px-4 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all"
             style={{
-              background: pathname === '/dashboard' ? '#FDF3DC' : 'transparent',
-              color: pathname === '/dashboard' ? '#C4861A' : '#6B7280',
+              background: pathname === '/dashboard' ? '#EBF0F6' : 'transparent',
+              color: pathname === '/dashboard' ? '#1B2E4B' : '#6B7280',
             }}
           >
             Overview
@@ -171,7 +172,7 @@ export default function DashboardNav({ user, profile }: Props) {
           <Link
             href="/dashboard/saved-sources"
             className="px-4 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all"
-            style={{ background: pathname === '/dashboard/saved-sources' ? '#FDF3DC' : 'transparent', color: pathname === '/dashboard/saved-sources' ? '#C4861A' : '#6B7280' }}
+            style={{ background: pathname === '/dashboard/saved-sources' ? '#EBF0F6' : 'transparent', color: pathname === '/dashboard/saved-sources' ? '#1B2E4B' : '#6B7280' }}
           >
             Saved sources
           </Link>
@@ -185,8 +186,8 @@ export default function DashboardNav({ user, profile }: Props) {
                 href={href}
                 className="px-4 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all"
                 style={{
-                  background: active ? '#FDF3DC' : 'transparent',
-                  color: active ? '#C4861A' : '#6B7280',
+                  background: active ? '#EBF0F6' : 'transparent',
+                  color: active ? '#1B2E4B' : '#6B7280',
                 }}
               >
                 {label}
@@ -199,23 +200,23 @@ export default function DashboardNav({ user, profile }: Props) {
             href="/dashboard/settings"
             className="px-4 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all"
             style={{
-              background: pathname === '/dashboard/settings' ? '#FDF3DC' : 'transparent',
-              color: pathname === '/dashboard/settings' ? '#C4861A' : '#6B7280',
+              background: pathname === '/dashboard/settings' ? '#EBF0F6' : 'transparent',
+              color: pathname === '/dashboard/settings' ? '#1B2E4B' : '#6B7280',
             }}
           >
             Settings
           </Link>
 
-          {/* My Orders */}
+          {/* My orders */}
           <Link
             href="/dashboard/orders"
             className="px-4 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all"
             style={{
-              background: pathname === '/dashboard/orders' ? '#FDF3DC' : 'transparent',
-              color: pathname === '/dashboard/orders' ? '#C4861A' : '#6B7280',
+              background: pathname === '/dashboard/orders' ? '#EBF0F6' : 'transparent',
+              color: pathname === '/dashboard/orders' ? '#1B2E4B' : '#6B7280',
             }}
           >
-            My Orders
+            My orders
           </Link>
         </nav>
       </div>

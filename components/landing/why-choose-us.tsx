@@ -1,6 +1,6 @@
 const TRUST_SIGNALS = [
   {
-    headline: 'Expert Work, Every Time',
+    headline: 'Expert work, every time',
     description:
       "Your brief goes to someone who knows the subject. Not a generalist, but a specialist who understands exactly what your assignment requires.",
     icon: (
@@ -11,7 +11,7 @@ const TRUST_SIGNALS = [
     ),
   },
   {
-    headline: '3 Free Revisions',
+    headline: '3 free revisions',
     description:
       "If the work doesn't match your brief, we'll fix it three times, free, no questions asked. We're not done until you're satisfied.",
     icon: (
@@ -22,7 +22,7 @@ const TRUST_SIGNALS = [
     ),
   },
   {
-    headline: 'Money-Back Guarantee',
+    headline: 'Money-back guarantee',
     description:
       "Still not right after all revisions? We'll refund you. Your money is protected, simple as that. No hoops to jump through.",
     icon: (
@@ -33,7 +33,7 @@ const TRUST_SIGNALS = [
     ),
   },
   {
-    headline: 'We Take Deadlines Seriously',
+    headline: 'We take deadlines seriously',
     description:
       "Need it in 2 days? We'll deliver. Deadlines aren't suggestions here, they're commitments. Your work arrives on time, every time.",
     icon: (
@@ -47,18 +47,18 @@ const TRUST_SIGNALS = [
 
 export default function WhyChooseUs() {
   return (
-    <section className="py-20 md:py-28 bg-[#1B2E4B]">
+    <section className="py-12 sm:py-16 lg:py-20 bg-[#1B2E4B]">
       <div className="container-narrow">
 
         {/* Header */}
-        <div className="text-center max-w-xl mx-auto mb-16">
-          <p className="text-xs font-bold text-[#E8A020] uppercase tracking-widest mb-3">
+        <div className="max-w-2xl mb-8 sm:mb-10">
+          <p className="text-xs font-semibold text-[#E8A020] uppercase tracking-widest mb-3">
             Why choose us
           </p>
-          <h2 className="font-extrabold text-white text-3xl md:text-4xl leading-tight mb-4">
+          <h2 className="page-heading text-white text-3xl md:text-4xl leading-tight mb-4">
             Built around what stressed students actually need
           </h2>
-          <p className="text-white/60 text-base leading-relaxed">
+          <p className="text-white/75 text-base leading-relaxed">
             No gimmicks. Just reliable, expert work with a clear guarantee behind it.
           </p>
         </div>
@@ -68,16 +68,16 @@ export default function WhyChooseUs() {
           {TRUST_SIGNALS.map((item) => (
             <div
               key={item.headline}
-              className="flex gap-5 bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/8 hover:border-[#E8A020]/30 transition-all duration-200"
+              className="flex gap-4 border-t border-white/20 py-6"
             >
               {/* Icon */}
-              <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-[#E8A020]/10 border border-[#E8A020]/20 flex items-center justify-center text-[#E8A020]">
+              <div className="flex-shrink-0 w-7 h-7 flex items-center justify-center text-[#E8A020]">
                 {item.icon}
               </div>
 
               <div>
-                <h3 className="font-bold text-white text-base mb-2">{item.headline}</h3>
-                <p className="text-white/60 text-sm leading-relaxed">{item.description}</p>
+                <h3 className="font-semibold text-white text-base mb-2">{item.headline}</h3>
+                <p className="text-white/75 text-sm leading-relaxed">{item.description}</p>
               </div>
             </div>
           ))}

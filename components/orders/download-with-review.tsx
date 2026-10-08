@@ -129,14 +129,14 @@ export default function DownloadWithReview({
         href={downloadUrl}
         download
         onClick={handleDownloadClick}
-        className="flex items-center gap-3 bg-[#F0FDF4] border border-[#86EFAC] rounded-2xl px-5 py-4 hover:bg-[#DCFCE7] transition-colors"
+        className="flex items-center gap-3 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-5 py-4 hover:bg-[#EBF0F6] transition-colors"
       >
-        <svg className="w-5 h-5 text-[#16A34A] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-[#1B2E4B] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
         <div>
-          <p className="text-sm font-bold text-[#16A34A]">Download your completed work</p>
-          <p className="text-xs text-[#4ADE80] mt-0.5">Your model answer is ready</p>
+          <p className="text-sm font-bold text-[#1B2E4B]">Download your completed work</p>
+          <p className="text-xs text-[#64748B] mt-0.5">Your model answer is ready</p>
         </div>
       </a>
 
