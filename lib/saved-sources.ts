@@ -1,6 +1,7 @@
+import type { SourceNotes } from './workspace'
 import type { ResearchSource } from './research-materials'
 
-export interface SavedSource {
+export interface SavedSource extends SourceNotes {
   id: string
   source_key: string
   source_data: ResearchSource

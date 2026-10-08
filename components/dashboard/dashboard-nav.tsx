@@ -62,11 +62,11 @@ export default function DashboardNav({ user, profile }: Props) {
             </Link>
 
             <Link
-              href="/dashboard/saved-sources"
+              href="/dashboard/workspace"
               className="px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150"
-              style={{ background: pathname === '/dashboard/saved-sources' ? '#EBF0F6' : 'transparent', color: pathname === '/dashboard/saved-sources' ? '#1B2E4B' : '#6B7280' }}
+              style={{ background: pathname === '/dashboard/workspace' ? '#EBF0F6' : 'transparent', color: pathname === '/dashboard/workspace' ? '#1B2E4B' : '#6B7280' }}
             >
-              Saved sources
+              My workspace
             </Link>
 
             {/* Resources dropdown */}
@@ -170,11 +170,11 @@ export default function DashboardNav({ user, profile }: Props) {
           </Link>
 
           <Link
-            href="/dashboard/saved-sources"
+            href="/dashboard/workspace"
             className="px-4 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all"
-            style={{ background: pathname === '/dashboard/saved-sources' ? '#EBF0F6' : 'transparent', color: pathname === '/dashboard/saved-sources' ? '#1B2E4B' : '#6B7280' }}
+            style={{ background: pathname === '/dashboard/workspace' ? '#EBF0F6' : 'transparent', color: pathname === '/dashboard/workspace' ? '#1B2E4B' : '#6B7280' }}
           >
-            Saved sources
+            My workspace
           </Link>
 
           {/* Resources (mobile expands to show both) */}

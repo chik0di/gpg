@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { savedSourceSchema } from '@/lib/validations/saved-source'
+import { z } from 'zod'
 import { researchSourceKey } from '@/lib/saved-sources'
 
 export async function GET(request: NextRequest) {
@@ -16,8 +17,13 @@ export async function GET(request: NextRequest) {
     if (error) return NextResponse.json({ error: 'Could not check your saved sources. Please try again.' }, { status: 500 })
     return NextResponse.json({ sources: data }, { headers: { 'Cache-Control': 'private, no-store' } })
   }
-  const { data, error } = await supabase.from('saved_research_sources')
-    .select('id, source_key, source_data, created_at').eq('user_id', user.id)
+  const project = request.nextUrl.searchParams.get('project')
+  if (project && project !== 'unfiled' && !z.string().uuid().safeParse(project).success) return NextResponse.json({ error: 'Invalid project.' }, { status: 400 })
+  let query = supabase.from('saved_research_sources')
+    .select('id, source_key, source_data, created_at, project_id, reading_status, tags, notes, quotation, page_numbers').eq('user_id', user.id)
+  if (project === 'unfiled') query = query.is('project_id', null)
+  else if (project) query = query.eq('project_id', project)
+  const { data, error } = await query
     .order('created_at', { ascending: false }).order('id', { ascending: false })
     .range(page * 50, page * 50 + 50)
   if (error) {
@@ -37,14 +43,21 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Sign in to save this source.' }, { status: 401 })
   let body
   try { body = await request.json() } catch { return NextResponse.json({ error: 'Invalid source.' }, { status: 400 }) }
-  const parsed = savedSourceSchema.safeParse(body)
+  const wrapped = body && typeof body === 'object' && body.source && typeof body.source === 'object' && !Array.isArray(body.source)
+  const parsed = savedSourceSchema.safeParse(wrapped ? body.source : body)
+  const projectId = wrapped ? body.project_id : undefined
+  if (projectId !== undefined && projectId !== null && !z.string().uuid().safeParse(projectId).success) return NextResponse.json({ error: 'Invalid project.' }, { status: 400 })
+  if (projectId) {
+    const { data, error } = await supabase.from('study_projects').select('id').eq('id', projectId).eq('user_id', user.id).maybeSingle()
+    if (error || !data) return NextResponse.json({ error: 'Choose one of your own projects.' }, { status: 400 })
+  }
   if (!parsed.success) return NextResponse.json({ error: 'This source contains missing or invalid details.' }, { status: 400 })
   let key
   try { key = researchSourceKey(parsed.data) } catch { return NextResponse.json({ error: 'Invalid source identifier.' }, { status: 400 }) }
   if (key.length > 2050) return NextResponse.json({ error: 'This source link is too long to save.' }, { status: 400 })
   // Upsert makes repeated clicks and concurrent saves produce one account-owned record.
   const { data, error } = await supabase.from('saved_research_sources')
-    .upsert({ user_id: user.id, source_key: key, source_data: parsed.data }, { onConflict: 'user_id,source_key' })
+    .upsert({ user_id: user.id, source_key: key, source_data: parsed.data, ...(projectId ? { project_id: projectId } : {}) }, { onConflict: 'user_id,source_key' })
     .select('id, source_key, source_data, created_at').single()
   if (error) {
     console.error('POST saved sources:', error.code)

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { researchSourceKey, PENDING_SOURCE_STORAGE_KEY } from '@/lib/saved-sources'
+import ProjectPicker from '@/components/resources-project-picker'
 import type { ResearchSource } from '@/lib/research-materials'
 
 export default function ResearchFinderClient() {
@@ -25,26 +26,28 @@ export default function ResearchFinderClient() {
   const [saveMessage, setSaveMessage] = useState('')
   const [needsSignIn, setNeedsSignIn] = useState(false)
   const pendingStarted = useRef(false)
+  const [projectId, setProjectId] = useState<string | null>(null)
 
-  async function saveSource(source: ResearchSource) {
+  async function saveSource(source: ResearchSource, selectedProject = projectId) {
     const key = researchSourceKey(source)
     setSavingKeys(previous => new Set(previous).add(key))
     setSaveError(''); setSaveMessage(''); setNeedsSignIn(false)
     try {
       const payload = { ...source, abstract: source.abstract?.slice(0, 20000) }
+      const envelope = { source: payload, project_id: selectedProject }
       const response = await fetch('/api/saved-sources', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(envelope),
       })
       const data = await response.json()
       if (response.status === 401) {
-        try { sessionStorage.setItem(PENDING_SOURCE_STORAGE_KEY, JSON.stringify(payload)) } catch { /* Sign-in still works without temporary browser storage. */ }
+        try { sessionStorage.setItem(PENDING_SOURCE_STORAGE_KEY, JSON.stringify(envelope)) } catch { /* Sign-in still works without temporary browser storage. */ }
         setNeedsSignIn(true)
         setSaveMessage(`Sign in to save “${source.title}” to your reading list.`)
         return
       }
       if (!response.ok) throw new Error(data.error || 'Could not save this source.')
       setSavedKeys(previous => new Set(previous).add(data.source.source_key))
-      setSaveMessage(`“${source.title}” is saved to your reading list.`)
+      setSaveMessage(`“${source.title}” is saved ${selectedProject ? 'to your project' : 'to your reading list'}.`)
       try { sessionStorage.removeItem(PENDING_SOURCE_STORAGE_KEY) } catch { /* The source is already saved in the account. */ }
     } catch (err) { setSaveError(err instanceof Error ? err.message : 'Could not save this source. Please try again.') }
     finally {
@@ -66,10 +69,13 @@ export default function ResearchFinderClient() {
         if (pending && !pendingStarted.current) {
           pendingStarted.current = true
           try {
-            const selected: ResearchSource = JSON.parse(pending)
+            const restored = JSON.parse(pending)
+            const selected: ResearchSource = restored.source || restored
+            const pendingProject = restored.project_id || null
+            setProjectId(pendingProject)
             researchSourceKey(selected)
             setResults([selected]); setSearched(true); setTopic(selected.title); setSubmittedTopic(selected.title)
-            await saveSource(selected)
+            await saveSource(selected, pendingProject)
           }
           catch { sessionStorage.removeItem(PENDING_SOURCE_STORAGE_KEY) }
         }
@@ -133,7 +139,8 @@ export default function ResearchFinderClient() {
       <div className="container-narrow py-12 space-y-6">
         <div className="flex flex-wrap justify-between items-center gap-3 text-sm">
           <p className="text-[#6B7280]">Sign in to keep useful papers in your reading list.</p>
-          <Link href="/dashboard/saved-sources" className="font-semibold text-[#1B2E4B] underline">My saved sources</Link>
+          <div className="max-w-md mb-4"><ProjectPicker value={projectId} onChange={setProjectId} initialiseFromUrl disabled={savingKeys.size > 0} /></div>
+          <Link href="/dashboard/workspace" className="font-semibold text-[#1B2E4B] underline">My workspace</Link>
         </div>
         <div aria-live="polite" className="space-y-2">
           {saveError && <p role="alert" className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-800">{saveError}</p>}
@@ -155,6 +162,7 @@ export default function ResearchFinderClient() {
           </div>
           <p className="text-xs text-[#6B7280]">{quota?.remaining === 0 && quota.resetAt ? `Search limit reached. Resets at ${new Date(quota.resetAt).toLocaleTimeString()}.` : '20 searches per hour. Results come from Semantic Scholar, OpenAlex, and Crossref.'}</p>
         </form>
+        {projectId && <p className="text-xs text-[#64748B]">A reading belongs to one project. Saving an existing reading here moves it into the selected project and keeps its notes.</p>}
         <div aria-live="polite">
           {error && <p role="alert" className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-800">{error}</p>}
           {loading && <div role="status" className="space-y-4"><p className="text-sm text-[#6B7280]">Searching academic databases…</p>{[0, 1, 2].map(i => <div key={i} className="animate-pulse ui-card p-6 space-y-3"><div className="h-4 w-3/4 bg-[#E8E2D9] rounded" /><div className="h-3 w-1/2 bg-[#F5F0E8] rounded" /><div className="h-12 bg-[#F5F0E8] rounded" /></div>)}</div>}
@@ -173,11 +181,11 @@ export default function ResearchFinderClient() {
                 <a href={result.url} target="_blank" rel="noopener noreferrer" className="ui-button-secondary">View source</a>
                 <button
                   onClick={() => void saveSource(result)}
-                  disabled={savedKeys.has(researchSourceKey(result)) || savingKeys.has(researchSourceKey(result))}
-                  aria-label={`${savedKeys.has(researchSourceKey(result)) ? 'Saved' : 'Save'} ${result.title}`}
+                  disabled={(!projectId && savedKeys.has(researchSourceKey(result))) || savingKeys.has(researchSourceKey(result))}
+                  aria-label={`${projectId ? 'Save to project' : savedKeys.has(researchSourceKey(result)) ? 'Saved' : 'Save'} ${result.title}`}
                   className="ui-button-secondary disabled:opacity-60"
-                >{savedKeys.has(researchSourceKey(result)) ? '✓ Saved' : savingKeys.has(researchSourceKey(result)) ? 'Saving…' : 'Save source'}</button>
-                <a href={`/resources/reference-generator?lookup=${encodeURIComponent(result.doi || result.url)}`} className="ui-button-secondary">Cite this source</a>
+                >{savingKeys.has(researchSourceKey(result)) ? 'Saving…' : projectId ? 'Save to project' : savedKeys.has(researchSourceKey(result)) ? '✓ Saved' : 'Save source'}</button>
+                <a href={`/resources/reference-generator?lookup=${encodeURIComponent(result.doi || result.url)}${projectId ? `&project=${projectId}` : ''}`} className="ui-button-secondary">Cite this source</a>
               </div>
             </article>)}
           </div>}

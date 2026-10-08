@@ -45,7 +45,7 @@ async function main() {
   assert.equal((await remove.DELETE(request('DELETE'), { params: { id: '22222222-2222-4222-8222-222222222222' } })).status, 401)
   user = { id: '11111111-1111-4111-8111-111111111111' }
   assert.equal((await api.POST(request('POST', { ...sample, url: 'javascript:alert(1)' }))).status, 400)
-  const saved = await api.POST(request('POST', { ...sample, user_id: 'some-other-user' }))
+  const saved = await api.POST(request('POST', { ...sample, source: 'OpenAlex', user_id: 'some-other-user' }))
   assert.equal(saved.status, 200); assert.equal(lastWrite.user_id, user.id); assert.equal(lastWrite.source_key, 'doi:10.1000/abc')
   assert.equal(lastWrite.source_data.user_id, undefined)
   records = [{ id: '22222222-2222-4222-8222-222222222222', source_data: sample, source_key: 'doi:10.1000/abc', created_at: new Date().toISOString() }, { source_data: { ...sample, url: 'javascript:alert(1)' } }]

@@ -35,7 +35,7 @@ export default async function DashboardPage() {
             {firstName ? `Welcome back, ${firstName}` : 'My Dashboard'}
           </h1>
           <p className="text-sm text-[#64748B] mt-1">
-            Here&apos;s an overview of your orders.
+            Manage your academic projects and orders.
           </p>
         </div>
         <Link
@@ -49,6 +49,7 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
+      <div className="ui-card p-5 flex flex-wrap items-center justify-between gap-4"><div><h2 className="font-semibold text-[#1B2E4B]">Your study workspace</h2><p className="text-sm text-[#64748B] mt-1">Organise projects, reading notes and saved bibliographies.</p></div><Link href="/dashboard/workspace" className="ui-button-secondary">Open My workspace</Link></div>
       {/* Pending Order Banner */}
       <PendingOrderBanner />
 

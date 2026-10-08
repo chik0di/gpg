@@ -17,6 +17,7 @@ import {
 } from '@/lib/citation-formatter'
 
 import AcademicIcon from '@/components/shared/academic-icon'
+import AccountBibliography from '@/components/resources-account-bibliography'
 import BookTitleSearch from '@/components/resources-book-title-search'
 import { citationSourceSchema } from '@/lib/citation-source-validation'
 import type { ReferenceMetadata } from '@/lib/academic-metadata'
@@ -40,6 +41,7 @@ export default function ReferenceGeneratorClient() {
   const [sourceType, setSourceType] = useState<SourceType>('book')
   const [generatedSource, setGeneratedSource] = useState<CitationSource | null>(null)
   const [bibliographySources, setBibliographySources] = useState<CitationSource[]>([])
+  const [editingIdentity, setEditingIdentity] = useState<string | null>(null)
   const [legacyBibliography, setLegacyBibliography] = useState<FormattedCitation[]>([])
   const [storageReady, setStorageReady] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -294,6 +296,10 @@ export default function ReferenceGeneratorClient() {
 
   const handleAddToBibliography = () => {
     if (!generatedSource) return
+    if (editingIdentity && bibliographySources.some(source => citationIdentity(source) === editingIdentity)) {
+      setBibliographySources(previous => previous.flatMap(source => citationIdentity(source) === editingIdentity ? [generatedSource] : citationIdentity(source) === citationIdentity(generatedSource) ? [] : [source]))
+      setEditingIdentity(null); setBibliographyMessage('Bibliography entry updated.'); return
+    }
     if (bibliographySources.some(source => citationIdentity(source) === citationIdentity(generatedSource))) {
       setBibliographySources(prev => prev.map(source => citationIdentity(source) === citationIdentity(generatedSource) ? generatedSource : source))
       setBibliographyMessage('Bibliography entry updated.'); return
@@ -301,6 +307,13 @@ export default function ReferenceGeneratorClient() {
     if (bibliographySources.length >= 200) { setBibliographyMessage('Download this bibliography before starting another (maximum 200 sources).'); return }
     setBibliographySources(prev => [...prev, generatedSource])
     setBibliographyMessage('Added to bibliography.')
+  }
+  const handleEditReference = (source: CitationSource) => {
+    applyMetadata({ ...source, authors: source.authors || [] }, 'your saved bibliography')
+    if (source.type === 'website') { setWebDateAccessed(source.dateAccessed); setWebPlace(source.place || ''); setWebChangesOverTime(!!source.changesOverTime) }
+    if (source.type === 'journal') setJournalAbbreviation(source.journalAbbreviation || '')
+    setEditingIdentity(citationIdentity(source)); setLookupMessage('Edit this source, generate the citation, then update the bibliography entry.')
+    document.getElementById('reference-source-details')?.scrollIntoView({ block: 'start' })
   }
   const handleRemoveFromBibliography = (index: number) => {
     const identity = bibliography[index].source && citationIdentity(bibliography[index].source!)
@@ -371,6 +384,7 @@ export default function ReferenceGeneratorClient() {
   }
 
   const clearForm = () => {
+    setEditingIdentity(null)
     setLookupMessage('')
     setLookupError('')
     setBookAuthors('')
@@ -473,7 +487,7 @@ export default function ReferenceGeneratorClient() {
         {/* Input Form */}
         <div className="ui-card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[#1B2E4B]">Enter source details</h2>
+            <h2 id="reference-source-details" className="scroll-mt-24 text-lg font-semibold text-[#1B2E4B]">Enter source details</h2>
             <button
               onClick={clearForm}
               disabled={lookupLoading}
@@ -844,13 +858,15 @@ export default function ReferenceGeneratorClient() {
                 onClick={handleAddToBibliography}
                 className="ui-button-primary w-full"
               >
-                {generatedSource && bibliographySources.some(source => citationIdentity(source) === citationIdentity(generatedSource)) ? 'Update bibliography entry' : 'Add to bibliography'}
+                {editingIdentity || generatedSource && bibliographySources.some(source => citationIdentity(source) === citationIdentity(generatedSource)) ? 'Update bibliography entry' : 'Add to bibliography'}
               </button>
             </div>
           </div>
         )}
 
         {/* Bibliography */}
+        <AccountBibliography sources={bibliographySources} style={selectedStyle} ready={storageReady} onLoad={(sources, style) => { setBibliographySources(sources); setSelectedStyle(style); setGeneratedSource(null); setLegacyBibliography([]); setEditingIdentity(null) }} />
+
         {bibliography.length > 0 && (
           <div className="ui-card p-6">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -872,15 +888,18 @@ export default function ReferenceGeneratorClient() {
             <div className="space-y-3">
               {bibliography.map((citation, index) => (
                 <div key={index} className="flex items-start gap-3 p-4 bg-[#F5F0E8] rounded-xl">
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm text-[#1B2E4B] break-words"><CitationText citation={citation} /></p>
                   </div>
-                  <button
-                    onClick={() => handleRemoveFromBibliography(index)}
-                    className="shrink-0 text-[#EF4444] hover:text-[#DC2626] font-bold text-sm"
-                  >
-                    Remove
-                  </button>
+                  <div className="flex shrink-0 flex-col gap-3">
+                    {citation.source && <button className="text-sm ui-link" onClick={() => handleEditReference(citation.source!)}>Edit</button>}
+                    <button
+                      onClick={() => handleRemoveFromBibliography(index)}
+                      className="shrink-0 text-[#EF4444] hover:text-[#DC2626] font-bold text-sm"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
