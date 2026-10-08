@@ -14,7 +14,8 @@
     "test:saved-sources": "node scripts/test-saved-sources.cjs",
     "test:references": "node scripts/test-references.cjs",
     "test:reference-tools": "node scripts/test-reference-tools.cjs",
-    "test:workspace": "node scripts/test-workspace.cjs"
+    "test:workspace": "node scripts/test-workspace.cjs",
+    "test:project-tools": "node scripts/test-project-tools.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
