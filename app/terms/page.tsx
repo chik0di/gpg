@@ -3,7 +3,7 @@ import Footer from '@/components/shared/footer'
 import PrivacyContent from '@/components/legal/privacy-content'
 import Link from 'next/link'
 
-const LAST_UPDATED = '1 June 2025'
+const LAST_UPDATED = '9 October 2026'
 
 export default function TermsPage() {
   return (
@@ -74,7 +74,7 @@ export default function TermsPage() {
                   <h3 className="text-base font-semibold text-[#1B2E4B] mb-3">2. Service description</h3>
                   <p>
                     GetPrimeGrade provides model answers, reference materials, and educational study content
-                    for university and college students. All work produced by GetPrimeGrade is intended solely
+                    for undergraduate and Masters assignments. All work produced by GetPrimeGrade is intended solely
                     as an educational reference to support learning, and not as a substitute for a student&apos;s
                     own academic work.
                   </p>

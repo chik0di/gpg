@@ -2,8 +2,8 @@ import { z } from 'zod'
 
 export const orderSchema = z.object({
   subject: z.string().min(1, 'Please select a subject'),
-  assignment_type: z.string().min(1, 'Please select an assignment type'),
-  academic_level: z.string().min(1, 'Please select your academic level'),
+  assignment_type: z.enum(['Essay', 'Coursework', 'Report', 'Literature Review', 'Case Study', 'Research Proposal', 'Presentation', 'Other']),
+  academic_level: z.enum(['Undergraduate', 'Masters']),
   word_count: z
     .number()
     .min(250, 'Minimum 250 words')

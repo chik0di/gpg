@@ -50,6 +50,8 @@ export function containsSuspiciousPhrases(text: string): boolean {
  * Note: subject_field is added server-side via keyword matching, not extracted by Claude
  */
 export const ClaudeExtractionSchema = z.object({
+  work_scope: z.enum(['assignment', 'dissertation', 'thesis', 'uncertain']).default('uncertain'),
+  scope_reason: z.string().nullable().optional(),
   module_name: z.string().nullable(),
   subject_area: z.string().nullable(),
   academic_level: z.enum(['Undergraduate', 'Masters']).nullable(),
@@ -64,7 +66,7 @@ export const ClaudeExtractionSchema = z.object({
       price_gbp: z.number().min(0),
       confidence: z.enum(['high', 'medium', 'low']),
     })
-  ).min(EXTRACTION_BOUNDS.DELIVERABLE_COUNT_MIN).max(EXTRACTION_BOUNDS.DELIVERABLE_COUNT_MAX),
+  ).max(EXTRACTION_BOUNDS.DELIVERABLE_COUNT_MAX),
   additional_notes: z.string().nullable(),
 })
 

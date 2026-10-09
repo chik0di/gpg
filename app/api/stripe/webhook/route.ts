@@ -1,19 +1,10 @@
+import { verifyPaidCheckout } from '@/lib/checkout-integrity'
 import { NextResponse, NextRequest } from 'next/server'
 import { stripe } from '@/lib/stripe/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendOrderConfirmation, sendAdminNewOrderAlert } from '@/lib/resend'
 import { getOriginFromRequest } from '@/lib/utils/request-origin'
-import {
-  calcOrderTotal,
-  calcWrittenPrice,
-  calcPresentationPrice,
-  getPracticalPrice,
-  getAcademicMultiplier,
-  getDeadlineMultiplier,
-  WORDS_PER_PAGE,
-  PRACTICAL_ITEMS,
-  ORIGINALITY_REPORT_PRICE,
-} from '@/lib/pricing'
+import { WORDS_PER_PAGE, PRACTICAL_ITEMS, ORIGINALITY_REPORT_PRICE } from '@/lib/pricing'
 import type Stripe from 'stripe'
 import type { Deliverable } from '@/types/order-form'
 
@@ -25,19 +16,6 @@ interface OrderData {
   instructions: string
   includeOriginalityReport: boolean
   fileName?: string | null
-}
-
-function deliverableBasePrice(d: Deliverable): number {
-  if (d.type === 'written') {
-    const pages = d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE)
-    return calcWrittenPrice(pages)
-  }
-  if (d.type === 'presentation') {
-    const slideCount = d.slideInputMode === 'exact' ? d.slideCount : d.slideMax
-    return calcPresentationPrice(slideCount)
-  }
-  if (d.type === 'practical')    return getPracticalPrice(d.practicalKey)
-  return 0
 }
 
 export async function POST(request: NextRequest) {
@@ -97,7 +75,7 @@ export async function POST(request: NextRequest) {
           console.log('[webhook] Fetching order data from pending_orders:', pendingOrderId)
           const { data: pendingOrder, error: fetchError } = await supabaseAdmin
             .from('pending_orders')
-            .select('order_data, file_data')
+            .select('order_data, file_data, user_id')
             .eq('id', pendingOrderId)
             .maybeSingle()
 
@@ -108,21 +86,10 @@ export async function POST(request: NextRequest) {
           }
 
           console.log('[webhook] Successfully fetched pending order data')
-          const orderData: OrderData = pendingOrder.order_data
+          if (pi.metadata.orderHash && pendingOrder.user_id !== userId) throw new Error('Checkout account mismatch.')
+          const { orderData, quote } = verifyPaidCheckout(pi, pendingOrder.order_data, userId)
           const fileDataBase64: string | null = pendingOrder.file_data
-
-          // Recalculate total server-side
-          const subtotal = orderData.deliverables.reduce(
-            (sum, d) => sum + deliverableBasePrice(d),
-            0
-          )
-
-          const { total } = calcOrderTotal({
-            deliverableSubtotal: subtotal,
-            academicLevel: orderData.academicLevel,
-            deadline: orderData.deadline,
-            includeOriginalityReport: orderData.includeOriginalityReport,
-          })
+          const total = quote.totalPence / 100
 
           // Create order
           const { data: order, error: orderErr } = await supabaseAdmin
@@ -131,6 +98,10 @@ export async function POST(request: NextRequest) {
               user_id:                   userId,
               status:                    'paid',
               total_amount:              total,
+              pricing_snapshot:          quote,
+              academic_level_raw:        orderData.academicLevelRaw || null,
+              country:                   orderData.country || 'United Kingdom',
+              is_outside_standard_fields: orderData.isOutsideStandardFields || false,
               academic_level:            orderData.academicLevel,
               subject_field:             orderData.subjectField,
               deadline:                  orderData.deadline,
@@ -149,48 +120,37 @@ export async function POST(request: NextRequest) {
 
           console.log('[webhook] Created order:', order.id)
 
-          // Upload file to Supabase storage if present
-          if (fileDataBase64) {
-            try {
-              console.log('[webhook] Uploading assignment file from pending order...')
-              const { data: fileDataParsed, name, type } = JSON.parse(fileDataBase64) as {
-                data: string
-                name: string
-                type: string
-              }
-
-              // Decode base64 to binary
-              const binary = Buffer.from(fileDataParsed, 'base64')
-
-              // Upload to Supabase storage
-              const filePath = `${order.id}/${name}`
-              const { error: uploadError } = await supabaseAdmin
-                .storage
-                .from('assignments')
-                .upload(filePath, binary, {
-                  contentType: type,
-                  upsert: false,
-                })
-
-              if (uploadError) {
-                console.error('[webhook] File upload failed:', uploadError)
-              } else {
-                console.log('[webhook] File uploaded successfully:', filePath)
-
-                // Update order with file path
-                await supabaseAdmin
-                  .from('orders')
-                  .update({ assignment_file_path: filePath })
-                  .eq('id', order.id)
-              }
-            } catch (fileError) {
-              console.error('[webhook] Error processing file:', fileError)
-              // Don't fail the whole order creation if file upload fails
+          // The safety net must retain the brief as well as the accepted quote.
+          try {
+            let binary: Buffer | null = null
+            let name = orderData.briefFileName || orderData.fileName || 'assignment.pdf'
+            let type = 'application/octet-stream'
+            if (orderData.usedAIExtraction && orderData.briefTempPath) {
+              const downloaded = await supabaseAdmin.storage.from('order-files').download(orderData.briefTempPath)
+              if (downloaded.error || !downloaded.data) throw new Error('Could not retrieve the uploaded brief.')
+              binary = Buffer.from(await downloaded.data.arrayBuffer())
+              type = downloaded.data.type || type
+            } else if (fileDataBase64) {
+              const file = JSON.parse(fileDataBase64) as { data: string; name: string; type: string }
+              binary = Buffer.from(file.data, 'base64')
+              name = file.name
+              type = file.type || type
             }
+            if (binary) {
+              const safeName = name.replace(/[^a-zA-Z0-9._-]/g, '_')
+              const filePath = `${order.id}/brief/${safeName}`
+              const uploaded = await supabaseAdmin.storage.from('order-files').upload(filePath, binary, { contentType: type, upsert: false })
+              if (uploaded.error) throw new Error('Could not store the assignment brief.')
+              const linked = await supabaseAdmin.from('order_files').insert({ order_id: order.id, file_type: 'assignment', file_url: filePath })
+              if (linked.error) throw new Error('Could not link the assignment brief.')
+            }
+          } catch (error) {
+            console.error('[webhook] Assignment brief recovery failed:', error)
+            // The paid order remains available for the admin to recover the original brief.
           }
 
           // Insert deliverables
-          const deliverableRows = orderData.deliverables.map((d) => {
+          const deliverableRows = orderData.deliverables.map((d, index) => {
             let subtype: string | null = null
             let size_band: string | null = null
 
@@ -213,7 +173,12 @@ export async function POST(request: NextRequest) {
               type:      d.type,
               subtype,
               size_band,
-              price:     deliverableBasePrice(d),
+              price:     quote.finalPence[index] / 100,
+              price_pence: quote.finalPence[index],
+              extracted_by_ai: orderData.usedAIExtraction || false,
+              ai_description: d.aiDescription || null,
+              raw_quantity: d.quantity || null,
+              quantity_type: d.type === 'written' ? d.sizeMode : d.type === 'presentation' ? 'slides' : null,
             }
           })
 
@@ -251,16 +216,9 @@ export async function POST(request: NextRequest) {
             return d.type
           }).join(', ')
 
-          // Calculate multipliers for final pricing
-          const academicMult = getAcademicMultiplier(orderData.academicLevel)
-          const deadlineMult = getDeadlineMultiplier(orderData.deadline)
-
           // Build itemized deliverable list with FINAL prices (all multipliers applied)
-          const deliverableItems = orderData.deliverables.map((d) => {
-            const basePrice = deliverableBasePrice(d)
-
-            // Apply all multipliers to get final price
-            const finalPrice = basePrice * academicMult * deadlineMult
+          const deliverableItems = orderData.deliverables.map((d, index) => {
+            const finalPrice = quote.finalPence[index] / 100
 
             let description = ''
 
@@ -285,22 +243,22 @@ export async function POST(request: NextRequest) {
           const clientName  = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Customer'
           const origin = getOriginFromRequest(request)
 
-          sendOrderConfirmation({
+          await sendOrderConfirmation({
             origin,
             to:                 clientEmail,
             firstName:          profile?.first_name ?? '',
             orderId:            order.id,
-            moduleName:         null,
+            moduleName:         orderData.moduleName || null,
             subjectField:       orderData.subjectField,
             academicLevel:      orderData.academicLevel,
             deadline:           orderData.deadline,
             totalAmount:        total,
             deliverableItems,
             originalityReportPrice: orderData.includeOriginalityReport ? ORIGINALITY_REPORT_PRICE : null,
-            isOutsideStandardFields: false,
+            isOutsideStandardFields: orderData.isOutsideStandardFields || false,
           }).catch((e) => console.error('[webhook] client confirmation email failed:', e))
 
-          sendAdminNewOrderAlert({
+          await sendAdminNewOrderAlert({
             origin,
             orderId:            order.id,
             clientName,

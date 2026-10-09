@@ -121,6 +121,8 @@ export default function OrderForm() {
     setExtracting(true)
     setUploadError(null)
     setExtractionFailed(false)
+    setBriefTempPath(null)
+    sessionStorage.removeItem('gpg_brief_temp_path')
 
     try {
       const formData = new FormData()
@@ -160,7 +162,7 @@ export default function OrderForm() {
           setExtractionFailed(true)
           setExtracting(false)
           // Store brief filename even when extraction fails
-          setFormData((prev) => ({ ...prev, briefFileName: briefFile.name }))
+          setFormData((prev) => ({ ...prev, briefFileName: briefFile.name, workScope: result.extraction?.work_scope || 'uncertain' }))
           setStep(1)
           scrollTop()
           return
@@ -178,7 +180,7 @@ export default function OrderForm() {
       setExtracting(false)
 
       // Store brief filename in form state for display in summary
-      setFormData((prev) => ({ ...prev, briefFileName: briefFile.name }))
+      setFormData((prev) => ({ ...prev, briefFileName: briefFile.name, workScope: result.extraction?.work_scope || 'uncertain' }))
 
       // Advance to review step
       setStep(1)

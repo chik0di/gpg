@@ -1,3 +1,4 @@
+import { assertAssignmentScope } from '@/lib/order-scope'
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { orderSchema } from '@/lib/validations/order'
@@ -17,6 +18,9 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
     }
+
+    try { assertAssignmentScope({ moduleName: parsed.data.title }) }
+    catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }) }
 
     const { data: order, error } = await supabase
       .from('orders')

@@ -1,3 +1,6 @@
+import { PRACTICAL_PRICES_PENCE } from './order-quote'
+import { calcWrittenPricePence, calcPresentationPricePence } from './pricing-pence'
+
 export const WORDS_PER_PAGE = 275
 
 // ── Subject groups ────────────────────────────────────────────────────────
@@ -64,7 +67,7 @@ export function getDeadlineBandLabel(dateStr: string): string {
 // AI extraction path: flat £5/page for ALL page counts
 export function calcWrittenPrice(pages: number): number {
   if (!pages || pages <= 0) return 0
-  return pages * 5  // Flat £5 per page
+  return calcWrittenPricePence(pages) / 100
 }
 
 export function writtenBandLabel(pages: number): string {
@@ -77,7 +80,7 @@ export const PRICE_PER_SLIDE = 2.5
 
 export function calcPresentationPrice(slideCount: number): number {
   if (!slideCount || slideCount <= 0) return 0
-  return slideCount * PRICE_PER_SLIDE
+  return calcPresentationPricePence(slideCount) / 100
 }
 
 export function presentationLabel(slideCount: number): string {
@@ -87,14 +90,14 @@ export function presentationLabel(slideCount: number): string {
 
 // ── Practical pricing ─────────────────────────────────────────────────────
 export const PRACTICAL_ITEMS = [
-  { key: 'python', label: 'Python / Programming', price: 55 },
-  { key: 'web_dev', label: 'Web Development', price: 75 },
-  { key: 'network', label: 'Network Simulation (Cisco, GNS3)', price: 65 },
-  { key: 'database', label: 'Database Design', price: 55 },
-  { key: 'data_analysis', label: 'Data Analysis (Excel, SPSS, R)', price: 50 },
-  { key: 'security', label: 'Security Assessment', price: 70 },
-  { key: 'flowchart', label: 'Flowchart / Pseudocode', price: 45 },
-  { key: 'bi_dashboard', label: 'Power BI / Tableau Dashboard', price: 70 },
+  { key: 'python', label: 'Python / Programming', price: PRACTICAL_PRICES_PENCE['python'] / 100 },
+  { key: 'web_dev', label: 'Web Development', price: PRACTICAL_PRICES_PENCE['web_dev'] / 100 },
+  { key: 'network', label: 'Network Simulation (Cisco, GNS3)', price: PRACTICAL_PRICES_PENCE['network'] / 100 },
+  { key: 'database', label: 'Database Design', price: PRACTICAL_PRICES_PENCE['database'] / 100 },
+  { key: 'data_analysis', label: 'Data Analysis (Excel, SPSS, R)', price: PRACTICAL_PRICES_PENCE['data_analysis'] / 100 },
+  { key: 'security', label: 'Security Assessment', price: PRACTICAL_PRICES_PENCE['security'] / 100 },
+  { key: 'flowchart', label: 'Flowchart / Pseudocode', price: PRACTICAL_PRICES_PENCE['flowchart'] / 100 },
+  { key: 'bi_dashboard', label: 'Power BI / Tableau Dashboard', price: PRACTICAL_PRICES_PENCE['bi_dashboard'] / 100 },
 ] as const
 
 export type PracticalKey = (typeof PRACTICAL_ITEMS)[number]['key']
@@ -133,42 +136,3 @@ export function getUrgencyWarning(dateStr: string | null): string | null {
 
 // ── Order total calculation ───────────────────────────────────────────────
 export const ORIGINALITY_REPORT_PRICE = 8
-
-export function calcOrderTotal({
-  deliverableSubtotal,
-  academicLevel,
-  deadline,
-  includeOriginalityReport,
-  applyFirstOrderDiscount = false,
-  discountPercent = 10,
-}: {
-  deliverableSubtotal: number
-  academicLevel: string
-  deadline: string
-  includeOriginalityReport: boolean
-  applyFirstOrderDiscount?: boolean
-  discountPercent?: number
-}): {
-  adjusted: number
-  total: number
-  levelMult: number
-  deadlineMult: number
-  discountAmount?: number
-} {
-  const levelMult = getAcademicMultiplier(academicLevel)
-  const deadlineMult = getDeadlineMultiplier(deadline)
-
-  // Apply discount to base subtotal BEFORE multipliers
-  let baseSubtotal = deliverableSubtotal
-  let discountAmount = 0
-
-  if (applyFirstOrderDiscount && discountPercent > 0) {
-    discountAmount = deliverableSubtotal * (discountPercent / 100)
-    baseSubtotal = deliverableSubtotal - discountAmount
-  }
-
-  const adjusted = baseSubtotal * levelMult * deadlineMult
-  const total = adjusted + (includeOriginalityReport ? ORIGINALITY_REPORT_PRICE : 0)
-
-  return { adjusted, total, levelMult, deadlineMult, discountAmount }
-}

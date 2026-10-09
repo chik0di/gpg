@@ -157,7 +157,6 @@ DECLARE
   v_first_name text;
   v_last_name text;
   v_full_name text;
-  new_code text;
 BEGIN
   -- Try to extract first name from metadata with comprehensive fallback
   -- Priority: first_name > given_name > split name > split full_name
@@ -220,31 +219,6 @@ BEGIN
       )
       VALUES (
         'handle_new_user - profile insert',
-        new.id,
-        SQLERRM,
-        SQLSTATE,
-        new.raw_user_meta_data
-      );
-  END;
-
-  -- Attempt to generate and create referral code
-  BEGIN
-    new_code := public.generate_referral_code();
-    INSERT INTO public.referral_codes (user_id, code)
-    VALUES (new.id, new_code)
-    ON CONFLICT (user_id) DO NOTHING;
-  EXCEPTION
-    WHEN OTHERS THEN
-      -- Log the error but don't fail user creation
-      INSERT INTO public.trigger_error_log (
-        trigger_name,
-        user_id,
-        error_message,
-        error_detail,
-        raw_metadata
-      )
-      VALUES (
-        'handle_new_user - referral code insert',
         new.id,
         SQLERRM,
         SQLSTATE,

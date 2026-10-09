@@ -81,7 +81,7 @@ export default function StepUploadBrief({
       <div>
         <h2 className="text-xl font-semibold text-[#1B2E4B] mb-1">Upload your brief</h2>
         <p className="text-sm text-[#6B7280]">
-          Let our AI read your assignment brief and extract the requirements automatically
+          Upload your assignment brief and we’ll extract the requirements for you.
         </p>
       </div>
 

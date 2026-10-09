@@ -1,3 +1,4 @@
+import type { OrderQuote } from '@/lib/order-quote'
 export type DeliverableType = 'written' | 'presentation' | 'practical' | ''
 export type SizeMode = 'pages' | 'words'
 
@@ -22,6 +23,8 @@ export interface Deliverable {
 }
 
 export interface OrderFormState {
+  workScope?: 'assignment' | 'dissertation' | 'thesis' | 'uncertain'
+  checkoutQuote?: OrderQuote
   moduleName?: string        // Exact module name extracted from brief (e.g. 'Strategic Financial Management')
   subjectField: string
   academicLevel: string
@@ -34,7 +37,6 @@ export interface OrderFormState {
   exchangeRate: number       // 1 GBP → N selectedCurrency
   briefFileName?: string     // Name of uploaded brief file (for AI extraction flow)
   isOutsideStandardFields?: boolean  // True if subject is not in our standard list
-  quoteGeneratedAt?: string  // ISO timestamp when order summary was first shown (for quote expiry)
 }
 
 export function makeDeliverable(): Deliverable {

@@ -1,16 +1,11 @@
 'use client'
 
+import { calculateOrderQuote } from '@/lib/order-quote'
+
 import {
-  calcWrittenPrice,
-  calcPresentationPrice,
   presentationLabel,
-  getPracticalPrice,
-  getAcademicMultiplier,
-  getDeadlineMultiplier,
   getAcademicLevelAdjLabel,
-  getDeadlinePremiumLabel,
   PRACTICAL_ITEMS,
-  WORDS_PER_PAGE,
   ORIGINALITY_REPORT_PRICE,
   PRICE_PER_SLIDE,
 } from '@/lib/pricing'
@@ -53,38 +48,13 @@ function deliverableLabel(d: Deliverable): string {
   return 'Unknown'
 }
 
-function deliverableBasePrice(d: Deliverable): number {
-  // If basePrice is already set (from AI extraction or manual premium pricing), use it
-  if (d.basePrice && d.basePrice > 0) {
-    return d.basePrice
-  }
-
-  // Otherwise calculate from deliverable details
-  if (d.type === 'written') {
-    const pages = d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE)
-    return calcWrittenPrice(pages)
-  }
-  if (d.type === 'presentation') {
-    const slideCount = d.slideInputMode === 'exact' ? d.slideCount : d.slideMax
-    return calcPresentationPrice(slideCount)
-  }
-  if (d.type === 'practical') return getPracticalPrice(d.practicalKey)
-  return 0
-}
-
 export default function StepSummary({ data, file, proceeding = false, onToggleReport, onBack, onProceed }: Props) {
   const { selectedCurrency, exchangeRate } = data
   const fmt = (gbpAmt: number) => fmtInCurrency(gbpAmt, exchangeRate, selectedCurrency)
 
-  const levelMult    = getAcademicMultiplier(data.academicLevel)
-  const deadlineMult = getDeadlineMultiplier(data.deadline)
-  const levelLabel   = getAcademicLevelAdjLabel(data.academicLevel)
-  const urgencyLabel = getDeadlinePremiumLabel(data.deadline)
-  const hasAdj       = levelMult !== 1 || deadlineMult !== 1
-
-  const subtotal    = data.deliverables.reduce((sum, d) => sum + deliverableBasePrice(d), 0)
-  const reportCost  = data.includeOriginalityReport ? ORIGINALITY_REPORT_PRICE : 0
-  const grandTotal  = subtotal * levelMult * deadlineMult + reportCost
+  const quote = calculateOrderQuote(data)
+  const grandTotal = quote.totalPence / 100
+  const adjustments = [getAcademicLevelAdjLabel(data.academicLevel), quote.deadlinePct > 100 ? `Urgency premium +${quote.deadlinePct - 100}%` : null].filter(Boolean)
 
   return (
     <div className="space-y-6">
@@ -126,16 +96,17 @@ export default function StepSummary({ data, file, proceeding = false, onToggleRe
         ))}
       </div>
 
+      {adjustments.length > 0 && <p className="text-sm text-[#64748B]">Prices include {adjustments.join(' and ')}. Adjustments apply in sequence.</p>}
+
       {/* Deliverables breakdown */}
       <div className="border border-[#E8E2D9] rounded-2xl overflow-hidden">
         <div className="bg-[#F5F0E8] px-5 py-3">
           <p className="text-xs font-bold text-[#6B7280] uppercase tracking-wide">Deliverables</p>
         </div>
         <div className="divide-y divide-[#E8E2D9]">
-          {data.deliverables.map((d) => {
-            const base       = deliverableBasePrice(d)
-            const afterLevel = base * levelMult
-            const dTotal     = afterLevel * deadlineMult
+          {data.deliverables.map((d, index) => {
+
+            const dTotal     = quote.finalPence[index] / 100
 
             return (
               <div key={d.id} className="px-5 py-4">

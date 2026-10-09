@@ -1,3 +1,5 @@
+import { checkoutOrderSchema, assertCheckoutDeadline } from '@/lib/order-quote'
+import { assertAssignmentScope } from '@/lib/order-scope'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
@@ -37,9 +39,9 @@ export async function POST(request: NextRequest) {
       console.log('[pending-orders/create] Cleaned up expired pending orders')
     }
 
-    const { email, orderData, fileData } = await request.json()
+    const { email, orderData: input, fileData } = await request.json()
 
-    if (!email || !orderData) {
+    if (!email || !input) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -54,6 +56,12 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const parsed = checkoutOrderSchema.safeParse(input)
+    if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid order details.' }, { status: 400 })
+    const orderData = parsed.data
+    try { assertAssignmentScope(orderData); assertCheckoutDeadline(orderData.deadline) }
+    catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }) }
 
     // Check if user is already authenticated
     const supabase = createServerClient()

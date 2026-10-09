@@ -1,7 +1,8 @@
 'use client'
 
+import { checkoutOrderSchema } from '@/lib/order-quote'
 import { useState } from 'react'
-import { SUBJECT_GROUPS, ACADEMIC_LEVELS, PRACTICAL_ITEMS, daysUntil, getUrgencyWarning } from '@/lib/pricing'
+import { SUBJECT_GROUPS, ACADEMIC_LEVELS, PRACTICAL_ITEMS, daysUntil, getUrgencyWarning, getPracticalPrice } from '@/lib/pricing'
 import { mapAcademicLevel } from '@/lib/academic-level-mapping'
 import { isStandardSubject } from '@/lib/subject-validation'
 import { correctDeliverableType } from '@/lib/deliverable-type-detection'
@@ -37,6 +38,7 @@ interface ExtractedDeliverable {
   complexity: 'simple' | 'moderate' | 'complex' | 'expert' | null
   price_gbp: number
   confidence: 'high' | 'medium' | 'low'
+  practicalKey?: string
 }
 
 interface ExtractionResult {
@@ -123,6 +125,7 @@ export default function StepExtractionReview({
   exchangeRate = 1,
   onCurrencyChange,
 }: Props) {
+  const [confirmError, setConfirmError] = useState<string | null>(null)
   // Map academic level to pricing tier
   const { tier: mappedAcademicLevel, rawTerm: academicLevelRaw } = mapAcademicLevel(extraction.academic_level)
 
@@ -160,6 +163,11 @@ export default function StepExtractionReview({
       }
     }
 
+    if (corrected.type === 'presentation' && corrected.quantity) return { ...corrected, price_gbp: corrected.quantity * 2.5 }
+    if (corrected.type === 'technical') {
+      const key = corrected.complexity === 'simple' ? 'flowchart' : corrected.complexity === 'moderate' ? 'database' : corrected.complexity === 'expert' ? 'security' : 'web_dev'
+      return { ...corrected, price_gbp: getPracticalPrice(key) }
+    }
     return corrected
   })
 
@@ -201,17 +209,17 @@ export default function StepExtractionReview({
     return d.toISOString().split('T')[0]
   }
 
-  // Premium pricing for manually added deliverables
+  // Standard pricing for manually added deliverables
   function calculateManualDeliverablePrice(type: 'written' | 'presentation' | 'practical', quantity: number, practicalKey?: string): number {
     if (type === 'written') {
       const pages = newDeliverableSizeMode === 'pages' ? quantity : Math.ceil(quantity / 275)
-      return pages * 6 // £6 per page (premium)
+      return pages * 5
     }
     if (type === 'presentation') {
-      return quantity * 3 // £3 per slide (premium)
+      return quantity * 2.5
     }
     if (type === 'practical') {
-      return 95 // £95 flat rate (complex tier pricing for all)
+      return getPracticalPrice(practicalKey || '')
     }
     return 0
   }
@@ -239,7 +247,7 @@ export default function StepExtractionReview({
     } else if (newDeliverableType === 'practical') {
       const practicalItem = PRACTICAL_ITEMS.find(p => p.key === newDeliverablePracticalKey)
       description = practicalItem?.label || 'Practical task'
-      complexity = 'complex' // Always priced at complex tier
+      complexity = practicalItem?.price === 40 ? 'simple' : practicalItem?.price === 65 ? 'moderate' : practicalItem?.price === 130 ? 'expert' : 'complex'
     }
 
     const newDeliverable: ExtractedDeliverable = {
@@ -248,6 +256,7 @@ export default function StepExtractionReview({
       quantity,
       quantity_type: quantityType,
       complexity,
+      practicalKey: newDeliverableType === 'practical' ? newDeliverablePracticalKey : undefined,
       price_gbp: calculateManualDeliverablePrice(newDeliverableType, newDeliverableType === 'presentation' ? newDeliverableSlideCount : newDeliverableQuantity, newDeliverablePracticalKey),
       confidence: 'high', // Manual additions are "high confidence"
     }
@@ -336,10 +345,10 @@ export default function StepExtractionReview({
       }
 
       // Technical deliverable - map complexity to a practical key for storage
-      const practicalKey = d.complexity === 'simple' ? 'flowchart'
+      const practicalKey = d.practicalKey || (d.complexity === 'simple' ? 'flowchart'
         : d.complexity === 'moderate' ? 'database'
         : d.complexity === 'expert' ? 'security'
-        : 'web_dev' // complex or default
+        : 'web_dev') // complex or default
 
       return {
         id,
@@ -352,12 +361,15 @@ export default function StepExtractionReview({
         slideMin: 0,
         slideMax: 0,
         practicalKey,
-        basePrice: d.price_gbp, // Use the price from AI extraction
+        basePrice: getPracticalPrice(practicalKey),
         // Store AI description for display
         aiDescription: d.description,
       }
     })
 
+    const checked = checkoutOrderSchema.safeParse({ subjectField, academicLevel, deadline, deliverables: formDeliverables, instructions, includeOriginalityReport: false })
+    if (!checked.success) { setConfirmError(checked.error.issues[0]?.message || 'Please check your assignment details.'); return }
+    setConfirmError(null)
     onConfirm({
       moduleName,
       subjectField: subjectField ?? '',
@@ -845,7 +857,7 @@ export default function StepExtractionReview({
                   placeholder={`Enter ${newDeliverableSizeMode}`}
                   className="w-full px-3 py-2 border border-[#E8E2D9] rounded-lg text-sm"
                 />
-                <p className="text-xs text-[#6B7280]">Premium rate: £6 per page</p>
+                <p className="text-xs text-[#6B7280]">Standard rate: £5 per page</p>
               </div>
             )}
 
@@ -860,7 +872,7 @@ export default function StepExtractionReview({
                   placeholder="Number of slides"
                   className="w-full px-3 py-2 border border-[#E8E2D9] rounded-lg text-sm"
                 />
-                <p className="text-xs text-[#6B7280]">Premium rate: £3 per slide</p>
+                <p className="text-xs text-[#6B7280]">Standard rate: £2.50 per slide</p>
               </div>
             )}
 
@@ -877,11 +889,12 @@ export default function StepExtractionReview({
                     <option key={item.key} value={item.key}>{item.label}</option>
                   ))}
                 </select>
-                <p className="text-xs text-[#6B7280]">Premium rate: £95 flat rate</p>
+                <p className="text-xs text-[#6B7280]">Standard price: {formatPrice(getPracticalPrice(newDeliverablePracticalKey), selectedCurrency, exchangeRate)}</p>
               </div>
             )}
 
-            {/* Actions */}
+            {confirmError && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{confirmError}</p>}
+      {/* Actions */}
             <div className="flex gap-2 mt-4">
               <button
                 type="button"
@@ -921,6 +934,7 @@ export default function StepExtractionReview({
         />
       </div>
 
+      {confirmError && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{confirmError}</p>}
       {/* Actions */}
       <div className="flex items-center gap-3 pt-4 border-t border-[#E8E2D9]">
         <button

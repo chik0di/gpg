@@ -9,11 +9,9 @@ export const WORDS_PER_PAGE = 275
 
 // Written deliverable rates (pence per page)
 export const WRITTEN_RATE_AI = 500        // £5.00 per page (AI-extracted)
-export const WRITTEN_RATE_MANUAL = 600    // £6.00 per page (manually added, premium)
 
 // Presentation rates (pence per slide)
 export const SLIDE_RATE_AI = 250          // £2.50 per slide (AI-extracted)
-export const SLIDE_RATE_MANUAL = 300      // £3.00 per slide (manually added, premium)
 
 // Technical/Practical deliverable rates by complexity (pence)
 export const TECHNICAL_SIMPLE = 4000      // £40.00
@@ -73,29 +71,25 @@ export function applyDeadlineMultiplier(pence: number, dateStr: string): number 
 /**
  * Calculate written deliverable price in pence
  * @param pages - number of pages
- * @param isManual - true if manually added (premium pricing)
  * @returns price in pence
  */
-export function calcWrittenPricePence(pages: number, isManual: boolean = false): number {
+export function calcWrittenPricePence(pages: number): number {
   if (!pages || pages <= 0) return 0
 
-  const rate = isManual ? WRITTEN_RATE_MANUAL : WRITTEN_RATE_AI
 
   // AI extraction path: flat £5 per page (500 pence) for ALL page counts
-  // Manual path: flat £6 per page (600 pence) premium pricing
-  return pages * rate
+  // Manual and extracted work use the same rate.
+  return pages * WRITTEN_RATE_AI
 }
 
 /**
  * Calculate presentation deliverable price in pence
  * @param slideCount - number of slides
- * @param isManual - true if manually added (premium pricing)
  * @returns price in pence
  */
-export function calcPresentationPricePence(slideCount: number, isManual: boolean = false): number {
+export function calcPresentationPricePence(slideCount: number): number {
   if (!slideCount || slideCount <= 0) return 0
-  const rate = isManual ? SLIDE_RATE_MANUAL : SLIDE_RATE_AI
-  return slideCount * rate
+  return slideCount * SLIDE_RATE_AI
 }
 
 /**

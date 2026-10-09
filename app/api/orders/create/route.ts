@@ -1,29 +1,12 @@
+import { ORIGINALITY_REPORT_PENCE } from '@/lib/pricing-pence'
+import { verifyPaidCheckout } from '@/lib/checkout-integrity'
 import { NextResponse, NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { stripe } from '@/lib/stripe/server'
 import { rateLimit, getClientIp, RateLimitPresets, getRateLimitErrorMessage } from '@/lib/rate-limit'
 import { getOriginFromRequest } from '@/lib/utils/request-origin'
-import {
-  calcOrderTotal,
-  WORDS_PER_PAGE,
-  PRACTICAL_ITEMS,
-} from '@/lib/pricing'
-import {
-  calcWrittenPricePence,
-  calcPresentationPricePence,
-  validateTechnicalPricePence,
-  applyAcademicMultiplier,
-  applyDeadlineMultiplier,
-  TECHNICAL_SIMPLE,
-  TECHNICAL_MODERATE,
-  TECHNICAL_COMPLEX,
-  TECHNICAL_EXPERT,
-  WRITTEN_RATE_AI,
-  SLIDE_RATE_AI,
-  ORIGINALITY_REPORT_PENCE,
-  ACADEMIC_MULTIPLIERS,
-} from '@/lib/pricing-pence'
+import { WORDS_PER_PAGE, PRACTICAL_ITEMS } from '@/lib/pricing'
 import { sendOrderConfirmation, sendAdminNewOrderAlert } from '@/lib/resend'
 import type { Deliverable } from '@/types/order-form'
 
@@ -41,42 +24,6 @@ interface OrderData {
   usedAIExtraction?: boolean
   briefTempPath?: string | null
   isOutsideStandardFields?: boolean
-}
-
-/**
- * Calculate deliverable base price in PENCE from raw inputs
- * NEVER trust client-sent prices - always recalculate server-side
- */
-function deliverableBasePricePence(d: Deliverable, isManual: boolean = false): number {
-  // SECURITY: Ignore client-sent basePrice, always recalculate from raw inputs
-
-  if (d.type === 'written') {
-    const pages = d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE)
-    return calcWrittenPricePence(pages, isManual)
-  }
-
-  if (d.type === 'presentation') {
-    const slideCount = d.slideInputMode === 'exact' ? d.slideCount : d.slideMax
-    return calcPresentationPricePence(slideCount, isManual)
-  }
-
-  if (d.type === 'practical') {
-    // Map practicalKey to technical price in pence
-    const priceMap: Record<string, number> = {
-      'flowchart': TECHNICAL_SIMPLE,
-      'python': TECHNICAL_MODERATE,
-      'database': TECHNICAL_MODERATE,
-      'data_analysis': TECHNICAL_MODERATE,
-      'network': TECHNICAL_COMPLEX,
-      'web_dev': TECHNICAL_COMPLEX,
-      'security': TECHNICAL_EXPERT,
-      'bi_dashboard': TECHNICAL_EXPERT,
-    }
-    const pricePence = priceMap[d.practicalKey] || TECHNICAL_MODERATE
-    return validateTechnicalPricePence(pricePence)
-  }
-
-  return 0
 }
 
 // Sanitise a name segment for use in a filename — spaces and non-alphanumerics → underscores
@@ -242,6 +189,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Payment not confirmed' }, { status: 402 })
     }
 
+    if (pi.metadata.userId !== user.id || pi.currency !== 'gbp') {
+      return NextResponse.json({ error: 'Payment does not belong to this account.' }, { status: 403 })
+    }
+
     // 2. Idempotency: don't create a duplicate order for the same payment
     console.log('[orders/create] 🔍 Checking for existing order with this payment intent')
     const { data: existing, error: existingError } = await supabase
@@ -265,85 +216,24 @@ export async function POST(request: NextRequest) {
 
     console.log('[orders/create] No existing order found, proceeding to create new order')
 
-    // 3. Recalculate total server-side in PENCE (prevents client tampering)
-    console.log('========================================')
-    console.log('[orders/create] 💰 CALCULATING PRICE SERVER-SIDE')
-    console.log('[orders/create] Deliverables to price:', orderData.deliverables.length)
-
-    // Calculate base prices for all deliverables
-    const deliverablesPence = orderData.deliverables.map((d, idx) => {
-      console.log(`[orders/create] Deliverable ${idx + 1}:`, {
-        type: d.type,
-        sizeMode: d.sizeMode,
-        quantity: d.quantity,
-        slideCount: d.slideCount,
-        practicalKey: d.practicalKey
-      })
-
-      let basePence
-      try {
-        basePence = deliverableBasePricePence(d, false) // AI path always non-manual
-        console.log(`[orders/create] Base price for deliverable ${idx + 1}:`, basePence, 'pence')
-      } catch (calcError) {
-        console.error(`[orders/create] ❌ Error calculating base price for deliverable ${idx + 1}:`, calcError)
-        throw calcError
+    // Fulfil exactly the order and quote accepted before payment.
+    let accepted
+    try {
+      if (pi.metadata.orderHash) {
+        const { data: pending, error } = await supabaseAdmin.from('pending_orders')
+          .select('order_data, user_id').eq('id', pi.metadata.pendingOrderId).single()
+        if (error || !pending || pending.user_id !== user.id) throw new Error('Accepted checkout could not be found.')
+        accepted = verifyPaidCheckout(pi, pending.order_data, user.id)
+      } else {
+        accepted = verifyPaidCheckout(pi, orderData, user.id)
       }
-
-      // Apply multipliers
-      let finalPence = basePence
-      const beforeAcademic = finalPence
-      finalPence = applyAcademicMultiplier(finalPence, orderData.academicLevel)
-      console.log(`[orders/create] After academic multiplier (${orderData.academicLevel}):`, finalPence, 'pence (was', beforeAcademic, ')')
-
-      const beforeDeadline = finalPence
-      finalPence = applyDeadlineMultiplier(finalPence, orderData.deadline)
-      console.log(`[orders/create] After deadline multiplier (${orderData.deadline}):`, finalPence, 'pence (was', beforeDeadline, ')')
-
-      return finalPence
-    })
-
-    const subtotalPence = deliverablesPence.reduce((sum, price) => sum + price, 0)
-    const reportPence = orderData.includeOriginalityReport ? ORIGINALITY_REPORT_PENCE : 0
-    const totalPence = subtotalPence + reportPence
-
-    console.log('[orders/create] Subtotal:', subtotalPence, 'pence (£' + (subtotalPence / 100).toFixed(2) + ')')
-    console.log('[orders/create] Originality report:', reportPence, 'pence')
-    console.log('[orders/create] Total calculated:', totalPence, 'pence (£' + (totalPence / 100).toFixed(2) + ')')
-    console.log('[orders/create] Payment Intent amount:', pi.amount, 'pence (£' + (pi.amount / 100).toFixed(2) + ')')
-    console.log('========================================')
-
-    // Verify the payment intent amount matches our server-side calculation
-    if (pi.amount !== totalPence) {
-      console.error('========================================')
-      console.error('[orders/create] ❌ PRICE MISMATCH')
-      console.error(`[orders/create] Payment Intent amount: ${pi.amount} pence (£${(pi.amount / 100).toFixed(2)})`)
-      console.error(`[orders/create] Server calculated: ${totalPence} pence (£${(totalPence / 100).toFixed(2)})`)
-      console.error(`[orders/create] Difference: ${pi.amount - totalPence} pence`)
-      console.error('========================================')
-      // Allow a 1 pence tolerance for rounding differences
-      if (Math.abs(pi.amount - totalPence) > 1) {
-        return NextResponse.json({ error: 'Payment amount mismatch' }, { status: 400 })
-      }
+    } catch (error) {
+      return NextResponse.json({ error: (error as Error).message }, { status: 400 })
     }
-
-    // Create pricing snapshot for this order
-    const pricingSnapshot = {
-      written_rate_pence: WRITTEN_RATE_AI,
-      slide_rate_pence: SLIDE_RATE_AI,
-      technical_simple_pence: TECHNICAL_SIMPLE,
-      technical_moderate_pence: TECHNICAL_MODERATE,
-      technical_complex_pence: TECHNICAL_COMPLEX,
-      technical_expert_pence: TECHNICAL_EXPERT,
-      academic_multipliers: ACADEMIC_MULTIPLIERS,
-      deadline_multipliers: {
-        '2-3d': 180,
-        '4-6d': 150,
-        '7-13d': 120,
-        '14+d': 100,
-      },
-      originality_report_pence: ORIGINALITY_REPORT_PENCE,
-      calculated_at: new Date().toISOString(),
-    }
+    orderData = accepted.orderData
+    const deliverablesPence = accepted.quote.finalPence
+    const totalPence = accepted.quote.totalPence
+    const pricingSnapshot = accepted.quote
 
     // 4. Create order row with pricing snapshot
     const { data: order, error: orderErr } = await supabase
@@ -579,28 +469,10 @@ export async function POST(request: NextRequest) {
       return d.type
     }).join(', ')
 
-    // Calculate multipliers for final pricing
-    const academicMultPct = ACADEMIC_MULTIPLIERS[orderData.academicLevel as keyof typeof ACADEMIC_MULTIPLIERS] ?? 100
-    const academicMult = academicMultPct / 100
-
-    // Calculate days until deadline for urgency multiplier
-    const deadlineDate = new Date(orderData.deadline)
-    const now = new Date()
-    const daysUntil = Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-
-    let deadlineMult = 1.0
-    if (daysUntil >= 14) deadlineMult = 1.0
-    else if (daysUntil >= 7) deadlineMult = 1.2
-    else if (daysUntil >= 4) deadlineMult = 1.5
-    else deadlineMult = 1.8
-
     // Build itemized deliverable list with FINAL prices (all multipliers applied)
     // This matches what clients see on checkout and order summary
     const deliverableItems = orderData.deliverables.map((d, index) => {
-      const basePence = deliverableBasePricePence(d, false)
-
-      // Apply all multipliers to get final price
-      const finalPence = basePence * academicMult * deadlineMult
+      const finalPence = deliverablesPence[index]
 
       let description = ''
 
@@ -703,18 +575,11 @@ export async function POST(request: NextRequest) {
 
     console.log('[orders/create] 🔵 CHECKPOINT 3: Email sending complete')
 
-    // 9. Clean up pending orders for this user (can be fire-and-forget as this is non-critical)
-    supabaseAdmin
-      .from('pending_orders')
-      .delete()
-      .or(`user_id.eq.${user.id},user_email.eq.${user.email}`)
-      .then(({ error: delError }) => {
-        if (delError) {
-          console.error('[orders/create] pending orders cleanup failed:', delError)
-        } else {
-          console.log('[orders/create] cleaned up pending orders for user:', user.id)
-        }
-      })
+    // Only clean up this checkout; another paid checkout may still need its snapshot.
+    if (pi.metadata.pendingOrderId) {
+      await supabaseAdmin.from('pending_orders').delete()
+        .eq('id', pi.metadata.pendingOrderId).eq('user_id', user.id)
+    }
 
     console.log('========================================')
     console.log('[orders/create] ✅ ORDER CREATED SUCCESSFULLY')

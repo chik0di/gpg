@@ -9,11 +9,11 @@ const SUBJECTS = [
 ]
 
 const ASSIGNMENT_TYPES = [
-  'Essay', 'Dissertation', 'Coursework', 'Report', 'Literature Review',
+  'Essay', 'Coursework', 'Report', 'Literature Review',
   'Research Proposal', 'Case Study', 'Presentation', 'Other',
 ]
 
-const ACADEMIC_LEVELS = ['Undergraduate (Year 1-2)', 'Undergraduate (Year 3)', 'Masters', 'PhD']
+const ACADEMIC_LEVELS = ['Undergraduate', 'Masters']
 
 interface Props {
   register: UseFormRegister<OrderFormData>

@@ -1,5 +1,7 @@
 'use client'
 
+import { calculateOrderQuote } from '@/lib/order-quote'
+
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -11,15 +13,7 @@ import {
 } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
 import {
-  calcOrderTotal,
-  calcWrittenPrice,
-  calcPresentationPrice,
   presentationLabel,
-  getPracticalPrice,
-  getAcademicMultiplier,
-  getDeadlineMultiplier,
-  getAcademicLevelAdjLabel,
-  getDeadlinePremiumLabel,
   WORDS_PER_PAGE,
   ORIGINALITY_REPORT_PRICE,
   PRACTICAL_ITEMS,
@@ -31,26 +25,6 @@ import type { OrderFormState, Deliverable } from '@/types/order-form'
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-
-function deliverableBasePrice(d: Deliverable): number {
-  // CRITICAL: Use stored basePrice for AI-extracted deliverables
-  // This preserves the exact price confirmed on the review screen
-  if (d.basePrice && d.basePrice > 0) {
-    return d.basePrice
-  }
-
-  // Otherwise calculate from deliverable details (manual entries)
-  if (d.type === 'written') {
-    const pages = d.sizeMode === 'pages' ? d.quantity : Math.ceil(d.quantity / WORDS_PER_PAGE)
-    return calcWrittenPrice(pages)
-  }
-  if (d.type === 'presentation') {
-    const slideCount = d.slideInputMode === 'exact' ? d.slideCount : d.slideMax
-    return calcPresentationPrice(slideCount)
-  }
-  if (d.type === 'practical')    return getPracticalPrice(d.practicalKey)
-  return 0
-}
 
 function deliverableLabel(d: Deliverable): string {
   // CRITICAL: Use AI description if available
@@ -173,20 +147,9 @@ function OrderSummary({ data }: {
   const exchangeRate     = data.exchangeRate ?? 1
   const fmt = (gbpAmt: number) => fmtInCurrency(gbpAmt, exchangeRate, selectedCurrency)
 
-  const subtotal     = data.deliverables.reduce((s, d) => s + deliverableBasePrice(d), 0)
-  const levelMult    = getAcademicMultiplier(data.academicLevel)
-  const deadlineMult = getDeadlineMultiplier(data.deadline)
-  const levelLabel   = getAcademicLevelAdjLabel(data.academicLevel)
-  const urgencyLabel = getDeadlinePremiumLabel(data.deadline)
-
-  const levelAdjTotal   = subtotal * (levelMult - 1)               // negative for A-Level
-  const urgencyAdjTotal = subtotal * levelMult * (deadlineMult - 1) // always ≥ 0
-  const { total }       = calcOrderTotal({
-    deliverableSubtotal:      subtotal,
-    academicLevel:            data.academicLevel,
-    deadline:                 data.deadline,
-    includeOriginalityReport: data.includeOriginalityReport,
-  })
+  const quote = data.checkoutQuote || calculateOrderQuote(data)
+  const total = quote.totalPence / 100
+  const adjustments = [quote.academicPct > 100 ? `${data.academicLevel} level +${quote.academicPct - 100}%` : null, quote.deadlinePct > 100 ? `Urgency premium +${quote.deadlinePct - 100}%` : null].filter(Boolean)
 
   return (
     <div className="bg-white rounded-2xl border border-[#E8E2D9] overflow-hidden lg:sticky top-24" style={{ boxShadow: '0 2px 8px -2px rgba(26,26,46,0.07)' }}>
@@ -201,11 +164,13 @@ function OrderSummary({ data }: {
         </div>
       </div>
 
+      {adjustments.length > 0 && <p className="px-5 py-3 text-xs text-[#64748B]">Prices include {adjustments.join(' and ')}. Adjustments apply in sequence.</p>}
+
       {/* Deliverables at final price (all adjustments included) */}
       <div className="divide-y divide-[#F5F0E8] px-5">
-        {data.deliverables.map((d) => {
-          const base = deliverableBasePrice(d)
-          const finalPrice = base * levelMult * deadlineMult
+        {data.deliverables.map((d, index) => {
+
+          const finalPrice = quote.finalPence[index] / 100
           return (
             <div key={d.id} className="flex items-center justify-between gap-2 py-2.5 min-w-0">
               <p className="text-sm text-[#1A1A2E] min-w-0 flex-1 truncate">{deliverableLabel(d)}</p>
@@ -280,6 +245,7 @@ export default function CheckoutPage() {
   const [orderData, setOrderData]         = useState<OrderFormState | null>(null)
   const [clientSecret, setClientSecret]   = useState<string | null>(null)
   const [initError, setInitError]         = useState<string | null>(null)
+  const [priceChanged, setPriceChanged] = useState(false)
   // Decoded File held in memory — the actual upload happens after payment succeeds
   const [pendingFile, setPendingFile]     = useState<File | null>(null)
 
@@ -466,13 +432,8 @@ export default function CheckoutPage() {
       }
 
       // Compute total and create payment intent
-      const subtotal = data.deliverables.reduce((s, d) => s + deliverableBasePrice(d), 0)
-      const { total } = calcOrderTotal({
-        deliverableSubtotal:      subtotal,
-        academicLevel:            data.academicLevel,
-        deadline:                 data.deadline,
-        includeOriginalityReport: data.includeOriginalityReport,
-      })
+
+      const total = calculateOrderQuote(data).totalPence / 100
 
       const amountPence = Math.round(total * 100)
 
@@ -485,14 +446,9 @@ export default function CheckoutPage() {
         body:    JSON.stringify({
           amountPence,
           orderData: {
-            subjectField: data.subjectField,
-            academicLevel: data.academicLevel,
-            deadline: data.deadline,
-            deliverables: data.deliverables,
+            ...data,
             instructions: data.instructions || '',
-            includeOriginalityReport: data.includeOriginalityReport,
-            moduleName: data.moduleName || null,
-            quoteGeneratedAt: data.quoteGeneratedAt || new Date().toISOString(),
+            briefTempPath: (data as any).briefTempPath || sessionStorage.getItem('gpg_brief_temp_path') || null,
           },
           fileData: fileSource, // Pass file data to be saved in pending_orders
         }),
@@ -502,9 +458,11 @@ export default function CheckoutPage() {
           if (!json) return
           const { clientSecret, error } = json
           if (error || !clientSecret) {
-            setInitError('Could not initialise payment. Please try again.')
+            setPriceChanged(json.code === 'PRICE_CHANGED')
+            setInitError(error || 'Could not initialise payment. Please try again.')
             return
           }
+          setOrderData({ ...data, checkoutQuote: json.checkoutQuote })
           setClientSecret(clientSecret)
         })
         .catch(() => setInitError('Could not connect. Check your connection and try again.'))
@@ -525,9 +483,10 @@ export default function CheckoutPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <h2 className="text-xl font-semibold text-[#1B2E4B] mb-2">Order Not Found</h2>
+              <h2 className="text-xl font-semibold text-[#1B2E4B] mb-2">{priceChanged ? 'Review your updated quote' : 'Checkout needs attention'}</h2>
               <p className="text-sm text-[#6B7280] mb-6 max-w-md mx-auto">{initError}</p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                {priceChanged && <button type="button" className="ui-button-primary" onClick={() => window.location.reload()}>Review updated checkout</button>}
                 <Link
                   href="/order"
                   className="ui-button-primary "
@@ -558,13 +517,7 @@ export default function CheckoutPage() {
     )
   }
 
-  const subtotal  = orderData.deliverables.reduce((s, d) => s + deliverableBasePrice(d), 0)
-  const { total } = calcOrderTotal({
-    deliverableSubtotal:      subtotal,
-    academicLevel:            orderData.academicLevel,
-    deadline:                 orderData.deadline,
-    includeOriginalityReport: orderData.includeOriginalityReport,
-  })
+  const total = (orderData.checkoutQuote || calculateOrderQuote(orderData)).totalPence / 100
 
   const stripeOptions = {
     clientSecret,

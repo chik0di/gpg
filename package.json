@@ -1,7 +1,7 @@
 {
   "name": "getprimegrade",
   "version": "0.1.0",
-  "description": "Academic support platform — custom study material for UK students",
+  "description": "Academic support platform \u2014 custom study material for UK students",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -15,7 +15,8 @@
     "test:references": "node scripts/test-references.cjs",
     "test:reference-tools": "node scripts/test-reference-tools.cjs",
     "test:workspace": "node scripts/test-workspace.cjs",
-    "test:project-tools": "node scripts/test-project-tools.cjs"
+    "test:project-tools": "node scripts/test-project-tools.cjs",
+    "test:checkout": "node scripts/test-checkout.cjs && node scripts/test-order-fulfilment.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
