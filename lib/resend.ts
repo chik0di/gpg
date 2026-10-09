@@ -457,6 +457,7 @@ export async function sendEmailChangeSecurityNotification(params: {
   to: string // OLD email address
   newEmail: string // NEW email address (will be masked in email)
   firstName?: string | null
+  idempotencyKey?: string
 }) {
   const { to, newEmail, firstName } = params
   const maskedNewEmail = maskEmail(newEmail)
@@ -480,7 +481,7 @@ export async function sendEmailChangeSecurityNotification(params: {
     to, // OLD email
     subject: 'Your GetPrimeGrade account email was changed',
     html,
-  })
+  }, params.idempotencyKey ? { idempotencyKey: params.idempotencyKey } : undefined)
 }
 
 export async function sendRevisionNotification(params: {
