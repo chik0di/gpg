@@ -25,6 +25,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('pending_orders')
       .select('id, created_at, expires_at, user_email, user_id')
+      .is('fulfilled_at', null)
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
       .limit(1)

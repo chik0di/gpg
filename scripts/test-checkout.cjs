@@ -2,11 +2,24 @@ const fs = require('node:fs'), path = require('node:path'), Module = require('no
 const root = path.resolve(__dirname, '..')
 require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText, filename)
 let user = { id: '11111111-1111-4111-8111-111111111111', email: 'student@example.com' }, pending, stripeCalls = [], dbCalls = [], allowRate = true
-const db = { auth: { getUser: async () => ({ data: { user } }) }, from(table) { const q = {
- insert(value) { pending = value; dbCalls.push({ table, value }); return q }, select() { return q },
- single: async () => ({ data: { id: 'pending-id' }, error: null }), delete() { return q }, eq() { return Promise.resolve({ error: null }) }
-}; return q } }
-const stripe = { paymentIntents: { create: async options => { stripeCalls.push(options); return { client_secret: 'mock-secret', amount: options.amount } } } }
+let lastPi, stripeTimeout = false
+const db = { auth: { getUser: async () => ({ data: { user } }) }, from(table) {
+ let operation='read', values
+ const q = {
+ insert(value) { operation='insert'; values=value; return q }, select() { return q },
+ update(value) { operation='update';values=value;return q },eq() { return q },
+ async execute() {
+  if(operation==='insert'&&pending)return {data:null,error:{code:'23505'}}
+  if(operation==='insert') { pending={id:'pending-id',payment_intent_id:null,...values};dbCalls.push({table,value:values}) }
+  if(operation==='update') pending={...pending,...values}
+  return {data:pending ?? null,error:null}
+ }, single() {return q.execute()},maybeSingle(){return q.execute()},then(resolve,reject){return q.execute().then(resolve,reject)}
+ }; return q
+} }
+const stripe = { paymentIntents: {
+ create: async (options, config) => {stripeCalls.push({...options,idempotencyKey:config.idempotencyKey});lastPi=lastPi ?? {id:'pi_mock',status:'requires_payment_method',client_secret:'mock-secret',...options};if(stripeTimeout){stripeTimeout=false;throw new Error('Mock connection interrupted after creation')}return lastPi},
+ retrieve: async () => lastPi,
+} }
 const original = Module._load
 Module._load = function(name, parent, main) {
  if(name === '@/lib/supabase/server') return { createServerClient: () => db }
@@ -63,7 +76,7 @@ assert.throws(()=>verifyPaidCheckout({...pi,amount:100},stored,user.id))
 assert.notEqual(calculateOrderQuote(normalized,now+3*86400000).totalPence,quote.totalPence)
 assert.equal(verifyPaidCheckout(pi,stored,user.id).quote.totalPence,quote.totalPence)
 assert.equal(verifyPaidCheckout({...pi,metadata:{userId:user.id}},normalized,user.id).quote.totalPence,quote.totalPence)
-const request = body => new Request('https://example.com/api/stripe/create-payment-intent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+const request = body => new Request('https://example.com/api/stripe/create-payment-intent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({checkoutKey:'22222222-2222-4222-8222-222222222222',...body})})
 async function main() {
  user=null;assert.equal((await POST(request({}))).status,401)
  user={id:pi.metadata.userId,email:'student@example.com'}
@@ -85,6 +98,16 @@ async function main() {
  assert.equal(pending.user_id,user.id)
  assert.equal(pending.order_data.briefTempPath,future.briefTempPath)
  assert.equal(stripeCalls[0].metadata.orderHash,checkoutDigest(pending.order_data))
+ assert.equal(stripeCalls[0].idempotencyKey,'checkout-pending-id')
+ const resumed=await POST(request({orderData:future,amountPence,fileData:null}));assert.equal(resumed.status,200);assert.equal(stripeCalls.length,1)
+ lastPi.status='succeeded';const paid=await POST(request({orderData:future,amountPence}));assert.equal((await paid.json()).paymentIntentId,'pi_mock');assert.equal(stripeCalls.length,1)
+ assert.equal((await POST(request({orderData:{...future,instructions:'changed'},amountPence}))).status,409)
+ pending=undefined;lastPi=undefined;stripeCalls=[];stripeTimeout=true
+ assert.equal((await POST(request({orderData:future,amountPence}))).status,500);assert.ok(pending);assert.equal(pending.payment_intent_id,null)
+ assert.equal((await POST(request({orderData:future,amountPence}))).status,200);assert.equal(stripeCalls[0].idempotencyKey,stripeCalls[1].idempotencyKey)
+ pending=undefined;lastPi=undefined;stripeCalls=[]
+ const simultaneous=await Promise.all([POST(request({orderData:future,amountPence})),POST(request({orderData:future,amountPence}))])
+ assert.ok(simultaneous.every(r=>r.status===200));assert.equal(new Set(stripeCalls.map(c=>c.idempotencyKey)).size,1)
  allowRate=false;assert.equal((await POST(request({orderData:future,amountPence}))).status,429)
  console.log('Checkout tests passed: server pricing, input validation, assignment scope, payment ownership, immutable quotes and pre-payment rejection.')
 }

@@ -48,7 +48,7 @@ export async function GET(
     // Fetch pending order (RLS ensures user can only see their own)
     const { data, error } = await supabase
       .from('pending_orders')
-      .select('id, order_data, file_data, created_at, expires_at, user_email, user_id')
+      .select('id, order_data, file_data, created_at, expires_at, user_email, user_id, checkout_key, payment_intent_id')
       .eq('id', id)
       .single()
 
@@ -136,16 +136,9 @@ export async function GET(
       console.error('[pending-orders/get] Deleting expired order...')
       console.error('========================================')
 
-      // Delete expired order immediately
-      const { error: deleteError } = await supabase
-        .from('pending_orders')
-        .delete()
-        .eq('id', id)
-
-      if (deleteError) {
-        console.error('[pending-orders/get] Failed to delete expired order:', deleteError)
-      } else {
-        console.log('[pending-orders/get] Successfully deleted expired order:', id)
+      // Payment snapshots remain available to fulfilment even after expiry.
+      if (!data.checkout_key && !data.payment_intent_id && !data.order_data?.checkoutQuote) {
+        await supabase.from('pending_orders').delete().eq('id', id)
       }
 
       // Return 404 so checkout redirects cleanly
@@ -202,19 +195,14 @@ export async function DELETE(
 
     const { id } = params
 
-    // Delete pending order (RLS ensures user can only delete their own)
-    const { error } = await supabase
-      .from('pending_orders')
-      .delete()
-      .eq('id', id)
-
-    if (error) {
-      console.error('[pending-orders/delete] Delete failed:', error)
-      return NextResponse.json(
-        { error: 'Failed to delete pending order' },
-        { status: 500 }
-      )
-    }
+    const { data: draft, error: lookupError } = await supabase.from('pending_orders')
+      .select('checkout_key, payment_intent_id, order_data').eq('id', id).maybeSingle()
+    if (lookupError) return NextResponse.json({ error: 'Could not check checkout.' }, { status: 503 })
+    if (!draft) return NextResponse.json({ error: 'Pending order not found.' }, { status: 404 })
+    if (draft.checkout_key || draft.payment_intent_id || draft.order_data?.checkoutQuote)
+      return NextResponse.json({ error: 'Payment recovery details are preserved. Check your orders before starting another payment.' }, { status: 409 })
+    const { error } = await supabase.from('pending_orders').delete().eq('id', id)
+    if (error) return NextResponse.json({ error: 'Failed to delete pending order.' }, { status: 500 })
 
     console.log('[pending-orders/delete] Deleted pending order:', id)
 

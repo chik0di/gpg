@@ -90,6 +90,7 @@ export async function sendOrderConfirmation(params: {
   deliverableItems: DeliverableItem[]  // Individual deliverable items with FINAL prices (all multipliers applied)
   originalityReportPrice?: number | null  // Originality report addon price
   isOutsideStandardFields?: boolean
+  idempotencyKey?: string
   origin?: string  // Request origin for dynamic link generation
 }) {
   console.log('========================================')
@@ -188,7 +189,7 @@ export async function sendOrderConfirmation(params: {
       to,
       subject: `Order confirmed — #${shortId}`,
       html,
-    })
+    }, params.idempotencyKey ? { idempotencyKey: params.idempotencyKey } : undefined)
 
     // Resend SDK returns { data, error } even on HTTP success
     // Check if the response contains an error field
@@ -227,6 +228,7 @@ export async function sendAdminNewOrderAlert(params: {
   totalAmount: number
   deliverableSummary: string
   instructions?: string | null
+  idempotencyKey?: string
   origin?: string  // Request origin for dynamic link generation
 }) {
   console.log('========================================')
@@ -280,7 +282,7 @@ export async function sendAdminNewOrderAlert(params: {
       to:   ADMIN,
       subject: `New order — #${shortId} from ${clientName}`,
       html,
-    })
+    }, params.idempotencyKey ? { idempotencyKey: params.idempotencyKey } : undefined)
 
     // Resend SDK returns { data, error } even on HTTP success
     // Check if the response contains an error field

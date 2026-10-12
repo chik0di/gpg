@@ -1,11 +1,10 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Suspense } from 'react'
-import type { OrderFormState } from '@/types/order-form'
 import ShareButton from '@/components/shared/share-button'
 
 type State = 'loading' | 'success' | 'error'
@@ -15,144 +14,59 @@ function SuccessContent() {
   const [state, setState]   = useState<State>('loading')
   const [orderId, setOrderId] = useState<string | null>(null)
   const [errMsg, setErrMsg]   = useState<string | null>(null)
-  const ran = useRef(false)  // prevent double-fire in React StrictMode
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
-    if (ran.current) return
-    ran.current = true
-
-    const redirectStatus = searchParams.get('redirect_status')
-    const paymentIntent  = searchParams.get('payment_intent')
-
-    if (redirectStatus !== 'succeeded' || !paymentIntent) {
+    const paymentIntent = searchParams.get('payment_intent')
+    if (!paymentIntent) {
       setState('error')
-      setErrMsg('Payment was not completed. No charge has been made.')
+      setErrMsg('No payment reference was provided. Check your orders or contact support before paying again.')
       return
     }
-
-    const raw = sessionStorage.getItem('gpg_pending_order')
-    if (!raw) {
-      // Likely a page refresh after order was already created
-      setState('success')
-      return
-    }
-
-    let orderData: OrderFormState
-    try {
-      orderData = JSON.parse(raw)
-    } catch {
-      setState('error')
-      setErrMsg('Order data could not be read. Please contact support.')
-      return
-    }
-
-    // Build a multipart request so the file is sent as binary (not JSON/base64)
-    const form = new FormData()
-    form.append('paymentIntentId', paymentIntent)
-    form.append('orderData', JSON.stringify(orderData))
-
-    const rawFile = sessionStorage.getItem('gpg_pending_file')
-    if (rawFile) {
+    const controller = new AbortController()
+    setState('loading')
+    async function confirm() {
+      const form = new FormData()
+      form.set('paymentIntentId', paymentIntent!)
+      // Only older payments need this fallback. Current checkouts use the server snapshot.
       try {
-        const { data: b64, name, type } = JSON.parse(rawFile) as {
-          data: string; name: string; type: string
+        const raw = sessionStorage.getItem('gpg_pending_order')
+        if (raw) form.set('orderData', raw)
+        const rawFile = sessionStorage.getItem('gpg_pending_file')
+        if (rawFile) {
+          const file = JSON.parse(rawFile)
+          const bytes = Uint8Array.from(atob(file.data), char => char.charCodeAt(0))
+          form.set('file', new Blob([bytes], { type: file.type }), file.name)
         }
-        const binary = atob(b64)
-        const bytes  = new Uint8Array(binary.length)
-        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-        const blob = new Blob([bytes], { type: type || 'application/octet-stream' })
-        form.append('file', blob, name)
-      } catch {
-        // File could not be decoded — order proceeds without the file attachment
-        console.error('[success] could not decode file from session storage')
-      }
-    }
-
-    console.log('========================================')
-    console.log('[checkout/success] 🚀 CREATING ORDER AFTER SUCCESSFUL PAYMENT')
-    console.log('[checkout/success] Payment Intent ID:', paymentIntent)
-    console.log('[checkout/success] Order Data:', orderData)
-    console.log('[checkout/success] Has file attachment:', !!rawFile)
-    console.log('[checkout/success] Calling /api/orders/create with FormData')
-    console.log('========================================')
-
-    fetch('/api/orders/create', { method: 'POST', body: form })
-      .then(async (r) => {
-        console.log('========================================')
-        console.log('[checkout/success] 📡 API RESPONSE RECEIVED')
-        console.log('[checkout/success] Status:', r.status)
-        console.log('[checkout/success] Status Text:', r.statusText)
-        console.log('[checkout/success] OK:', r.ok)
-        console.log('[checkout/success] Headers:', Object.fromEntries(r.headers.entries()))
-        console.log('========================================')
-
-        // Read response body as text first to see raw response
-        const responseText = await r.text()
-        console.log('[checkout/success] Raw response body:', responseText)
-
-        let responseData
-        try {
-          responseData = JSON.parse(responseText)
-          console.log('[checkout/success] Parsed response data:', responseData)
-        } catch (parseErr) {
-          console.error('========================================')
-          console.error('[checkout/success] ❌ JSON PARSE ERROR')
-          console.error('[checkout/success] Parse error:', parseErr)
-          console.error('[checkout/success] Response was not valid JSON')
-          console.error('========================================')
-          throw new Error('Invalid JSON response from server')
-        }
-
-        return { response: r, data: responseData }
-      })
-      .then(({ response, data }) => {
-        const { orderId, error } = data
-
-        console.log('========================================')
-        console.log('[checkout/success] 📊 PROCESSING RESPONSE')
-        console.log('[checkout/success] Order ID:', orderId)
-        console.log('[checkout/success] Error:', error)
-        console.log('[checkout/success] Response status:', response.status)
-        console.log('========================================')
-
-        if (error || !orderId) {
-          console.error('========================================')
-          console.error('[checkout/success] ❌ ORDER CREATION FAILED')
-          console.error('[checkout/success] Error message:', error)
-          console.error('[checkout/success] Order ID present:', !!orderId)
-          console.error('[checkout/success] HTTP status:', response.status)
-          console.error('[checkout/success] Full response data:', data)
-          console.error('========================================')
-
-          setState('error')
-          setErrMsg('Your payment was successful but we couldn\'t record your order. Please contact admin@getprimegrade.com with your payment reference.')
+      } catch { /* A missing browser backup never prevents server recovery. */ }
+      for (let poll = 0; poll < 12; poll++) {
+        const response = await fetch('/api/orders/create', { method: 'POST', body: form, signal: controller.signal })
+        const result = await response.json()
+        if (response.ok && response.status !== 202 && result.orderId) {
+          if (controller.signal.aborted) return
+          try {
+            sessionStorage.removeItem('gpg_pending_order')
+            sessionStorage.removeItem('gpg_pending_file')
+            sessionStorage.removeItem('gpg_checkout_session')
+          } catch { /* Confirmation is independent of browser storage. */ }
+          setOrderId(result.orderId)
+          setState('success')
           return
         }
-
-        console.log('========================================')
-        console.log('[checkout/success] ✅ ORDER CREATED SUCCESSFULLY')
-        console.log('[checkout/success] Order ID:', orderId)
-        console.log('[checkout/success] Clearing session storage')
-        console.log('========================================')
-
-        sessionStorage.removeItem('gpg_pending_order')
-        sessionStorage.removeItem('gpg_pending_file')
-        setOrderId(orderId)
-        setState('success')
-      })
-      .catch((err) => {
-        console.error('========================================')
-        console.error('[checkout/success] ❌ NETWORK OR PROCESSING ERROR')
-        console.error('[checkout/success] Error type:', err.constructor.name)
-        console.error('[checkout/success] Error message:', err.message)
-        console.error('[checkout/success] Error stack:', err.stack)
-        console.error('[checkout/success] Full error object:', err)
-        console.error('========================================')
-
-        setState('error')
-        setErrMsg('Network error. Your payment may have gone through — please contact support before trying again.')
-      })
-  }, [searchParams])
+        if (response.status !== 202 && (response.status !== 503 || poll >= 3))
+          throw new Error(result.error ?? 'Confirmation is unavailable. Check your orders or contact support before paying again.')
+        await new Promise(resolve => setTimeout(resolve, 1500))
+        if (controller.signal.aborted) return
+      }
+      throw new Error('Payment confirmation is taking longer than usual. Retry confirmation or check your orders before paying again.')
+    }
+    confirm().catch(error => {
+      if (controller.signal.aborted) return
+      setState('error')
+      setErrMsg(error instanceof TypeError ? 'Connection interrupted. Retry confirmation or contact support before making another payment.' : error.message)
+    })
+    return () => controller.abort()
+  }, [searchParams, attempt])
 
   // ── Loading ──────────────────────────────────────────────────────────────
   if (state === 'loading') {
@@ -178,6 +92,8 @@ function SuccessContent() {
         </div>
         <h2 className="text-xl font-semibold text-[#1B2E4B] mb-2">Something went wrong</h2>
         <p className="text-sm text-[#6B7280] mb-6 max-w-sm mx-auto">{errMsg}</p>
+        <p className="text-xs text-[#64748B] mb-4 break-all">Payment reference: {searchParams.get('payment_intent') ?? 'Unavailable'}</p>
+        <button type="button" onClick={() => setAttempt(value => value + 1)} className="ui-button-primary mb-4">Retry confirmation</button>
         <a
           href="mailto:admin@getprimegrade.com"
           className="inline-flex items-center gap-2 text-sm font-bold text-[#E8A020] hover:text-[#C4861A] transition-colors"

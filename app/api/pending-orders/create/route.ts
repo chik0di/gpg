@@ -32,6 +32,9 @@ export async function POST(request: NextRequest) {
       .from('pending_orders')
       .delete()
       .lt('expires_at', new Date().toISOString())
+      .is('checkout_key', null)
+      .is('payment_intent_id', null)
+      .is('order_data->checkoutQuote', null)
 
     if (cleanupError) {
       console.warn('[pending-orders/create] Cleanup warning (non-fatal):', cleanupError.message)

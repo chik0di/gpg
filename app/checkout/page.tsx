@@ -72,19 +72,16 @@ function StripeForm({ grandTotalGBP }: { grandTotalGBP: number }) {
     setProcessing(true)
     setError(null)
 
-    const { error: stripeErr } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/checkout/success`,
-      },
-    })
+    try {
+      const { error: stripeErr } = await stripe.confirmPayment({
+        elements, confirmParams: { return_url: `${window.location.origin}/checkout/success` },
+      })
+      if (stripeErr) setError(stripeErr.message ?? 'Payment could not be confirmed. Please check before paying again.')
+    } catch {
+      setError('Connection interrupted. Your payment may have gone through. Check your orders or contact support before paying again.')
+    } finally { setProcessing(false) }
 
-    // Only reaches here on error — success causes a browser redirect
-    if (stripeErr) {
-      setError(stripeErr.message ?? 'Payment failed. Please try again.')
-      setProcessing(false) // Re-enable button on error
-    }
-    // On success, browser redirects - button stays disabled
+    // Stripe redirects after a successful confirmation.
   }
 
   return (
@@ -433,18 +430,26 @@ export default function CheckoutPage() {
 
       // Compute total and create payment intent
 
-      const total = calculateOrderQuote(data).totalPence / 100
-
-      const amountPence = Math.round(total * 100)
-
       // Pass orderData and fileData to create pending order and payment intent
       // The API will save to pending_orders table and only store the pending_order_id
       // in Stripe metadata (avoiding the 500-char limit per field)
+      const identity = JSON.stringify({ ...data, checkoutQuote: undefined })
+      const storedKey = sessionStorage.getItem('gpg_checkout_session')
+      let checkoutKey: string
+      let acceptedQuote = data.checkoutQuote
+      try {
+        const saved = storedKey ? JSON.parse(storedKey) : null
+        checkoutKey = saved?.identity === identity ? saved.key : (pendingOrderId || crypto.randomUUID())
+        if (saved?.identity === identity && saved.quote) acceptedQuote = saved.quote
+      } catch { checkoutKey = pendingOrderId || crypto.randomUUID() }
+      sessionStorage.setItem('gpg_checkout_session', JSON.stringify({ identity, key: checkoutKey, quote: acceptedQuote }))
+      const amountPence = (acceptedQuote || calculateOrderQuote(data)).totalPence
       fetch('/api/stripe/create-payment-intent', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
           amountPence,
+          checkoutKey,
           orderData: {
             ...data,
             instructions: data.instructions || '',
@@ -456,12 +461,21 @@ export default function CheckoutPage() {
         .then((r) => r.json())
         .then((json) => {
           if (!json) return
+          if (json.paymentIntentId) {
+            router.replace(`/checkout/success?payment_intent=${encodeURIComponent(json.paymentIntentId)}`)
+            return
+          }
           const { clientSecret, error } = json
           if (error || !clientSecret) {
+            if (json.code === 'PRICE_CHANGED' && json.checkoutQuote) {
+              sessionStorage.setItem('gpg_checkout_session', JSON.stringify({ identity, key: checkoutKey, quote: json.checkoutQuote }))
+            }
             setPriceChanged(json.code === 'PRICE_CHANGED')
             setInitError(error || 'Could not initialise payment. Please try again.')
             return
           }
+          sessionStorage.setItem('gpg_checkout_session', JSON.stringify({ identity, key: checkoutKey, quote: json.checkoutQuote }))
+          sessionStorage.setItem('gpg_pending_order', JSON.stringify({ ...data, checkoutQuote: json.checkoutQuote }))
           setOrderData({ ...data, checkoutQuote: json.checkoutQuote })
           setClientSecret(clientSecret)
         })
