@@ -15,27 +15,23 @@ interface AdminOrder {
   deadline: string
   created_at: string
   user_id: string
+  is_outside_standard_fields: boolean
   profiles: { first_name: string | null; last_name: string | null; email: string } | null
   deliverables: Array<{ id: string }>
 }
 
 export default async function AdminPage() {
-  console.log('[admin/page] ===== ADMIN DASHBOARD DATA FETCH START =====')
-  console.log('[admin/page] Using client:', 'supabaseAdmin')
-  console.log('[admin/page] Service role key exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
-  console.log('[admin/page] Service role key length:', process.env.SUPABASE_SERVICE_ROLE_KEY?.length)
-  console.log('[admin/page] Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-
   const { data: orders, error: ordersError } = await supabaseAdmin
     .from('orders')
     .select(`
-      id, status, total_amount, academic_level, module_name, subject_field, deadline, created_at, user_id,
+      id, status, total_amount, academic_level, module_name, subject_field, deadline, created_at, user_id, is_outside_standard_fields,
       profiles ( first_name, last_name, email ),
       deliverables ( id )
     `)
     .order('created_at', { ascending: false }) as { data: AdminOrder[] | null; error: any }
 
-  const { data: activeRevisions } = await supabaseAdmin.from('order_revisions').select('order_id').in('status', ['requested', 'in_progress'])
+  const { data: activeRevisions, error: revisionError } = await supabaseAdmin.from('order_revisions').select('order_id').in('status', ['requested', 'in_progress'])
+  if (revisionError) throw new Error('Could not load revision requests. Please try again.')
   const revisionOrderIds = new Set((activeRevisions ?? []).map(r => r.order_id))
 
   // Fetch approved reviews count
@@ -44,25 +40,7 @@ export default async function AdminPage() {
     .select('*', { count: 'exact', head: true })
     .eq('is_approved', true)
 
-  // Log query results
-  console.log('[admin/page] Query completed')
-  console.log('[admin/page] Error:', ordersError)
-  console.log('[admin/page] Data is null:', orders === null)
-  console.log('[admin/page] Data is array:', Array.isArray(orders))
-  console.log('[admin/page] Fetched orders count:', orders?.length ?? 0)
-
-  if (orders && orders.length > 0) {
-    console.log('[admin/page] First order sample:', {
-      id: orders[0].id,
-      status: orders[0].status,
-      created_at: orders[0].created_at
-    })
-  }
-
-  // Log any query errors
-  if (ordersError) {
-    console.error('[admin/page] ❌ FETCH ERROR:', JSON.stringify(ordersError, null, 2))
-  }
+  if (ordersError) throw new Error('Could not load the order queue. Please try again.')
 
   // Transform to simplified format for client component
   const transformedOrders = await Promise.all((orders ?? []).map(async order => {
@@ -82,11 +60,10 @@ export default async function AdminPage() {
       client_name: clientName,
       client_email: client?.email || '',
       deliverables_count: order.deliverables?.length || 0,
+      is_outside_standard_fields: order.is_outside_standard_fields,
       has_active_revision: revisionOrderIds.has(order.id),
     }
   }))
-
-  console.log('[admin/page] Transformed orders count:', transformedOrders.length)
 
   return (
     <div className="space-y-6">

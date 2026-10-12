@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 const STATUSES = [
@@ -20,36 +20,32 @@ export default function StatusUpdater({ orderId, currentStatus }: Props) {
   const [msg, setMsg]         = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const router = useRouter()
 
+  useEffect(() => { setStatus(currentStatus) }, [currentStatus])
+
   async function handleSave() {
     if (status === currentStatus) return
     setLoading(true)
     setMsg(null)
 
-    const res = await fetch(`/api/admin/orders/${orderId}/status`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ status }),
-    })
-    const json = await res.json()
-
-    if (!res.ok) {
-      setMsg({ type: 'err', text: json.error ?? 'Failed to update status.' })
-    } else {
-      setMsg({
-        type: 'ok',
-        text: status === 'completed'
-          ? 'Status updated and client notified by email.'
-          : 'Status updated.',
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/status`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }),
       })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Failed to update status.')
+      setMsg({ type: 'ok', text: json.warning ?? (json.notification === 'sent' ? 'Status updated. Notification email accepted for sending.' : 'Status updated.') })
       router.refresh()
-    }
-    setLoading(false)
+    } catch (error) {
+      setMsg({ type: 'err', text: error instanceof Error ? error.message : 'Failed to update status. Please try again.' })
+    } finally { setLoading(false) }
   }
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
         <select
+          aria-label="Order status"
+          disabled={loading || currentStatus === 'completed'}
           value={status}
           onChange={(e) => setStatus(e.target.value)}
           className="flex-1 px-3.5 py-2.5 border border-[#E8E2D9] rounded-xl text-sm font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/40 focus:border-[#E8A020] transition-all text-[#1A1A2E]"
@@ -71,6 +67,7 @@ export default function StatusUpdater({ orderId, currentStatus }: Props) {
 
       {msg && (
         <p
+          role="status"
           className="text-xs font-medium px-3 py-2 rounded-lg"
           style={{
             background: msg.type === 'ok' ? '#F0FDF4' : '#FEF2F2',

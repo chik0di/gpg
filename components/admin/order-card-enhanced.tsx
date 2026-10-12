@@ -94,8 +94,7 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
 
   async function handleStatusChange(newStatus: string) {
     setUpdating(true)
-    await onStatusChange(order.id, newStatus)
-    setUpdating(false)
+    try { await onStatusChange(order.id, newStatus) } finally { setUpdating(false) }
   }
 
   return (
@@ -113,7 +112,7 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
           {/* Only show urgency badges for non-completed orders */}
           {order.status !== 'completed' && urgency === 'overdue' && (
             <span
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-bold"
               style={{ background: config.bg, color: config.color }}
             >
               <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
@@ -124,7 +123,7 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
           )}
           {order.status !== 'completed' && urgency === 'urgent' && (
             <span
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-bold"
               style={{ background: config.bg, color: config.color }}
             >
               <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
@@ -135,7 +134,7 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
           )}
           {order.status === 'completed' && (
             <span
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-bold"
               style={{ background: config.bg, color: config.color }}
             >
               <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,7 +144,7 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
             </span>
           )}
           {order.is_outside_standard_fields && (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700">
               <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
               </svg>
@@ -175,16 +174,16 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
         <div className="space-y-1.5 mb-2">
           <div className="space-y-1">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="px-1.5 py-0.5 bg-[#F5F0E8] rounded text-[10px] font-semibold text-[#1B2E4B]">
+              <span className="px-1.5 py-0.5 bg-[#F5F0E8] rounded text-xs font-semibold text-[#1B2E4B]">
                 {order.subject_field}
                 {order.has_active_revision && <span className="ml-2 text-xs font-semibold text-amber-700">Revision requested</span>}
               </span>
-              <span className="px-1.5 py-0.5 bg-[#F5F0E8] rounded text-[10px] font-semibold text-[#6B7280]">
+              <span className="px-1.5 py-0.5 bg-[#F5F0E8] rounded text-xs font-semibold text-[#6B7280]">
                 {order.academic_level}
               </span>
             </div>
             {order.module_name && (
-              <div className="text-[10px] text-[#9CA3AF] pl-0.5">
+              <div className="text-xs text-[#9CA3AF] pl-0.5">
                 {order.module_name}
               </div>
             )}
@@ -195,8 +194,8 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <span className="text-[10px] font-semibold" style={{ color: config.color }}>
-                {countdown}
+              <span className="text-xs font-semibold" style={{ color: config.color }}>
+                {order.status === 'completed' ? `Original deadline: ${new Date(order.deadline).toLocaleDateString('en-GB')}` : countdown}
               </span>
             </div>
             <p className="text-xs font-bold text-[#1B2E4B]">£{order.total_amount.toFixed(2)}</p>
@@ -212,8 +211,9 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
               handleStatusChange(e.target.value)
             }}
             onClick={(e) => e.stopPropagation()}
-            disabled={updating}
-            className="flex-1 px-2 py-1 border border-[#E8E2D9] rounded-lg text-[10px] font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/40 disabled:opacity-50"
+            aria-label={`Status for order ${order.id.slice(0, 8)}`}
+            disabled={updating || order.status === 'completed' || order.has_active_revision}
+            className="flex-1 px-2 py-1 border border-[#E8E2D9] rounded-lg text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/40 disabled:opacity-50"
           >
             <option value="pending">Pending</option>
             <option value="in_progress">In Progress</option>
@@ -223,7 +223,7 @@ export default function OrderCardEnhanced({ order, onStatusChange }: Props) {
           <Link
             href={`/admin/orders/${order.id}`}
             onClick={(e) => e.stopPropagation()}
-            className="px-2.5 py-1 bg-[#1B2E4B] hover:bg-[#16253d] text-white text-[10px] font-semibold rounded-lg transition-colors whitespace-nowrap"
+            className="px-2.5 py-1 bg-[#1B2E4B] hover:bg-[#16253d] text-white text-xs font-semibold rounded-lg transition-colors whitespace-nowrap"
           >
             Details
           </Link>

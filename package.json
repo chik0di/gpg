@@ -17,7 +17,8 @@
     "test:workspace": "node scripts/test-workspace.cjs",
     "test:project-tools": "node scripts/test-project-tools.cjs",
     "test:checkout": "node scripts/test-checkout.cjs && node scripts/test-order-fulfilment.cjs",
-    "test:settings": "node scripts/test-settings.cjs"
+    "test:settings": "node scripts/test-settings.cjs",
+    "test:admin-orders": "node scripts/test-admin-orders.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

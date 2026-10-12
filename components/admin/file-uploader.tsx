@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 
 interface Props {
   orderId: string
+  delivered?: boolean
 }
 
 function formatBytes(bytes: number) {
@@ -12,7 +13,7 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export default function FileUploader({ orderId }: Props) {
+export default function FileUploader({ orderId, delivered = false }: Props) {
   const [file, setFile]       = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [msg, setMsg]         = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
@@ -27,21 +28,17 @@ export default function FileUploader({ orderId }: Props) {
     const formData = new FormData()
     formData.append('file', file)
 
-    const res  = await fetch(`/api/admin/orders/${orderId}/upload`, {
-      method: 'POST',
-      body:   formData,
-    })
-    const json = await res.json()
-
-    if (!res.ok) {
-      setMsg({ type: 'err', text: json.error ?? 'Upload failed.' })
-    } else {
-      setMsg({ type: 'ok', text: 'File uploaded successfully.' })
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/upload`, { method: 'POST', body: formData })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Upload failed.')
+      setMsg({ type: 'ok', text: delivered ? 'New file uploaded and available to the client. No notification email was sent.' : 'File uploaded. Mark the order completed below to notify the client.' })
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
       router.refresh()
-    }
-    setLoading(false)
+    } catch (error) {
+      setMsg({ type: 'err', text: error instanceof Error ? error.message : 'Upload failed. Please try again.' })
+    } finally { setLoading(false) }
   }
 
   return (
@@ -49,6 +46,7 @@ export default function FileUploader({ orderId }: Props) {
       {!file ? (
         <button
           type="button"
+          disabled={loading}
           onClick={() => inputRef.current?.click()}
           className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-[#E8E2D9] rounded-xl text-sm font-semibold text-[#9CA3AF] hover:border-[#E8A020] hover:text-[#E8A020] transition-all"
         >
@@ -72,7 +70,9 @@ export default function FileUploader({ orderId }: Props) {
           </div>
           <button
             type="button"
-            onClick={() => { setFile(null); if (inputRef.current) inputRef.current.value = '' }}
+            aria-label="Remove selected file"
+            disabled={loading}
+            onClick={() => { setMsg(null); setFile(null); if (inputRef.current) inputRef.current.value = '' }}
             className="text-[#9CA3AF] hover:text-red-400 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,9 +87,11 @@ export default function FileUploader({ orderId }: Props) {
         type="file"
         className="hidden"
         accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.xls,.xlsx"
-        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        disabled={loading}
+        onChange={(e) => { setMsg(null); setFile(e.target.files?.[0] ?? null) }}
       />
 
+      <p className="text-xs text-[#6B7280]">PDF, Word, PowerPoint, Excel or ZIP. Maximum 100 MB.</p>
       {file && (
         <button
           type="button"
@@ -103,6 +105,7 @@ export default function FileUploader({ orderId }: Props) {
 
       {msg && (
         <p
+          role="status"
           className="text-xs font-medium px-3 py-2 rounded-lg"
           style={{
             background: msg.type === 'ok' ? '#F0FDF4' : '#FEF2F2',

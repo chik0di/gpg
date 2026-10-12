@@ -33,6 +33,7 @@ export default function UrgentPanel({ orders, onStatusChange }: Props) {
     <div className="bg-white rounded-xl border-2 border-[#EF4444] overflow-hidden">
       {/* Header */}
       <button
+        aria-expanded={!isCollapsed}
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="w-full flex items-center justify-between px-5 py-3 bg-[#FEE2E2] hover:bg-[#FECACA] transition-colors"
       >
@@ -42,7 +43,7 @@ export default function UrgentPanel({ orders, onStatusChange }: Props) {
             <span className="relative inline-flex rounded-full h-3 w-3 bg-[#EF4444]"></span>
           </span>
           <h2 className="text-base font-bold text-[#EF4444]">
-            Needs Attention — {orders.length} order{orders.length !== 1 ? 's' : ''} due within 48 hours
+            Needs attention ({orders.length})
           </h2>
         </div>
         <svg
@@ -59,6 +60,7 @@ export default function UrgentPanel({ orders, onStatusChange }: Props) {
       {/* Content */}
       {!isCollapsed && (
         <div className="p-4 space-y-3 bg-[#FFF5F5]">
+          <p className="text-sm text-[#6B7280]">Overdue orders, orders due within 48 hours, and active revisions matching your filters.</p>
           {orders.map((order) => (
             <OrderCardEnhanced key={order.id} order={order} onStatusChange={onStatusChange} />
           ))}

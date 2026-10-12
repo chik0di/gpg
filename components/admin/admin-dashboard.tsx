@@ -6,21 +6,9 @@ import FiltersBar, { type Filters } from './filters-bar'
 import UrgentPanel from './urgent-panel'
 import OrderCardEnhanced from './order-card-enhanced'
 import Pagination from './pagination'
+import { useRouter } from 'next/navigation'
+import { filterAdminOrders, needsAttention, isUrgent, type AdminQueueOrder as Order } from '@/lib/admin-order-queue'
 
-interface Order {
-  id: string
-  status: string
-  total_amount: number
-  academic_level: string
-  subject_field: string
-  deadline: string
-  created_at: string
-  user_id: string
-  client_name?: string
-  client_email?: string
-  has_active_revision?: boolean
-  deliverables_count?: number
-}
 
 interface Props {
   initialOrders: Order[]
@@ -28,41 +16,14 @@ interface Props {
 
 const ORDERS_PER_PAGE = 20
 
-function getTimeRangeFilter(timeRange: string): Date | null {
-  const now = new Date()
-  switch (timeRange) {
-    case '6h': return new Date(now.getTime() - 6 * 60 * 60 * 1000)
-    case '12h': return new Date(now.getTime() - 12 * 60 * 60 * 1000)
-    case '24h': return new Date(now.getTime() - 24 * 60 * 60 * 1000)
-    case '3d': return new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000)
-    case '7d': return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-    case '30d': return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-    default: return null
-  }
-}
-
-function isUrgent(deadline: string): boolean {
-  const deadlineDate = new Date(deadline)
-  const hoursRemaining = (deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60)
-  return hoursRemaining > 0 && hoursRemaining <= 72 // Within 3 days
-}
-
-function isOverdue(deadline: string): boolean {
-  return new Date(deadline) < new Date()
-}
-
-function isWithin48Hours(deadline: string): boolean {
-  const deadlineDate = new Date(deadline)
-  const hoursRemaining = (deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60)
-  return hoursRemaining > 0 && hoursRemaining <= 48
-}
-
 export default function AdminDashboard({ initialOrders }: Props) {
+  const router = useRouter()
+  const [notice, setNotice] = useState<string | null>(null)
   const [orders, setOrders] = useState<Order[]>(initialOrders)
   const [currentPage, setCurrentPage] = useState(1)
   const [filters, setFilters] = useState<Filters>({
     timeRange: 'all',
-    status: 'active', // Default to showing only pending and in_progress orders
+    status: 'active', // Include unfinished orders and active revisions
     urgency: 'all',
     academicLevel: 'all',
     subject: 'all',
@@ -85,81 +46,15 @@ export default function AdminDashboard({ initialOrders }: Props) {
 
   // Filter orders
   const filteredOrders = useMemo(() => {
-    let filtered = [...orders]
-
-    // Time range
-    const timeFilter = getTimeRangeFilter(filters.timeRange)
-    if (timeFilter) {
-      filtered = filtered.filter(o => new Date(o.created_at) >= timeFilter)
-    }
-
-    // Status
-    if (filters.status === 'active') {
-      filtered = filtered.filter(o => o.status === 'pending' || o.status === 'in_progress' || o.has_active_revision)
-    } else if (filters.status === 'revisions') {
-      filtered = filtered.filter(o => o.has_active_revision)
-    } else if (filters.status !== 'all') {
-      filtered = filtered.filter(o => o.status === filters.status)
-    }
-
-    // Urgency
-    if (filters.urgency === 'urgent') {
-      filtered = filtered.filter(o => isUrgent(o.deadline) && o.status !== 'completed')
-    } else if (filters.urgency === 'overdue') {
-      filtered = filtered.filter(o => isOverdue(o.deadline) && o.status !== 'completed')
-    }
-
-    // Academic level
-    if (filters.academicLevel !== 'all') {
-      filtered = filtered.filter(o => o.academic_level === filters.academicLevel)
-    }
-
-    // Subject
-    if (filters.subject !== 'all') {
-      filtered = filtered.filter(o => o.subject_field === filters.subject)
-    }
-
-    // Search
-    if (filters.search) {
-      const search = filters.search.toLowerCase()
-      filtered = filtered.filter(o =>
-        o.id.toLowerCase().includes(search) ||
-        o.client_name?.toLowerCase().includes(search) ||
-        o.client_email?.toLowerCase().includes(search) ||
-        o.subject_field.toLowerCase().includes(search)
-      )
-    }
-
-    // Sort
-    switch (filters.sortBy) {
-      case 'oldest':
-        filtered.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-        break
-      case 'deadline_soon':
-        filtered.sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
-        break
-      case 'deadline_late':
-        filtered.sort((a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime())
-        break
-      case 'highest_value':
-        filtered.sort((a, b) => b.total_amount - a.total_amount)
-        break
-      case 'lowest_value':
-        filtered.sort((a, b) => a.total_amount - b.total_amount)
-        break
-      default: // newest
-        filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    }
-
-    return filtered
+    return filterAdminOrders(orders, filters)
   }, [orders, filters])
 
-  // Urgent panel orders (within 48 hours)
+  // Orders and revisions needing attention
   const urgentPanelOrders = useMemo(() => {
-    return orders
-      .filter(o => isWithin48Hours(o.deadline) && o.status !== 'completed')
+    return filteredOrders
+      .filter(needsAttention)
       .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
-  }, [orders])
+  }, [filteredOrders])
 
   // Get set of urgent panel order IDs for filtering
   const urgentPanelOrderIds = useMemo(() => {
@@ -173,9 +68,10 @@ export default function AdminDashboard({ initialOrders }: Props) {
 
   // Pagination
   const totalPages = Math.ceil(mainListOrders.length / ORDERS_PER_PAGE)
+  const visiblePage = Math.min(currentPage, Math.max(1, totalPages))
   const paginatedOrders = mainListOrders.slice(
-    (currentPage - 1) * ORDERS_PER_PAGE,
-    currentPage * ORDERS_PER_PAGE
+    (visiblePage - 1) * ORDERS_PER_PAGE,
+    visiblePage * ORDERS_PER_PAGE
   )
 
   // Reset to page 1 when filters change
@@ -199,7 +95,11 @@ export default function AdminDashboard({ initialOrders }: Props) {
 
   const handleStatFilterClick = (filter: string | null) => {
     if (filter === null) {
-      handleClearFilters()
+      setFilters({ timeRange: 'all', status: 'all', urgency: 'all', academicLevel: 'all', subject: 'all', sortBy: 'newest', search: '' })
+      setCurrentPage(1)
+    } else if (filter === 'urgent') {
+      setFilters(prev => ({ ...prev, status: 'all', urgency: 'urgent' }))
+      setCurrentPage(1)
     } else {
       setFilters(prev => ({ ...prev, status: filter, urgency: 'all' }))
       setCurrentPage(1)
@@ -207,47 +107,46 @@ export default function AdminDashboard({ initialOrders }: Props) {
   }
 
   async function handleStatusChange(orderId: string, newStatus: string) {
-    // Optimistic update
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o))
-
+    setNotice(null)
     try {
       const res = await fetch(`/api/admin/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       })
-
-      if (!res.ok) {
-        // Revert on error
-        setOrders(initialOrders)
-        alert('Failed to update status')
-      }
-    } catch (err) {
-      setOrders(initialOrders)
-      alert('Failed to update status')
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error ?? 'Failed to update status.')
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: result.status } : o))
+      setNotice(result.warning ?? 'Order status updated.')
+      router.refresh()
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Failed to update status. Please try again.')
     }
   }
 
   // Empty state messages
   const getEmptyStateMessage = () => {
-    if (filters.urgency === 'urgent') return "No urgent orders right now — you're on top of things! 🎉"
-    if (filters.urgency === 'overdue') return "No overdue orders — excellent work! ✨"
+    if (filters.search) return `No orders match "${filters.search}"`
+    if (filters.urgency === 'urgent') return "No urgent orders right now — you're on top of things!"
+    if (filters.urgency === 'overdue') return "No overdue orders — excellent work!"
     if (filters.status === 'pending') return "No pending orders at the moment."
     if (filters.status === 'in_progress') return "No orders in progress right now."
     if (filters.status === 'completed') return "No completed orders yet."
     if (filters.status === 'revisions') return 'No active revision requests.'
-    if (filters.search) return `No orders match "${filters.search}"`
     return "No orders found with the current filters."
   }
 
   return (
     <div className="space-y-6">
+      {notice && <p role="status" className="rounded-xl border border-[#E8E2D9] bg-white p-4 text-sm text-[#1B2E4B]">{notice}</p>}
       {/* Stats Strip */}
       <StatsStrip
         stats={stats}
-        activeFilter={filters.status === 'all' ? null : filters.status}
+        activeFilter={filters.urgency === 'urgent' ? 'urgent' : filters.status === 'all' ? null : filters.status}
         onFilterClick={handleStatFilterClick}
       />
+
+      <button type="button" onClick={() => router.refresh()} className="px-4 py-2 rounded-xl border border-[#E8E2D9] bg-white text-sm font-semibold text-[#1B2E4B]">Refresh orders</button>
 
       <button className="px-4 py-2 rounded-xl border border-[#E8E2D9] bg-white text-sm font-semibold text-[#1B2E4B]" onClick={() => handleStatFilterClick('revisions')}>
         Active revision requests ({orders.filter(o => o.has_active_revision).length})
@@ -268,7 +167,7 @@ export default function AdminDashboard({ initialOrders }: Props) {
       )}
 
       {/* Orders List */}
-      {paginatedOrders.length === 0 ? (
+      {filteredOrders.length === 0 ? (
         <div className="bg-white rounded-2xl border border-[#E8E2D9] py-20 text-center">
           <div className="w-14 h-14 rounded-2xl bg-[#F5F0E8] flex items-center justify-center mx-auto mb-4">
             <svg className="w-7 h-7 text-[#9CA3AF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -290,7 +189,7 @@ export default function AdminDashboard({ initialOrders }: Props) {
           {totalPages > 1 && (
             <div className="pt-4">
               <Pagination
-                currentPage={currentPage}
+                currentPage={visiblePage}
                 totalPages={totalPages}
                 onPageChange={setCurrentPage}
               />

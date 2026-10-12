@@ -19,9 +19,9 @@ interface Props { params: { id: string } }
 function Row({ label, value, secondary }: { label: string; value: string; secondary?: string | null }) {
   return (
     <div className="flex items-start justify-between gap-4 py-3 border-b border-[#E8E2D9] last:border-0">
-      <span className="text-sm text-[#9CA3AF] shrink-0 w-36">{label}</span>
-      <div className="text-right">
-        <div className="text-sm font-semibold text-[#1B2E4B]">{value}</div>
+      <span className="text-sm text-[#9CA3AF] shrink-0 w-24 sm:w-36">{label}</span>
+      <div className="text-right min-w-0 break-words">
+        <div className="text-sm font-semibold text-[#1B2E4B] break-all">{value}</div>
         {secondary && (
           <div className="text-xs text-[#9CA3AF] mt-1">{secondary}</div>
         )}
@@ -234,7 +234,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
         <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide mb-3">Completed Work</p>
         {completedUrl ? (
           <div className="space-y-3">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <a
                 href={completedUrl}
                 target="_blank"
@@ -249,10 +249,10 @@ export default async function AdminOrderDetailPage({ params }: Props) {
               {!order.first_delivered_at && order.status !== 'completed' && <DeleteCompletedButton orderId={order.id} />}
             </div>
             <p className="text-xs text-[#9CA3AF]">Earlier versions are preserved when you upload a new file. Use the revision request below to deliver a revision.</p>
-            {revisions?.some(r => r.status === 'requested' || r.status === 'in_progress') ? <p className="text-sm text-[#6B7280]">Deliver revised work through the revision request below.</p> : <FileUploader orderId={order.id} />}
+            {revisions?.some(r => r.status === 'requested' || r.status === 'in_progress') ? <p className="text-sm text-[#6B7280]">Deliver revised work through the revision request below.</p> : <FileUploader orderId={order.id} delivered={order.status === 'completed'} />}
           </div>
         ) : (
-          revisions?.some(r => r.status === 'requested' || r.status === 'in_progress') ? <p className="text-sm text-[#6B7280]">Deliver revised work through the revision request below.</p> : <FileUploader orderId={order.id} />
+          revisions?.some(r => r.status === 'requested' || r.status === 'in_progress') ? <p className="text-sm text-[#6B7280]">Deliver revised work through the revision request below.</p> : <FileUploader orderId={order.id} delivered={order.status === 'completed'} />
         )}
       </div>
 
@@ -262,7 +262,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
       {/* Status update */}
       <div className="bg-white rounded-2xl border border-[#E8E2D9] p-5" style={{ boxShadow: '0 2px 8px -2px rgba(26,26,46,0.07)' }}>
         <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide mb-3">Update Status</p>
-        <StatusUpdater orderId={order.id} currentStatus={order.status} />
+        {order.status === 'completed' ? <p className="text-sm text-[#6B7280]">This order has been delivered. Manage further changes through the revision requests above.</p> : <StatusUpdater orderId={order.id} currentStatus={order.status} />}
         {order.status !== 'completed' && (
           <p className="text-xs text-[#9CA3AF] mt-3">
             Setting status to <strong>Completed</strong> will automatically email the client with a link to download their work.

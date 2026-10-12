@@ -14,6 +14,8 @@ const ALLOWED_MIME_TYPES = [
   'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   'application/zip',
   'application/x-zip-compressed',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ]
 
 /**
@@ -104,7 +106,7 @@ export async function POST(
     const formData = await request.formData()
     const file     = formData.get('file') as File | null
 
-    if (!file) {
+    if (!(file instanceof File) || file.size === 0) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
@@ -119,7 +121,7 @@ export async function POST(
     // Validate file type
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
       return NextResponse.json(
-        { error: 'Invalid file type. Allowed: PDF, Word, PowerPoint, ZIP files.' },
+        { error: 'Invalid file type. Allowed: PDF, Word, PowerPoint, Excel or ZIP files.' },
         { status: 400 }
       )
     }

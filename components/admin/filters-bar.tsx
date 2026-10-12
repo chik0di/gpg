@@ -37,6 +37,7 @@ export default function FiltersBar({ filters, onChange, onClear, resultCount, to
         {/* Search */}
         <div>
           <input
+            aria-label="Search orders"
             type="text"
             placeholder="Search by client name, email, order ID, or subject..."
             value={filters.search}
@@ -48,7 +49,7 @@ export default function FiltersBar({ filters, onChange, onClear, resultCount, to
         {/* Filter controls */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
           {/* Time Range */}
-          <select
+          <select aria-label="Order date"
             value={filters.timeRange}
             onChange={(e) => onChange({ ...filters, timeRange: e.target.value })}
             className="px-3 py-2 border border-[#E8E2D9] rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/40"
@@ -63,7 +64,7 @@ export default function FiltersBar({ filters, onChange, onClear, resultCount, to
           </select>
 
           {/* Status */}
-          <select
+          <select aria-label="Order status filter"
             value={filters.status}
             onChange={(e) => onChange({ ...filters, status: e.target.value })}
             className="px-3 py-2 border border-[#E8E2D9] rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/40"
@@ -77,7 +78,7 @@ export default function FiltersBar({ filters, onChange, onClear, resultCount, to
           </select>
 
           {/* Urgency */}
-          <select
+          <select aria-label="Order urgency"
             value={filters.urgency}
             onChange={(e) => onChange({ ...filters, urgency: e.target.value })}
             className="px-3 py-2 border border-[#E8E2D9] rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/40"
@@ -88,7 +89,7 @@ export default function FiltersBar({ filters, onChange, onClear, resultCount, to
           </select>
 
           {/* Academic Level */}
-          <select
+          <select aria-label="Academic level"
             value={filters.academicLevel}
             onChange={(e) => onChange({ ...filters, academicLevel: e.target.value })}
             className="px-3 py-2 border border-[#E8E2D9] rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/40"
@@ -99,7 +100,7 @@ export default function FiltersBar({ filters, onChange, onClear, resultCount, to
           </select>
 
           {/* Subject */}
-          <select
+          <select aria-label="Subject"
             value={filters.subject}
             onChange={(e) => onChange({ ...filters, subject: e.target.value })}
             className="px-3 py-2 border border-[#E8E2D9] rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/40"
@@ -113,7 +114,7 @@ export default function FiltersBar({ filters, onChange, onClear, resultCount, to
           </select>
 
           {/* Sort */}
-          <select
+          <select aria-label="Sort orders"
             value={filters.sortBy}
             onChange={(e) => onChange({ ...filters, sortBy: e.target.value })}
             className="px-3 py-2 border border-[#E8E2D9] rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#E8A020]/40"
