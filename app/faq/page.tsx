@@ -13,7 +13,7 @@ const FAQS = [
   },
   {
     q: 'How does pricing work?',
-    a: "Prices are based on the type of deliverable, its size, your academic level, and your deadline. You'll see a full itemised breakdown — including any level adjustment or urgency premium — in your order summary before you pay anything.",
+    a: "Prices are based on the type of deliverable, its size, your academic level, and your deadline. You'll see your full price in your order summary before you pay anything — no hidden costs.",
   },
   {
     q: 'How do I receive the completed work?',
@@ -29,7 +29,7 @@ const FAQS = [
   },
   {
     q: 'How long does delivery take?',
-    a: 'Our minimum turnaround is two days from the time your order is confirmed. Tighter deadlines are possible with an urgency premium, which is clearly shown in your order summary so there are no surprises.',
+    a: 'Our minimum turnaround is two days from the time your order is confirmed. Tighter deadlines are possible, though they may carry an urgency premium. Your full price is always shown in your order summary before you pay, so there are no surprises.',
   },
   {
     q: 'Is my information kept private?',

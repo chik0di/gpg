@@ -4,7 +4,6 @@ import { calculateOrderQuote } from '@/lib/order-quote'
 
 import {
   presentationLabel,
-  getAcademicLevelAdjLabel,
   PRACTICAL_ITEMS,
   ORIGINALITY_REPORT_PRICE,
   PRICE_PER_SLIDE,
@@ -54,7 +53,6 @@ export default function StepSummary({ data, file, proceeding = false, onToggleRe
 
   const quote = calculateOrderQuote(data)
   const grandTotal = quote.totalPence / 100
-  const adjustments = [getAcademicLevelAdjLabel(data.academicLevel), quote.deadlinePct > 100 ? `Urgency premium +${quote.deadlinePct - 100}%` : null].filter(Boolean)
 
   return (
     <div className="space-y-6">
@@ -95,8 +93,6 @@ export default function StepSummary({ data, file, proceeding = false, onToggleRe
           </div>
         ))}
       </div>
-
-      {adjustments.length > 0 && <p className="text-sm text-[#64748B]">Prices include {adjustments.join(' and ')}. Adjustments apply in sequence.</p>}
 
       {/* Deliverables breakdown */}
       <div className="border border-[#E8E2D9] rounded-2xl overflow-hidden">

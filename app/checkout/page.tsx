@@ -146,7 +146,6 @@ function OrderSummary({ data }: {
 
   const quote = data.checkoutQuote || calculateOrderQuote(data)
   const total = quote.totalPence / 100
-  const adjustments = [quote.academicPct > 100 ? `${data.academicLevel} level +${quote.academicPct - 100}%` : null, quote.deadlinePct > 100 ? `Urgency premium +${quote.deadlinePct - 100}%` : null].filter(Boolean)
 
   return (
     <div className="bg-white rounded-2xl border border-[#E8E2D9] overflow-hidden lg:sticky top-24" style={{ boxShadow: '0 2px 8px -2px rgba(26,26,46,0.07)' }}>
@@ -160,8 +159,6 @@ function OrderSummary({ data }: {
           )}
         </div>
       </div>
-
-      {adjustments.length > 0 && <p className="px-5 py-3 text-xs text-[#64748B]">Prices include {adjustments.join(' and ')}. Adjustments apply in sequence.</p>}
 
       {/* Deliverables at final price (all adjustments included) */}
       <div className="divide-y divide-[#F5F0E8] px-5">

@@ -364,7 +364,7 @@ export default function StepDeliverables({ deliverables, errors, onChange, selec
           )}
         </div>
         <p className="text-sm text-[#6B7280]">
-          Add up to 6 items. Prices are base rates — academic level and deadline adjustments apply at checkout.
+          Add up to 6 items. Your final price is confirmed at checkout.
         </p>
       </div>
 
