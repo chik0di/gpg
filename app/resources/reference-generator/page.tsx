@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: 'Free Reference Generator — APA, Harvard, Vancouver, MLA, Chicago — GetPrimeGrade',
   description: 'Generate perfectly formatted citations in APA, Harvard, Vancouver, MLA and Chicago styles. Free reference generator, no account required.',
   keywords: ['reference generator', 'citation generator', 'APA citation', 'Harvard referencing', 'Vancouver style', 'MLA format', 'Chicago style', 'bibliography generator', 'free citation tool'],
+  alternates: {
+    canonical: 'https://getprimegrade.com/resources/reference-generator',
+  },
   openGraph: {
     title: 'Free Reference Generator — GetPrimeGrade',
     description: 'Generate perfectly formatted citations in APA, Harvard, Vancouver, MLA and Chicago styles.',

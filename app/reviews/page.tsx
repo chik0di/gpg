@@ -9,6 +9,12 @@ import { publicReviewSummary } from '@/lib/public-review-summary'
 export const metadata: Metadata = {
   title: 'Client Reviews — GetPrimeGrade',
   description: 'Read what our clients say about our model answers and study materials',
+  alternates: {
+    canonical: 'https://getprimegrade.com/reviews',
+  },
+  openGraph: {
+    url: 'https://getprimegrade.com/reviews',
+  },
 }
 
 // Revalidate every 5 minutes to show newly approved reviews

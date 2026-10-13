@@ -83,9 +83,6 @@ export const metadata: Metadata = {
     },
   },
   manifest: '/site.webmanifest',
-  alternates: {
-    canonical: siteUrl,
-  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
