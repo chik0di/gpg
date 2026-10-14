@@ -4,20 +4,15 @@ import {
   PRACTICAL_ITEMS,
   WORDS_PER_PAGE,
   calcWrittenPrice,
-  writtenBandLabel,
   calcPresentationPrice,
-  presentationLabel,
   getPracticalPrice,
 } from '@/lib/pricing'
-import { fmtInCurrency, getCurrencyDisplayName } from '@/lib/currency'
 import { makeDeliverable, type Deliverable } from '@/types/order-form'
 
 interface Props {
   deliverables: Deliverable[]
   errors: Record<string, string>
   onChange: (updated: Deliverable[]) => void
-  selectedCurrency: string
-  exchangeRate: number
 }
 
 function calcPrice(d: Deliverable): number {
@@ -43,8 +38,6 @@ function DeliverableCard({
   onChange,
   onRemove,
   error,
-  selectedCurrency,
-  exchangeRate,
 }: {
   d: Deliverable
   index: number
@@ -52,12 +45,7 @@ function DeliverableCard({
   onChange: (changes: Partial<Deliverable>) => void
   onRemove: () => void
   error?: string
-  selectedCurrency: string
-  exchangeRate: number
 }) {
-  const price = calcPrice(d)
-  const fmt = (n: number) => n > 0 ? fmtInCurrency(n, exchangeRate, selectedCurrency) : '—'
-
   const writtenPages =
     d.sizeMode === 'pages' ? d.quantity : Math.ceil((d.quantity || 0) / WORDS_PER_PAGE)
 
@@ -216,10 +204,7 @@ function DeliverableCard({
             </div>
             {d.quantity > 0 && (
               <p className="mt-1.5 text-xs text-[#64748B]">
-                {d.sizeMode === 'words'
-                  ? `≈ ${writtenPages} page${writtenPages !== 1 ? 's' : ''} · `
-                  : ''}
-                {writtenBandLabel(writtenPages)}
+                {d.sizeMode === 'words' && `≈ ${writtenPages} page${writtenPages !== 1 ? 's' : ''}`}
               </p>
             )}
           </div>
@@ -282,15 +267,6 @@ function DeliverableCard({
             <p className="text-xs text-red-500">Maximum must be greater than minimum</p>
           )}
 
-          {/* Live price preview */}
-          {((d.slideInputMode === 'exact' && d.slideCount > 0) ||
-            (d.slideInputMode === 'between' && d.slideMax > 0)) && (
-            <p className="text-xs text-[#64748B]">
-              {d.slideInputMode === 'exact'
-                ? presentationLabel(d.slideCount)
-                : `${d.slideMin}–${d.slideMax} slides × £2.50 (charged at ${d.slideMax})`}
-            </p>
-          )}
         </div>
       )}
 
@@ -311,27 +287,12 @@ function DeliverableCard({
         </div>
       )}
 
-      {/* Price */}
-      {d.type && (
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#E8E2D9]">
-          <span className="text-xs font-medium text-[#64748B]">Base price</span>
-          <span
-            className="text-base font-bold"
-            style={{ color: price > 0 ? '#1B2E4B' : '#D1D5DB' }}
-          >
-            {fmt(price)}
-          </span>
-        </div>
-      )}
-
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
     </div>
   )
 }
 
-export default function StepDeliverables({ deliverables, errors, onChange, selectedCurrency, exchangeRate }: Props) {
-  const subtotal = deliverables.reduce((sum, d) => sum + calcPrice(d), 0)
-
+export default function StepDeliverables({ deliverables, errors, onChange }: Props) {
   function updateOne(id: string, changes: Partial<Deliverable>) {
     const updated = deliverables.map((d) => {
       if (d.id !== id) return d
@@ -352,19 +313,9 @@ export default function StepDeliverables({ deliverables, errors, onChange, selec
   return (
     <div className="space-y-5">
       <div>
-        <div className="flex items-start justify-between gap-3 mb-1">
-          <h2 className="text-xl font-semibold text-[#1B2E4B]">Deliverables</h2>
-          {selectedCurrency !== 'GBP' && (
-            <span className="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h11M9 21V3m9 13l3-3-3-3" />
-              </svg>
-              {getCurrencyDisplayName(selectedCurrency)} ({selectedCurrency})
-            </span>
-          )}
-        </div>
+        <h2 className="text-xl font-semibold text-[#1B2E4B] mb-1">Deliverables</h2>
         <p className="text-sm text-[#6B7280]">
-          Add up to 6 items. Your final price is confirmed at checkout.
+          Add up to 6 items. Enter the details for each deliverable below.
         </p>
       </div>
 
@@ -379,8 +330,6 @@ export default function StepDeliverables({ deliverables, errors, onChange, selec
             onChange={(changes) => updateOne(d.id, changes)}
             onRemove={() => removeDeliverable(d.id)}
             error={errors[`deliverable_${d.id}`]}
-            selectedCurrency={selectedCurrency}
-            exchangeRate={exchangeRate}
           />
         ))}
       </div>
@@ -405,20 +354,6 @@ export default function StepDeliverables({ deliverables, errors, onChange, selec
       {errors.deliverables && (
         <p className="text-xs text-red-500">{errors.deliverables}</p>
       )}
-
-      {/* Running total */}
-      <div
-        className="flex items-center justify-between px-5 py-4 rounded-2xl border border-[#E8E2D9]"
-        style={{ background: '#F5F0E8' }}
-      >
-        <div>
-          <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wide">Subtotal</p>
-          <p className="text-xs text-[#64748B] mt-0.5">Before academic level &amp; deadline adjustments</p>
-        </div>
-        <p className="text-2xl font-bold text-[#1B2E4B]">
-          {subtotal > 0 ? fmtInCurrency(subtotal, exchangeRate, selectedCurrency) : '—'}
-        </p>
-      </div>
     </div>
   )
 }

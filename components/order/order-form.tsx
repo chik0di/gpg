@@ -404,8 +404,6 @@ export default function OrderForm() {
                 extractionFailed={extractionFailed}
                 onConfirm={handleExtractionConfirm}
                 onBack={back}
-                selectedCurrency={formData.selectedCurrency}
-                exchangeRate={formData.exchangeRate}
                 onCurrencyChange={handleCurrencyChange}
               />
             )}
@@ -445,8 +443,6 @@ export default function OrderForm() {
                 deliverables={formData.deliverables}
                 errors={errors}
                 onChange={updateDeliverables}
-                selectedCurrency={formData.selectedCurrency}
-                exchangeRate={formData.exchangeRate}
               />
             )}
 

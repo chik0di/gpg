@@ -65,25 +65,7 @@ interface Props {
     isOutsideStandardFields: boolean
   }) => void
   onBack: () => void
-  selectedCurrency?: string
-  exchangeRate?: number
   onCurrencyChange?: (currency: string, rate: number) => void
-}
-
-function formatPrice(gbp: number, currency: string, rate: number): string {
-  const amount = gbp * rate
-  if (currency === 'GBP') {
-    return `£${amount % 1 === 0 ? amount : amount.toFixed(2)}`
-  }
-  try {
-    return new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency,
-      currencyDisplay: 'narrowSymbol',
-    }).format(amount)
-  } catch {
-    return `${currency} ${amount.toFixed(2)}`
-  }
 }
 
 /**
@@ -121,8 +103,6 @@ export default function StepExtractionReview({
   extractionFailed = false,
   onConfirm,
   onBack,
-  selectedCurrency = 'GBP',
-  exchangeRate = 1,
   onCurrencyChange,
 }: Props) {
   const [confirmError, setConfirmError] = useState<string | null>(null)
@@ -857,7 +837,6 @@ export default function StepExtractionReview({
                   placeholder={`Enter ${newDeliverableSizeMode}`}
                   className="w-full px-3 py-2 border border-[#E8E2D9] rounded-lg text-sm"
                 />
-                <p className="text-xs text-[#6B7280]">Standard rate: £5 per page</p>
               </div>
             )}
 
@@ -872,7 +851,6 @@ export default function StepExtractionReview({
                   placeholder="Number of slides"
                   className="w-full px-3 py-2 border border-[#E8E2D9] rounded-lg text-sm"
                 />
-                <p className="text-xs text-[#6B7280]">Standard rate: £2.50 per slide</p>
               </div>
             )}
 
@@ -889,7 +867,6 @@ export default function StepExtractionReview({
                     <option key={item.key} value={item.key}>{item.label}</option>
                   ))}
                 </select>
-                <p className="text-xs text-[#6B7280]">Standard price: {formatPrice(getPracticalPrice(newDeliverablePracticalKey), selectedCurrency, exchangeRate)}</p>
               </div>
             )}
 
